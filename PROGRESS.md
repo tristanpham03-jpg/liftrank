@@ -1,0 +1,228 @@
+# LiftRank: Progress
+
+_Last updated: 2026-10-13 (Claude Code) · Done: Phases 1–7 · **Ready for a private beta once the owner completes the launch checklist below** · Not deployed_
+
+## Status
+
+Phases 1–7 are built and **verified against the hosted Supabase project** (`yfrwcjvrtcxzifhnppdj`) as of 2026-10-13. All 11 migrations (`…0100` to `…1100`) are applied, and the remote is up to date. Results: 53/53 live checks, 9/9 Playwright flows against real Supabase (plus the opt-in iPhone audit, 3/3 in WebKit), 28/28 unit tests, plus typecheck, lint and production build. **Nothing is deployed.** The folder is a local git repository (branch `main`) and isn't pushed anywhere yet.
+
+Re-verify any time with `npm run verify:supabase` and `bash scripts/e2e-supabase.sh`. Neither ever resets anything; both delete their own test users, reports, groups, gyms, machine models, videos and pictures. `node --env-file=.env.local scripts/cleanup-test-users.mjs --delete` sweeps leftovers.
+
+**Test port:** the e2e scripts use **3210**. Port 3100 is taken by another local project (AutoCommerce's `next dev`).
+
+**Dev machine note:** the owner's Mac has no Homebrew or local Postgres, so `npm run test:db` and `npm run test:e2e:local` can't run there. Verify SQL changes with live checks in `scripts/verify-supabase.mjs` instead: add one per new behavior, using throwaway users, and clean up anything that outlives its user (Storage files do). Before pushing a migration, dry-run it against the live schema inside `begin; … rollback;` with `npx supabase db query --linked -f <file>`. That caught a real PL/pgSQL error in `…0800` before it was applied.
+
+## Test results
+
+| Suite | Result | Notes |
+|---|---|---|
+| `tsc --noEmit` | ✅ pass | strict |
+| `eslint` | ✅ 0 errors, 0 warnings | |
+| `next build` | ✅ pass | built by `e2e-supabase.sh` |
+| Unit (`npm test`) | ✅ 28 / 28 | Phase 5: badge states (Unverified / Proof uploaded / Disputed / Not accepted / Verified), wording never implies cheating, file type/size/length checks, a friendly message for every error code in `…0800` |
+| Database (`npm run test:db`) | ⚪ not run (no local Postgres) | 41 / 41 when last run, before Phase 5. `tests/db/shim.sql` now has a minimal `storage` schema so `…0800` applies there |
+| Live check vs. hosted (`npm run verify:supabase`) | ✅ 53 / 53 | Phases 1–3: 19 · Phase 4: 10 · Phase 5: 13 · appeals: 1 · Phase 6: 5 · **Phase 7: 5** (pictures, reports, moderation, rate limits) |
+| Playwright vs. hosted (`bash scripts/e2e-supabase.sh`) | ✅ 9 / 9 | adds **H (profile picture → report → moderator removes it → account deletion removes account, profile and files)**. |
+| iPhone audit (`E2E_IOS_AUDIT=1 … playwright test ios-audit`) | ✅ 3 / 3 | WebKit at iPhone SE (320 px), iPhone 15 and iPhone 15 Pro Max, over 13 screens. No horizontal overflow, no form control under 16 px. Small tap targets are listed as notes. |
+| Playwright, earlier flows | ✅ | A, PR in ≤5 taps, validation, B, D, E (gyms), F (request proof → upload → requester watches → review → verified), **G (title → achievements, profile, cards, record history → rejected: title lost → appeal to a different moderator → title back)** |
+| Security | ✅ | Git secret scan of all 186 tracked files: no keys, tokens or DB URLs (`.env.local` ignored). Security headers are served. Secret key and secret env names absent from the client bundle. `supabase db advisors --type security`: no RLS gaps, and no anon-callable function besides the invite preview. The remaining warnings predate Phase 5 (see Known limitations). `/api/cron/daily` returns 404 without `CRON_SECRET`, and card routes return 404 when signed out |
+
+**Phase 5 live checks:**
+- The bucket is private, its size cap equals `proof_settings.max_bytes`, and it accepts only MP4/MOV/WebM. Budgets are within the Free plan.
+- Signed-out users can't upload, nobody can upload without a reserved slot or into someone else's folder, and nobody can list another user's folder.
+- Only friends can request proof, once per lift; the owner is notified.
+- Upload validation: only the owner may reserve a slot, and type, size and length limits are enforced.
+- An upload marks the lift "proof uploaded", never verified. The requester is notified. Stored files can't be overwritten, and the bucket rejects non-video types.
+- Only the owner and moderators can watch, through a 2-minute grant. A friend can't sign a URL, and the public URL is refused.
+- A file under review can't be deleted, even by its owner.
+- Only moderators review, never their own lifts; the queue works.
+- Verification shows on the verified-only board (no champion there) and notifies both people. A verified lift accepts no new proof.
+- "Insufficient" and "rejected" remove the video. Others see "disputed", never "rejected", and never the reviewer's note. The upload limit is 3 a day.
+- Declining changes nothing about the lift, can't be asked again, and notifies the requester.
+- Proof requests are limited per day, and deleting a lift withdraws its open request.
+- A deleted lift's video and abandoned uploads can be removed by their owner. The cleanup job is service-role only.
+
+### Phase 4 verification tooling (earlier session, Oct 11)
+- `scripts/verify-supabase.mjs`: added the 10 Phase 4 live checks. It adds a fourth test user, made a moderator through the secret key. Test gyms are placed at Point Nemo (-48.88, -123.39) so they can't appear on any real user's nearby board, and test gyms and models are deleted by id at the end.
+- `tests/e2e/flow-e-gyms.spec.ts`: runs against hosted Supabase as well. The test gym uses a made-up city ("Testville") and Point Nemo coordinates.
+- `scripts/cleanup-test-users.mjs`: also matches the `lr-verify-…-m` moderator, and deletes orphaned test gyms (`E2E Iron ……`, `LR verify …`) and machine models (`Iso Press ……`, `LR verify … Press`). It now runs cleanup even when no test users remain.
+
+## Built
+
+**Phase 1, foundation:** Next.js 16 + strict TS + Tailwind 4 design tokens (brief palette, Geist, tabular heavy numerals); hand-rolled shadcn-style primitives; Supabase SSR clients and `proxy.ts` session refresh and route guard; email signup/login, password reset, sign-out, Google sign-in behind a flag; protected routes; onboarding (username → first lift → invite); bottom tab bar on mobile and sidebar on desktop; landing page with a labeled example board; full schema with RLS on every table, including Phase 4–5 tables.
+
+**Phase 2, core lifting:** 50-exercise catalog with 152 aliases; instant typo-tolerant search with recent and favorite exercises; Add Lift with remembered exercise, weight, reps and unit, per-exercise weight-convention hint, live e1RM preview, the >12-rep warning, date, visibility, group sharing and notes; `submit_lift` RPC (validation, dedupe, scoring, PRs, ranks before/after); result screen (PR celebration, rank moves, people passed, new titles); lift history; lift detail with sharing/notes edits and delete; Friends and Group leaderboards (all time / this month, pagination, sticky "your rank" card with next rival and gap text, champion banner).
+
+**Phase 3, social:** friends (search, request, accept/decline/cancel, remove), blocks; private groups (create, edit, delete, roles, transfer ownership, remove members, leave); hashed, expiring, revocable, use-limited invite links that survive signup; group boards with automatic champions and record history; rivals on Home; activity feed with reactions; notifications (friend request/accepted, passed, first place, member joined) with unread badge, per-type settings, and read-time visibility checks; profiles (PRs, featured lifts, ranking highlights, activity, privacy levels); settings (units, default visibility, notifications, account deletion); server-side analytics events; PWA manifest, icons, offline banner that disables Submit.
+
+## Incomplete or deferred within Phases 1–3
+
+- **Avatar and group image upload.** Initials avatars only. Needs a Storage bucket and policies.
+- **Email templates and SMTP.** Defaults work for development; custom SMTP is required before launch (SUPABASE_SETUP.md §4).
+- **Gym step in onboarding.** Shown as a "coming soon" note (Phase 4).
+- **Local dev seed (`seed.sql`).** Intentionally skipped for a hosted-only setup (PLAN.md).
+- **Service worker.** None yet. The app installs from the manifest, and the offline banner is driven by `navigator.onLine`. No data is cached offline, by design.
+
+## Known limitations
+
+- `get_home` computes ranks per exercise × board in a loop. It's fine for MVP-size data; move to materialized per-board ranks once groups grow past a few hundred members or users log dozens of exercises.
+- Exercise search runs client-side over the full catalog. Revisit past a few hundred exercises.
+- The local E2E stand-in implements only what the app calls. If you add PostgREST features (embedded selects, `or=` filters), extend it or test against Supabase.
+- Monthly boards use `public.app_timezone()` (America/Los_Angeles). Change it with a migration.
+- Free Supabase projects pause after about a week of inactivity.
+- Supabase security advisor warnings that predate Phase 5:
+  - `app_timezone`, `compute_score` and `is_reserved_username` have no fixed `search_path`. They're immutable, not SECURITY DEFINER, so the risk is low; set it in a future migration.
+  - Leaked-password protection is off. It's an Auth dashboard setting.
+  - "Authenticated can execute SECURITY DEFINER" warnings are by design: the explicit RPC grant list.
+- Proof video length is checked in the browser, and only the declared length is re-checked on the server; there's no server-side video processing. Supported playback depends on the reviewer's browser (iPhone HEVC `.mov` may not play in desktop Chrome); reviewers can choose "Not enough to tell".
+
+## Required configuration
+
+See `.env.example` and SUPABASE_SETUP.md: Supabase URL, publishable key, secret key (server only), site URL. Auth URL configuration. Confirm-email off for development and tests, on with SMTP for launch.
+
+## Launch checklist (private beta)
+
+Done by Claude, verified:
+- [x] Profile pictures with own-folder Storage writes, size and type caps, moderation removal, and deletion with the account
+- [x] Reports (profile, lift, group) with categories, limits, and a moderation queue with content-removal actions
+- [x] Rate limits: lifts (60/h), reports (10/day), proof requests (3/day), uploads (3/day), video views (20/day), picture changes (10/day), friend requests, invites
+- [x] Privacy and access verified live: lift visibility, blocks, video grants, group-only titles, record history, reports
+- [x] Account deletion removes the auth user, the profile, lifts, proof videos and pictures (Flow H)
+- [x] iPhone layouts (WebKit, 320–430 px) for signup, onboarding, Add Lift, result, leaderboards, lift, profile, settings, notifications, friends, groups, home
+- [x] Security headers (`nosniff`, `X-Frame-Options: DENY`, referrer policy, permissions policy)
+- [x] Local git repository with secrets excluded; deploy guide (SUPABASE_SETUP.md §7); `vercel.json` daily cron
+
+**For the owner** (needs your accounts; see SUPABASE_SETUP.md §7):
+1. [ ] Create a **private** GitHub repo and push (`git remote add origin …` then `git push -u origin main`).
+2. [ ] Import into Vercel, add the env vars (incl. `NEXT_PUBLIC_SITE_URL` = production URL and `CRON_SECRET`), and turn on Deployment Protection. **Don't make it public until you decide to.**
+3. [ ] Supabase Auth: Site URL and redirect URLs for the production domain; **Confirm email on**; custom **SMTP** (e.g. Resend free tier); optionally leaked-password protection.
+4. [ ] Make yourself (and ideally a second person, for appeals) a moderator.
+5. [ ] Smoke test on the deployed URL with a real email (SUPABASE_SETUP.md §7f).
+6. [ ] Optional: a privacy note and terms page, and a support email, before inviting people outside your circle.
+
+## Remaining issues and limitations (none block a private beta)
+
+- **Verify the cron after the first deploy.** On Vercel, cron jobs only run in production; check **Cron Jobs** after deploying.
+- **Free-tier limits.** Supabase Free pauses after about a week idle, and the Vercel Hobby plan is for non-commercial use. Upgrade both before monetizing.
+- **No Content-Security-Policy.** It would need per-request nonces; the other headers are set.
+- **Inline text-link tap targets.** Key links now have a 44 px hit area; a few small secondary text links remain (the iPhone audit lists them).
+- **Database advisor warnings that predate this phase.** 3 immutable helpers without `search_path`, and "authenticated can execute" on the intended RPC list.
+- **Offline DB suite not run on this Mac.** `npm run test:db` needs a local Postgres; live checks cover the same behavior against the real project.
+- **Avatar format support.** HEIC photos work where the browser can decode them (Safari); elsewhere the iOS photo picker hands over JPEG.
+
+## Ambient glass redesign (Oct 11, 2026)
+- Neon lime removed. Midnight slate base, pearl as the only solid accent; lavender, peach, pink and ice only as low-opacity ambient light.
+- Shared system: `AmbientBackground`, `GlassCard`/`GlassPanel` (src/components/ui/glass.tsx), `glass`, `glass-flat`, `pearl`, `pearl-text` utilities in globals.css.
+- Frosted 4-tab navigation (Home, Leaderboards, Add Lift, Profile); Groups via Leaderboards, notifications via the bell.
+- Home: three sections (Your rankings, Next target, Recent activity); full feed at /activity.
+- Restyled: landing, sign-in/sign-up/password reset, onboarding, leaderboards, Add Lift + result, groups, invite page, profile (featured record card), notifications (New / Earlier), friends, history, settings.
+- No database, auth, scoring or privacy changes. Rank-change arrows on boards were not added: the data has no previous-rank field, so it would need new data.
+- Tests: unit 21, db 32, Playwright 5/5 (stand-in).
+
+## UX refinement pass (Oct 11, 2026)
+- Tab bar: measured at 320×568, 375×667 and 390×844 on 12 screens; every page's last content clears the floating bar by 30px or more. The overlap in earlier screenshots was a full-page-screenshot artifact.
+- Groups: the group page leads with each board's current leader, then members and a one-tap "Invite friends" (7-day link). Invite limits, active links, member roles, edit, delete and leave moved to /groups/[id]/manage.
+- PR sharing: /lifts/[id]/share-image renders a 1080×1920 card (owner only, read through RLS; anyone else gets 404, covered in flow D). "Share PR" is the primary action after a PR (Web Share with the image, or a download where files can't be shared). Also on your own lift pages.
+- Profile: header (share + settings icons, friends count links to Friends), then Records (featured card + rows, "All lifts" link), Rankings, and 3 recent activities.
+- Rival messages now name the smallest lift at your own rep count that outranks the person above, checked with the board's own score (ties go to whoever lifted first). Solo boards say "Just you so far" instead of "#1 of 1".
+- Landing: three steps, quieter notes, and the example board plays one overtake when it scrolls into view (skipped with reduced motion).
+- Tests: unit 21, db 32, Playwright 5/5.
+
+## Phase 4: gyms and machines (Oct 11, 2026)
+- Migration `20261011000700_gyms_and_machines.sql` (additive). **Applied to the hosted project and verified live on 2026-10-11** (see Status). Its one data change: open group champion records on machine exercises are closed (history kept), because machine exercises have no champion on the combined board.
+- Gyms: user-submitted (name, address, city, region, country), usable by the submitter right away, hidden from search and boards until a moderator approves it with coordinates. Onboarding has a skippable gym step; Settings has the same picker. Self-reported only.
+- Gym and nearby boards (5/10/25 mi from your primary gym's coordinates): opt-in only, Public lifts only, rows never show a gym, distance or coordinates. "Top X%" from 20 lifters, otherwise "#3 of 12". Gym boards have a record holder at 3+ lifters.
+- Machines: seeded manufacturers only; models are user-submitted and moderated (shown on boards only once approved). Add Lift has an optional maker/model field for machine exercises, remembered per exercise. Boards show the machine on each row with a "machines differ" note and an exact-model filter. Champions on machine exercises only for an exact model.
+- Moderation at /moderation for `profiles.is_moderator` (set manually in SQL). Coordinates are pasted by the moderator after checking the gym on OpenStreetMap; no automatic geocoding.
+- Profiles show your gym (name and city) behind profile visibility; a pending gym only to you.
+- Tests: unit 23, db 41, Playwright 6 (Flow E covers the whole gym and machine flow; it now runs against hosted Supabase too).
+
+## Phase 5: proof videos and verification (Oct 11, 2026)
+- Migration `20261011000800_verification.sql`. It's additive: no existing rows were changed. Before pushing, I dry-ran it against the live schema in a rolled-back transaction, then applied it with `supabase db push`.
+- **Flow:** a friend taps "Request proof" on a lift (optional note), and the owner gets a notification. The owner can add a video from the lift page (progress bar, automatic retries, "Try again") or decline with an optional reply. A moderator then reviews it at `/moderation`, choosing Verify, Not enough to tell, or Reject; the decision buttons unlock only after the video is loaded. The owner and requester are notified. Uploading alone never verifies anything.
+- **Badges:**
+  - The lift page shows Unverified / Proof uploaded / Disputed / Verified.
+  - Board rows show an icon for the last three only.
+  - "Rejected" appears as "Disputed" to everyone except the owner, who also sees the reviewer's note.
+  - Declining never changes the badge.
+- **Verified only:** a single chip on Leaderboards (`verified=1`) that filters any board to moderator-verified lifts. Those boards have no champion.
+- **Storage and cost (Supabase Free: 1 GB storage, 50 MB per file, 5 GB egress a month):**
+  - Private bucket `lift-proofs`, MP4/MOV/WebM only.
+  - Every limit lives in the one-row `public.proof_settings` table, editable in the SQL editor: 25 MB and 30 s per video, a 750 MB storage budget (uploads pause beyond it), a 3 GB monthly playback budget, 3 uploads a day, 20 views a day (moderators 300), and 3 proof requests a day. The bucket's size cap follows `max_bytes` automatically.
+  - Video length is checked in the browser, and the declared length is checked again on the server.
+- **Access control:**
+  - Uploads go straight from the browser to Storage. A policy allows only the exact path of a slot reserved by `begin_proof_upload` within the last hour. Files are never overwritten.
+  - Playback goes through `request_proof_view`: owner or moderator only, rate-limited, opening a 2-minute grant. Storage signs a 10-minute URL only while that grant is live. Friends never download videos.
+  - A file in use can't be deleted.
+  - User flows never use the secret key.
+- **Cleanup:**
+  - Rejected and insufficient videos, deleted lifts' videos, superseded uploads, and a deleting account's files are removed immediately through the Storage API (SQL can't delete files).
+  - The daily `/api/cron/daily` (Vercel Cron, guarded by `CRON_SECRET`) and `npm run cleanup:proofs` sweep anything left behind, using `proof_orphans()` (service role only).
+- **Not done:** reports, and playback for the requester (both intentionally left out of this version).
+
+## Proof refinements + Phase 6: achievements, champions, cards (Oct 11–12, 2026)
+
+**Migrations** (applied after rolled-back dry runs against the live schema):
+- `…0900_proof_refinements`:
+  - The person who asked for proof may watch the video (same 2-minute grant and limits).
+  - Two outcomes now differ:
+    - **insufficient evidence** → "Disputed"; the lift still competes;
+    - **rejected (confirmed invalid)** → `lifts.invalidated_at` is set, and the lift is shown as "Not accepted".
+  - A confirmed-invalid lift leaves every board, champion title, PR and feed item, and "passed" comparisons. It stays in its owner's history.
+  - One appeal per lift, with a note and a new video. The appeal is hidden from, and refused to, the moderator who rejected it. Overturning it restores the lift and its titles.
+- `…1000_achievements_and_champions`:
+  - **Achievements:** awarded once each, server-side: First Lift, First PR, Top Three, Group Champion, Gym Champion, Rival Overtaken, Verified Lifter, Five Records, and Monthly Champion. Each sends a notification, except First Lift.
+  - **Gym record holders:** kept in `record_history` with history. The dethroned holder is notified.
+  - **Monthly champions:** `close_monthly_records()` freezes a month once its 3-day late window closes (needs ≥3 lifters) and notifies the winner.
+  - **New read functions:** `get_record_history`, `get_champion_card`, and `get_profile` with titles and achievements.
+  - **Backfill:** existing data was backfilled without notifications. Your account got First Lift.
+
+**App:**
+- **Lift page:** the "Not accepted" badge and explainer. An Appeal button and form appear when eligible, with the appeal status, then the uploader for the new video.
+- **Moderation:** the queue shows the appeal note. The challenger gets "Watch video" (the existing tap-to-load player).
+- **Result screen:** new gym records and new achievements, as quiet chips; First Lift is skipped because it's already celebrated.
+- **Profile:** "Titles" (only when held; group titles only to fellow members; a share icon on your own) and an "Achievements" chip row (earned only, no locked badges, no XP or levels).
+- **Leaderboards:** a "Record history" text link under group and gym boards, a share icon in the champion banner when it's you, and one share icon in the "your rank" card. No verification controls on boards.
+- **Record history page:** `/leaderboards/records` shows the current holder, past holders, and monthly champions. A lift's numbers appear only while the viewer can still see that lift; reigns of confirmed-invalid lifts are hidden.
+- **Cards** (shared shell in `src/lib/cards.tsx`, the existing ambient-glass look, rendered only on tap, never cached):
+  - PR card (`/lifts/[id]/share-image`): adds the public profile link (`<site>/u/<username>`), a "Verified" pill, and the title the lift holds.
+  - Champion card (`/cards/champion?board=`): only for the current holder.
+  - Leaderboard card (`/cards/leaderboard?…same params as /leaderboards`): your view of the top 5 plus you. Other people's non-public lifts are drawn anonymously ("Lifter —").
+  - `ShareImageButton` replaces the old preloading PR button. If Safari needs a fresh tap after the image renders, the button says "Tap again to share".
+- **Cron:** `/api/cron/daily` (`vercel.json`) runs `close_monthly_records`, then the proof-video sweep. It replaced `/api/cron/proof-cleanup`. Running it against production already marked July–September 2026 closed (no champions; nothing was logged then).
+
+**New live checks:**
+- requester can watch, a non-requester can't;
+- insufficient lifts still compete, invalid lifts leave boards and PRs but stay in history;
+- the full appeal cycle, including "different moderator" and "once only";
+- achievements earned once and announced, with no client writes;
+- group titles hidden from non-members, champion card holder-only;
+- record history members-only;
+- gym record taken by a new lift, with the result payload and the dethroned holder notified;
+- monthly close is service-role only and idempotent.
+
+**Notes:**
+- Cards show the host from `NEXT_PUBLIC_SITE_URL`. Set it to the production domain before launch, otherwise cards say `localhost`.
+- Leaderboard card privacy rule: anything not public is anonymized, even when the viewer can see it, because an image can travel further than the lift's audience.
+
+## Phase 7: launch readiness (Oct 13, 2026)
+- **Migration `…1100_avatars_reports`** (dry-run first, additive):
+  - Public-read `avatars` bucket: own-folder writes, images only, 512 KB cap, at most 3 files per person.
+  - `set_avatar` checks the file is yours and limits changes (10/day); `avatar_orphans` feeds the daily sweep.
+  - `submit_report` checks the target is visible to you, allows one open report per target and 10 a day. Direct inserts are revoked.
+  - Moderation: `mod_reports` and `mod_resolve_reports` (remove picture, clear name and bio, clear lift note, clear group description, or dismiss).
+  - A trigger caps lift submissions at 60 per hour.
+- **App:**
+  - Profile picture in Settings: cropped to 256 px WebP in the browser, which also strips location and camera metadata.
+  - `Avatar` shows pictures everywhere names appear.
+  - Quiet "Report" links on others' profiles and lifts, and on groups for non-owners.
+  - A "Reports" section in `/moderation`.
+  - Account deletion also removes pictures; the daily cron also sweeps orphaned pictures.
+- **iPhone audit** (`tests/e2e/ios-audit.spec.ts`, WebKit) fixes:
+  - landing header overflow at 320 px (the button says "Join" below 360 px);
+  - 44 px hit areas for small inline links (`.tap` utility);
+  - the Settings picture row on narrow screens;
+  - the rank card's padding when there's no share icon.
+- **Security headers** in `next.config.ts`. Test port moved to 3210.
+- **Test-data incident:** a live-check run filed a test report against the owner's real public lift. Found in the leftover check and deleted, along with 21 other test reports. The live check now reports only its own test users' lifts and deletes its reports, and the cleanup script removes test reports.
+- **Git:** initialized on `main`; `.gitignore` covers `.env*` (except `.env.example`), builds, test output, logs and `supabase/.temp`.

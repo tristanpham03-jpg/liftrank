@@ -1,0 +1,96 @@
+import type { VerificationStatus } from "./types";
+
+/**
+ * The states people see. "Disputed" means the video wasn't enough to tell (the
+ * lift still competes); "Not accepted" means a reviewer confirmed the lift
+ * doesn't meet the standard, so it no longer counts on leaderboards.
+ */
+export type VerificationBadgeKind = "unverified" | "proof_uploaded" | "disputed" | "invalid" | "verified";
+
+export function badgeKind(status: VerificationStatus | string | null | undefined): VerificationBadgeKind {
+  switch (status) {
+    case "verified":
+      return "verified";
+    case "proof_uploaded":
+    case "under_review":
+      return "proof_uploaded";
+    case "disputed":
+      return "disputed";
+    case "rejected":
+      return "invalid";
+    default:
+      return "unverified";
+  }
+}
+
+export const BADGE_LABEL: Record<VerificationBadgeKind, string> = {
+  unverified: "Unverified",
+  proof_uploaded: "Proof uploaded",
+  disputed: "Disputed",
+  invalid: "Not accepted",
+  verified: "Verified",
+};
+
+/** One line under the badge on the lift page. Never implies cheating. */
+export function statusExplainer(status: VerificationStatus | string, isOwner: boolean, opts: { appealing?: boolean } = {}): string {
+  switch (badgeKind(status)) {
+    case "verified":
+      return "A reviewer watched the video and confirmed this lift.";
+    case "proof_uploaded":
+      if (opts.appealing) return "Your appeal and new video are waiting for a different reviewer.";
+      return isOwner ? "Your video is waiting for a reviewer." : "A video was added and is waiting for a reviewer.";
+    case "disputed":
+      return isOwner
+        ? "The video wasn’t enough to confirm this lift. It still counts; you can add a clearer one."
+        : "A reviewer couldn’t confirm this lift from the video. It still counts.";
+    case "invalid":
+      return isOwner
+        ? "A reviewer found this lift doesn’t meet the standard, so it no longer counts on leaderboards. It stays in your history."
+        : "A reviewer found this lift doesn’t meet the standard, so it doesn’t count on leaderboards.";
+    default:
+      return "Self-reported. Proof videos are optional.";
+  }
+}
+
+export const PROOF_MIME_TYPES = ["video/mp4", "video/quicktime", "video/webm"] as const;
+export type ProofMime = (typeof PROOF_MIME_TYPES)[number];
+
+export type ProofLimits = { max_bytes: number; max_seconds: number };
+
+/** Browsers sometimes leave `type` empty (or use x- variants); fall back to the extension. */
+export function proofMime(file: { type: string; name: string }): ProofMime | null {
+  const t = file.type.toLowerCase();
+  if ((PROOF_MIME_TYPES as readonly string[]).includes(t)) return t as ProofMime;
+  if (t === "video/x-m4v") return "video/mp4";
+  const ext = file.name.toLowerCase().split(".").pop();
+  if (!t || t === "application/octet-stream") {
+    if (ext === "mp4" || ext === "m4v") return "video/mp4";
+    if (ext === "mov") return "video/quicktime";
+    if (ext === "webm") return "video/webm";
+  }
+  return null;
+}
+
+export function formatMegabytes(bytes: number): string {
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  const mb = bytes / (1024 * 1024);
+  return `${mb >= 10 ? Math.round(mb) : Math.round(mb * 10) / 10} MB`;
+}
+
+/** Checks a picked file before anything is uploaded. Duration is checked separately (it needs the browser). */
+export function checkProofFile(file: { type: string; name: string; size: number }, limits: ProofLimits): string | null {
+  if (!proofMime(file)) return "Pick a video (MP4, MOV or WebM).";
+  if (file.size <= 0) return "That file is empty.";
+  if (file.size > limits.max_bytes) {
+    return `That video is ${formatMegabytes(file.size)}. The limit is ${formatMegabytes(limits.max_bytes)}: trim it or record at a lower resolution.`;
+  }
+  return null;
+}
+
+export function checkProofDuration(seconds: number, limits: ProofLimits): string | null {
+  if (!Number.isFinite(seconds) || seconds <= 0) return "Couldn’t read this video’s length. Try an MP4.";
+  if (seconds > limits.max_seconds + 0.5) {
+    return `That video is ${Math.round(seconds)} seconds. Keep it under ${limits.max_seconds} seconds: just the lift.`;
+  }
+  return null;
+}
