@@ -695,6 +695,110 @@ try {
     await rpc(mod.client, "mod_resolve_reports", { p_target_type: "lift", p_target_id: noted, p_action: "clear_lift_note" });
     assert((await e.client.from("lifts").select("notes").eq("id", noted).single()).data.notes === null, "note not cleared");
   });
+  console.log("Editing lifts and friend invite links");
+  const ed1 = await makeUser("ed1");
+  const ed2 = await makeUser("ed2");
+  for (const u of [ed1, ed2]) await rpc(u.client, "complete_username", { p_username: u.username });
+  await rpc(ed1.client, "send_friend_request", { p_user_id: ed2.id });
+  await rpc(ed2.client, "respond_friend_request", { p_friendship_id: (await rpc(ed2.client, "get_friends")).incoming[0].friendship_id, p_accept: true });
+  const editAt = new Date(Date.now() - 3600e3).toISOString();
+  const edit = (u, liftId, fields) =>
+    u.client.rpc("edit_lift", {
+      p_lift_id: liftId, p_exercise_id: bench, p_weight: 200, p_unit: "lb", p_reps: 5,
+      p_performed_at: editAt, p_visibility: "public", p_group_ids: [], p_notes: null, ...fields,
+    });
+  let edLift, ed2Lift, ed2At;
+  await check("only the owner can edit a lift, with the same validation as a new one", async () => {
+    edLift = (await lift(ed1, bench, 200, 5)).lift_id;
+    await rejects(edit(ed2, edLift, {}), "not_found");
+    await rejects(edit(ed1, edLift, { p_weight: 5000 }), "weight_too_high");
+    await rejects(edit(ed1, edLift, { p_performed_at: new Date(Date.now() + 86400e3).toISOString() }), "future_date");
+    await rejects(edit(ed1, edLift, { p_performed_at: null }), "invalid_date");
+    await rejects(ed1.client.from("lifts").update({ weight_kg: 1 }).eq("id", edLift), "permission denied");
+  });
+  await check("a performance edit rescores the lift, updates the board and keeps an audit row", async () => {
+    const { data: r, error } = await edit(ed1, edLift, { p_weight: 225 });
+    assert(!error && r.performance_changed, error?.message ?? "not marked as a performance change");
+    const row = (await ed1.client.from("lifts").select("score").eq("id", edLift).single()).data;
+    assert(Math.abs(row.score / 0.45359237 - 225 * (1 + 5 / 30)) < 0.5, `score ${row.score}`);
+    const b2 = await board(ed2, bench);
+    assert(b2.rows.some((x) => x.user_id === ed1.id && Number(x.score) === Number(row.score)), "board not updated");
+    const audit = (await ed1.client.from("lift_edits").select("before, after, performance_changed").eq("lift_id", edLift)).data;
+    assert(audit.length === 1 && audit[0].performance_changed, `audit rows ${audit.length}`);
+    assert((await ed2.client.from("lift_edits").select("id").eq("lift_id", edLift)).data.length === 0, "audit visible to someone else");
+  });
+  await check("a notes-only edit keeps verification; a weight edit clears it", async () => {
+    // Test user's own lift: mark it verified with the secret key to exercise both paths.
+    await admin.from("lifts").update({ verification_status: "verified" }).eq("id", edLift);
+    const notes = await edit(ed1, edLift, { p_weight: 225, p_notes: "felt fast" });
+    assert(!notes.error && !notes.data.performance_changed, notes.error?.message ?? "notes counted as performance");
+    let row = (await ed1.client.from("lifts").select("verification_status, notes").eq("id", edLift).single()).data;
+    assert(row.verification_status === "verified" && row.notes === "felt fast", JSON.stringify(row));
+    assert((await ed1.client.from("lift_edits").select("id").eq("lift_id", edLift)).data.length === 1, "notes-only edit was audited");
+    const w = await edit(ed1, edLift, { p_weight: 230, p_notes: "felt fast" });
+    assert(!w.error && w.data.performance_changed, w.error?.message);
+    row = (await ed1.client.from("lifts").select("verification_status").eq("id", edLift).single()).data;
+    assert(row.verification_status === "unverified", `still ${row.verification_status}`);
+  });
+  await check("editing removes stale 'passed you' alerts and never duplicates feed items", async () => {
+    const r = await lift(ed2, bench, 300, 3);
+    ed2Lift = r.lift_id;
+    ed2At = (await ed2.client.from("lifts").select("performed_at").eq("id", ed2Lift).single()).data.performed_at;
+    const passed = async () => (await admin.from("notifications").select("id").eq("recipient_id", ed1.id).eq("type", "passed").eq("lift_id", ed2Lift)).data.length;
+    assert((await passed()) === 1, "ed1 wasn't told they were passed");
+    const acts = async () => (await admin.from("activities").select("id").eq("lift_id", ed2Lift)).data.length;
+    const before = await acts();
+    const notesOnly = await edit(ed2, ed2Lift, { p_weight: 300, p_reps: 3, p_performed_at: ed2At, p_notes: "ok" });
+    assert(!notesOnly.error && !notesOnly.data.performance_changed, notesOnly.error?.message ?? "date round-trip changed performance");
+    assert((await acts()) === before && (await passed()) === 1, "notes edit touched feed or alerts");
+    const lower = await edit(ed2, ed2Lift, { p_weight: 135, p_reps: 3, p_performed_at: ed2At });
+    assert(!lower.error && lower.data.performance_changed, lower.error?.message);
+    assert((await passed()) === 0, "stale 'passed' alert left behind");
+    assert((await acts()) === 0, "feed item about the old numbers left behind");
+    const total = (await admin.from("notifications").select("id").eq("recipient_id", ed1.id).eq("type", "passed")).data.length;
+    assert(total === 0, `${total} passed alerts after the edit`);
+  });
+  await check("privacy edits apply immediately: a lift made private disappears for friends", async () => {
+    const r = await edit(ed1, edLift, { p_weight: 230, p_visibility: "private" });
+    assert(!r.error && !r.data.performance_changed, r.error?.message);
+    assert((await ed2.client.from("lifts").select("id").eq("id", edLift)).data.length === 0, "friend still sees it");
+    assert(!(await board(ed2, bench)).rows.some((x) => x.user_id === ed1.id), "still on the friend's board");
+  });
+
+  const fr1 = await makeUser("fr1");
+  const fr2 = await makeUser("fr2");
+  const fr3 = await makeUser("fr3");
+  for (const u of [fr1, fr2, fr3]) await rpc(u.client, "complete_username", { p_username: u.username });
+  let friendToken;
+  await check("friend invite links: hashed, previewable, accepted only by a deliberate call", async () => {
+    friendToken = await rpc(fr1.client, "create_friend_invite");
+    assert(/^[0-9a-f]{64}$/.test(friendToken), "bad token");
+    const stored = (await admin.from("friend_invites").select("token_hash").eq("inviter_id", fr1.id)).data;
+    assert(stored.length === 1 && stored[0].token_hash !== friendToken, "token stored in plain text");
+    await rejects(fr1.client.from("friend_invites").select("id"), "permission denied");
+    const preview = await rpc(anon, "get_friend_invite_preview", { p_token: friendToken });
+    assert(preview.valid && preview.inviter.username === fr1.username, JSON.stringify(preview));
+    assert(!(await rpc(anon, "get_friend_invite_preview", { p_token: "0".repeat(64) })).valid, "bogus token previewed");
+    // Previewing changes nothing.
+    assert(!(await rpc(fr2.client, "get_friends")).friends.length, "preview created a friendship");
+    await rejects(anon.rpc("accept_friend_invite", { p_token: friendToken }), "");
+  });
+  await check("accepting makes you friends once, tells the inviter, and refuses self or bad tokens", async () => {
+    const r = await rpc(fr2.client, "accept_friend_invite", { p_token: friendToken });
+    assert(r.status === "friends" && r.username === fr1.username, JSON.stringify(r));
+    assert((await rpc(fr2.client, "accept_friend_invite", { p_token: friendToken })).status === "already_friends", "second accept");
+    assert((await rpc(fr1.client, "get_friends")).friends.some((f) => f.user_id === fr2.id), "not friends");
+    const n = (await admin.from("notifications").select("id").eq("recipient_id", fr1.id).eq("type", "friend_accepted").eq("actor_id", fr2.id)).data.length;
+    assert(n === 1, `${n} friend_accepted notifications`);
+    await rejects(fr1.client.rpc("accept_friend_invite", { p_token: friendToken }), "invalid_user");
+    await rejects(fr2.client.rpc("accept_friend_invite", { p_token: "f".repeat(64) }), "invite_invalid");
+  });
+  await check("blocks win over invite links", async () => {
+    await rpc(fr1.client, "block_user", { p_user_id: fr3.id });
+    await rejects(fr3.client.rpc("accept_friend_invite", { p_token: friendToken }), "invalid_user");
+    assert(!(await rpc(fr1.client, "get_friends")).friends.some((f) => f.user_id === fr3.id), "blocked user became a friend");
+  });
+
   await check("reports and lift submissions are rate limited", async () => {
     // Lifts b can see (RLS) and may report: other people's, not deleted.
     // Only lifts of this run's own test users: never report anything real.

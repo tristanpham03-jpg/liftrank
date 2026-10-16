@@ -2,9 +2,15 @@
 
 _Last updated: 2026-10-15 (Claude Code) · Done: Phases 1–7 + friend verification · **Deployed (unlisted) at https://liftrank-roan.vercel.app** · Finishing launch setup (see "Deployment status")_
 
-## 2026-10-15 improvement pass (committed locally, not pushed, not deployed)
+## 2026-10-15 improvement pass (applied and pushed)
 
-**Needs approval:** migration `20261011001400_edit_lifts_friend_invites.sql` is written and tested but **not applied**. Lift editing and friend invite links need it. Push the code only after `npx supabase db push`; the rest of this pass works without it.
+**Migration `…1400` was applied on 2026-10-15 with the owner's approval.**
+- **Before applying:** I checked it for destructive statements (none outside the function bodies). The function grants before and after only add the 5 new functions. The dry run listed only `…1400`.
+- **After applying:** row counts and a fingerprint of every lift were identical to the baseline.
+- **Tests after applying:**
+  - live checks 61/61 (8 new for editing and invites);
+  - Playwright 10/10, adding **Flow I**: edit → rescored → visibility-only edit → exercise history → invite link → friend goes through signup, login and onboarding → deliberate add → ⋯ menu → private lift stays hidden.
+- **Cleanup:** no test data is left. `cleanup-test-users.mjs` now also matches the `edna_` accounts and the numbered `lr-verify` tags.
 
 - **Edit lifts:** an Edit lift button opens the Add Lift form prefilled (`/lifts/[id]/edit`), and `edit_lift` handles the save on the server, owner only, with the same validation as `submit_lift`, limited to 30 edits an hour.
   - Changing the exercise, weight, reps, date or machine clears the video and verification, withdraws open proof requests, and removes the feed items and passed / first place / gym record notifications that described the old numbers. Editing only notes or visibility clears nothing.
@@ -26,7 +32,7 @@ _Last updated: 2026-10-15 (Claude Code) · Done: Phases 1–7 + friend verificat
 - **Tests:**
   - typecheck, lint and 28/28 unit tests;
   - `tests/sql/1400_edit_lifts_friend_invites.test.sql` passes in a rolled-back transaction against the hosted schema (9 scenarios);
-  - Playwright against hosted Supabase: all 9 flows pass (D, E and F were updated for the new visibility control and wording), plus the iPhone audit 3/3 (320, 393 and 430 px). The edit and invite screens aren't browser-tested yet because they need `…1400` applied. Add flows for them after approval.
+  - Playwright against hosted Supabase: all 9 flows pass (D, E and F were updated for the new visibility control and wording), plus the iPhone audit 3/3 (320, 393 and 430 px). Flow I covers the edit and invite screens.
 
 ## Status
 

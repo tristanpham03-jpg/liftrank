@@ -31,18 +31,29 @@ export async function createAccount(page: Page, name: string, opts: { from?: "la
   await expect(page).toHaveURL(/\/signup/);
   const admin = process.env.E2E_UI_SIGNUP ? null : hostedAdmin();
   if (admin) {
-    const { error } = await admin.auth.admin.createUser({ email: emailOf(name), password: PASSWORD, email_confirm: true });
-    if (error) throw new Error(`create ${name}: ${error.message}`);
-    await page.goto("/login");
-    await page.getByLabel("Email").fill(emailOf(name));
-    await page.getByLabel("Password").fill(PASSWORD);
-    await page.getByRole("button", { name: "Sign in" }).click();
+    await createConfirmedAndSignIn(page, name);
   } else {
     await page.getByLabel("Email").fill(emailOf(name));
     await page.getByLabel("Password").fill(PASSWORD);
     await page.getByRole("button", { name: "Create account" }).click();
   }
   await expect(page).toHaveURL(/\/onboarding/);
+}
+
+/**
+ * Hosted only: creates an already-confirmed account with the secret key (no
+ * email is sent) and signs in through the real login page. Doesn't assume
+ * where the app sends the person next.
+ */
+export async function createConfirmedAndSignIn(page: Page, name: string) {
+  const admin = hostedAdmin();
+  if (!admin) throw new Error("Needs hosted Supabase");
+  const { error } = await admin.auth.admin.createUser({ email: emailOf(name), password: PASSWORD, email_confirm: true });
+  if (error) throw new Error(`create ${name}: ${error.message}`);
+  await page.goto("/login");
+  await page.getByLabel("Email").fill(emailOf(name));
+  await page.getByLabel("Password").fill(PASSWORD);
+  await page.getByRole("button", { name: "Sign in" }).click();
 }
 
 /** Creates an account, picks a username and skips the gym step. Leaves the page on /onboarding/lift. */
