@@ -6,6 +6,7 @@ import { useMemo, useState, useTransition } from "react";
 import { cn } from "@/lib/cn";
 import { searchExercises } from "@/lib/exercise-search";
 import type { Exercise } from "@/lib/types";
+import { ExerciseThumb } from "./exercise-art";
 
 const EQUIPMENT_LABEL: Record<string, string> = {
   barbell: "Barbell",
@@ -89,7 +90,8 @@ export function ExercisePicker({
         )}
         aria-label={value ? `${label}: ${value.name}. Change` : `Choose ${label.toLowerCase()}`}
       >
-        <span className="min-w-0">
+        <span className="flex min-w-0 items-center gap-3">
+          {value ? <ExerciseThumb exercise={value} size={34} /> : null}
           <span className="block truncate text-[17px] font-semibold">{value ? value.name : "Choose an exercise"}</span>
         </span>
         <ChevronDown size={20} className="text-fg-3 group-hover:text-fg-2 shrink-0" />
@@ -145,10 +147,11 @@ export function ExercisePicker({
                             type="button"
                             onClick={() => choose(e)}
                             className={cn(
-                              "flex-1 flex items-center gap-3 rounded-[12px] px-3 py-3 text-left hover:bg-white/[0.07]",
+                              "flex-1 flex items-center gap-3 rounded-[12px] px-2.5 py-2.5 text-left hover:bg-white/[0.07]",
                               selected && "bg-white/[0.06]",
                             )}
                           >
+                            <ExerciseThumb exercise={e} />
                             <span className="min-w-0 flex-1">
                               <span className="block font-medium truncate">{e.name}</span>
                               <span className="block text-sm text-fg-3">{equipmentLabel(e)}</span>

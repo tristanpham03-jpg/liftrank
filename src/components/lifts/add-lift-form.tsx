@@ -22,6 +22,7 @@ import type {
   WeightUnit,
 } from "@/lib/types";
 import { fieldErrors, isUnrankedRepCount, liftSchema } from "@/lib/validation";
+import { ExerciseInfo } from "./exercise-art";
 import { ExercisePicker } from "./exercise-picker";
 import { MachineField, type MachineValue } from "./machine-field";
 import { LiftResult } from "./lift-result";
@@ -240,6 +241,7 @@ export function AddLiftForm({
               onToggleFavorite={toggleFavorite}
             />
             <FieldError>{errors.exerciseId}</FieldError>
+            {exercise ? <ExerciseInfo key={exercise.id} exercise={exercise} /> : null}
           </div>
 
           {exercise && !bodyweight ? (

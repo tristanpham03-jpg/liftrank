@@ -42,7 +42,7 @@ export const getCatalog = cache(async (): Promise<Exercise[]> => {
   const [exercises, aliases] = await Promise.all([
     supabase
       .from("exercises")
-      .select("id, name, slug, category, muscle_group, equipment_type, ranking_method, weight_convention, max_weight_kg, popular_rank, supports_machine_selection")
+      .select("id, name, slug, category, muscle_group, equipment_type, ranking_method, weight_convention, max_weight_kg, popular_rank, supports_machine_selection, illustration, primary_muscles, secondary_muscles")
       .order("popular_rank"),
     supabase.from("exercise_aliases").select("exercise_id, alias"),
   ]);

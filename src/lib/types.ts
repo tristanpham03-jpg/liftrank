@@ -21,6 +21,10 @@ export type Exercise = {
   /** Machine exercises: lifts can record the manufacturer and model. */
   supports_machine_selection: boolean;
   aliases: string[];
+  /** public/exercises/<illustration>.svg (+ -thumb.svg); null → a plain icon. */
+  illustration?: string | null;
+  primary_muscles?: string[];
+  secondary_muscles?: string[];
 };
 
 /** The weight-bearing part of any lift as returned by the API. */

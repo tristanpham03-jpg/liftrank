@@ -18,7 +18,7 @@ const admin = createClient(url, secret, { auth: { persistSession: false, autoRef
 const doDelete = process.argv.includes("--delete");
 const domain = process.env.E2E_EMAIL_DOMAIN ?? "example.com";
 const TEST_EMAIL = new RegExp(
-  `^((flowa|flowa2|flowa3|owner|friend|priv|peek|maya|jordan|sam|lena|theo|mona|rhea|ivan|zoe|nico|kai|audit|auditse|auditi15|auditmax|hana|omar|vera)_[a-z0-9]{6}|lr-verify-[a-z0-9]{6}-[a-z])@${domain.replace(".", "\\.")}$`,
+  `^((flowa|flowa2|flowa3|owner|friend|priv|peek|maya|jordan|sam|lena|theo|mona|rhea|ivan|zoe|nico|kai|audit|auditse|auditi15|auditmax|hana|omar|vera|artx)_[a-z0-9]{6}|lr-verify-[a-z0-9]{6}-[a-z])@${domain.replace(".", "\\.")}$`,
 );
 
 const matches = [];
