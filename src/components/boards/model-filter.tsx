@@ -18,7 +18,7 @@ export function ModelFilter({ models, value }: { models: { id: string; label: st
         next.delete("page");
         router.push(`${pathname}?${next.toString()}`, { scroll: false });
       }}
-      className="h-9 max-w-full rounded-full border border-white/10 bg-white/[0.045] px-3 text-sm text-fg outline-none"
+      className="h-9 max-w-[min(100%,15rem)] truncate rounded-full border border-white/10 bg-white/[0.045] px-3 text-base font-medium md:text-[13px] text-fg outline-none"
     >
       <option value="">All machines</option>
       {models.map((m) => (

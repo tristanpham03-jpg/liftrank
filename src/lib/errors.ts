@@ -55,7 +55,7 @@ const MESSAGES: Record<string, string> = {
   proof_not_needed: "This lift already has proof waiting for review or is verified.",
   invalid_video_type: "Pick a video (MP4, MOV or WebM).",
   video_too_large: "That video is over the size limit. Trim it or record at a lower resolution.",
-  video_too_long: "That video is over the length limit. Keep just the lift.",
+  video_too_long: "That video is over the length limit. Trim it to just the set.",
   too_many_uploads: "You've added a few videos today. Try again tomorrow.",
   proof_storage_full: "Proof uploads are paused for now while we make room. Try again later.",
   upload_expired: "That upload took too long. Start it again.",

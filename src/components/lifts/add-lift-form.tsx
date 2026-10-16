@@ -123,6 +123,7 @@ export function AddLiftForm({
     editing?.visibility ?? defaults.default_visibility ?? "public",
   );
   const [visOpen, setVisOpen] = useState(false);
+  const visPanelRef = useRef<HTMLDivElement>(null);
   const [groupIds, setGroupIds] = useState<string[]>(editing?.groupIds ?? []);
   const [notes, setNotes] = useState(editing?.notes ?? "");
   const [key, setKey] = useState(newKey);
@@ -409,70 +410,80 @@ export function AddLiftForm({
       ) : null}
       <FormMessage>{formError}</FormMessage>
 
-      {/* Stays reachable above the tab bar on small phones. */}
-      <div className="sticky z-20 bottom-[calc(var(--nav-height)+16px+var(--safe-bottom))] md:bottom-4 -mx-1 rounded-[22px] px-1 pt-1 pb-1 space-y-2">
-        <div className="glass-flat rounded-[16px]" data-testid="visibility">
-          <div className="flex items-center justify-between gap-2 px-3.5 py-2 text-sm">
-            <span className="min-w-0 truncate text-fg-2">
-              Visible to <span className="font-semibold text-fg">{visibilityLabel(visibility)}</span>
-            </span>
-            <button
-              type="button"
-              aria-expanded={visOpen}
-              onClick={() => setVisOpen((o) => !o)}
-              className="tap shrink-0 font-semibold text-fg underline decoration-white/30 underline-offset-4 hover:decoration-white"
-            >
-              {visOpen ? "Done" : "Change"}
-            </button>
-          </div>
-          {visOpen ? (
-            <div className="space-y-1.5 px-2 pb-2" role="radiogroup" aria-label="Who can see it">
-              {VISIBILITY.map((v) => {
-                const disabled = v.value === "groups" && defaults.groups.length === 0;
-                const on = visibility === v.value;
-                return (
-                  <button
-                    key={v.value}
-                    type="button"
-                    role="radio"
-                    aria-checked={on}
-                    disabled={disabled}
-                    onClick={() => setVisibility(v.value)}
-                    className={cn(
-                      "flex w-full items-start gap-2.5 rounded-[12px] border px-3 py-2 text-left disabled:opacity-40",
-                      on ? "border-white/30 bg-white/[0.08]" : "border-white/10 hover:bg-white/[0.04]",
-                    )}
-                  >
-                    <span aria-hidden className={cn("mt-1 h-3.5 w-3.5 shrink-0 rounded-full border", on ? "border-transparent pearl" : "border-white/30")} />
-                    <span className="min-w-0">
-                      <span className="block text-sm font-semibold">{v.label}</span>
-                      <span className="block text-[13px] text-fg-2">{disabled ? "Join or create a group first." : v.help}</span>
-                    </span>
-                  </button>
-                );
-              })}
-              {visibility === "groups" ? (
-                <div className="flex flex-wrap gap-2 px-1 pt-1" aria-label="Share with">
-                  {defaults.groups.map((g) => {
-                    const on = groupIds.includes(g.id);
-                    return (
-                      <button
-                        key={g.id}
-                        type="button"
-                        aria-pressed={on}
-                        onClick={() => setGroupIds(on ? groupIds.filter((x) => x !== g.id) : [...groupIds, g.id])}
-                        className={cn("rounded-full border px-3 py-1.5 text-sm font-medium", on ? "border-transparent pearl" : "border-white/10 text-fg-2")}
-                      >
-                        {g.name}
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : null}
-              <FieldError>{errors.groupIds}</FieldError>
-            </div>
-          ) : null}
+      <div className="glass-flat rounded-[16px]" data-testid="visibility">
+        <div className="flex items-center justify-between gap-2 px-3.5 py-2 text-sm">
+          <span className="min-w-0 truncate text-fg-2">
+            Visible to <span className="font-semibold text-fg">{visibilityLabel(visibility)}</span>
+          </span>
+          <button
+            type="button"
+            aria-expanded={visOpen}
+            onClick={() => {
+              const opening = !visOpen;
+              setVisOpen(opening);
+              // Bring the options up from under the floating Submit.
+              if (opening) requestAnimationFrame(() => visPanelRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" }));
+            }}
+            className="tap shrink-0 font-semibold text-fg underline decoration-white/30 underline-offset-4 hover:decoration-white"
+          >
+            {visOpen ? "Done" : "Change"}
+          </button>
         </div>
+        {visOpen ? (
+          <div ref={visPanelRef} className="space-y-1.5 px-2 pb-2" role="radiogroup" aria-label="Who can see it">
+            {VISIBILITY.map((v) => {
+              const disabled = v.value === "groups" && defaults.groups.length === 0;
+              const on = visibility === v.value;
+              return (
+                <button
+                  key={v.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={on}
+                  disabled={disabled}
+                  onClick={() => setVisibility(v.value)}
+                  className={cn(
+                    "flex w-full items-start gap-2.5 rounded-[12px] border px-3 py-2 text-left disabled:opacity-40",
+                    on ? "border-white/30 bg-white/[0.08]" : "border-white/10 hover:bg-white/[0.04]",
+                  )}
+                >
+                  <span aria-hidden className={cn("mt-1 h-3.5 w-3.5 shrink-0 rounded-full border", on ? "border-transparent pearl" : "border-white/30")} />
+                  <span className="min-w-0">
+                    <span className="block text-sm font-semibold">{v.label}</span>
+                    <span className="block text-[13px] text-fg-2">{disabled ? "Join or create a group first." : v.help}</span>
+                  </span>
+                </button>
+              );
+            })}
+            {visibility === "groups" ? (
+              <div className="flex flex-wrap gap-2 px-1 pt-1" aria-label="Share with">
+                {defaults.groups.map((g) => {
+                  const on = groupIds.includes(g.id);
+                  return (
+                    <button
+                      key={g.id}
+                      type="button"
+                      aria-pressed={on}
+                      onClick={() => setGroupIds(on ? groupIds.filter((x) => x !== g.id) : [...groupIds, g.id])}
+                      className={cn("rounded-full border px-3 py-1.5 text-sm font-medium", on ? "border-transparent pearl" : "border-white/10 text-fg-2")}
+                    >
+                      {g.name}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
+            <FieldError>{errors.groupIds}</FieldError>
+          </div>
+        ) : null}
+      </div>
+
+      {/*
+        Only Submit floats, above the tab bar, on an opaque backdrop so fields
+        scrolling underneath never show through. Focused fields scroll clear
+        of it; see .lift-submit in globals.css.
+      */}
+      <div className="lift-submit sticky z-20 bottom-[calc(var(--nav-height)+10px+var(--safe-bottom))] md:bottom-4 -mx-4 px-4 pt-3 pb-1 bg-[linear-gradient(to_bottom,transparent,var(--color-bg)_14px,var(--color-bg)_calc(100%-6px),transparent)] md:mx-0 md:px-0 md:bg-none">
         <Button type="submit" size="xl" block disabled={pending || !online || !exercise}>
           {!online ? "Offline: can’t save" : pending ? "Saving…" : editing ? "Save changes" : "Submit lift"}
         </Button>

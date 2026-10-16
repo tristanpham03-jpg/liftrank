@@ -123,7 +123,7 @@ function ProofUploader({ liftId, limits, primary }: { liftId: string; limits: No
       </Button>
       {phase.kind === "idle" || phase.kind === "failed" ? (
         <Hint>
-          Optional. Up to {limits.max_seconds} seconds and {formatMegabytes(limits.max_bytes)}. Film the whole rep with the weight in view. Your friends and groupmates can watch it and confirm the lift.
+          Optional. Up to {limits.max_seconds} seconds and {formatMegabytes(limits.max_bytes)}. Film the full set, showing the weight and every claimed rep. Record at 1080p, not 4K, so it fits. Friends and groupmates can watch it and confirm the lift.
         </Hint>
       ) : null}
       {phase.kind === "checking" ? <p className="text-sm text-fg-2">Checking the video…</p> : null}
@@ -207,11 +207,11 @@ function ViewerProof({ liftId, state, ownerName, liftText }: { liftId: string; s
           {mine.status === "open"
             ? `You asked ${ownerName} for proof. Waiting for them.`
             : mine.status === "proof_submitted"
-              ? `${ownerName} added a video. A reviewer will check it.`
+              ? `${ownerName} added a video. Watch it below to verify it.`
               : mine.status === "declined"
                 ? `${ownerName} chose not to add a video.${mine.response ? ` “${mine.response}”` : ""}`
                 : mine.status === "resolved"
-                  ? "A reviewer checked the video."
+                  ? "A friend checked the video."
                   : "This request was closed."}
         </div>
       ) : null}
@@ -275,14 +275,14 @@ function VerifyBox({ liftId, ownerName, liftText }: { liftId: string; ownerName:
         <p className="font-semibold">Check {ownerName}’s lift</p>
         <p className="mt-1 text-sm text-fg-2">
           Confirm only if the video shows {liftText}: this weight, and every rep at full range. If you can’t tell, say so. It’s a
-          friend’s check, not an official ruling.
+          friend’s check, not an official judgment.
         </p>
       </div>
       <ProofVideo liftId={liftId} onLoaded={() => setWatched(true)} />
       <FormMessage>{error}</FormMessage>
       <div className="flex flex-wrap gap-2">
         <Button size="sm" disabled={!watched || pending} onClick={() => decide("verified")}>
-          Looks legit: verify
+          Verify lift
         </Button>
         <Button size="sm" variant="secondary" disabled={!watched || pending} onClick={() => decide("insufficient")}>
           Not enough to tell

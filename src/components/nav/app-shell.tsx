@@ -84,7 +84,7 @@ export function AppShell({ username, unread, children }: Props) {
       {/* Mobile: floating frosted tab bar */}
       <nav
         aria-label="Main"
-        className="md:hidden fixed inset-x-3 z-40"
+        className="mobile-tabs md:hidden fixed inset-x-3 z-40"
         style={{ bottom: "calc(10px + var(--safe-bottom))" }}
       >
         <ul className="glass grid h-[var(--nav-height)] grid-cols-5 rounded-[26px] px-1">

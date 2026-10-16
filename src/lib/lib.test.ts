@@ -257,7 +257,7 @@ describe("proof verification", () => {
     expect(checkProofFile({ type: "application/pdf", name: "a.pdf", size: 10 }, limits)).toMatch(/Pick a video/);
     expect(checkProofDuration(29.9, limits)).toBeNull();
     expect(checkProofDuration(30.4, limits)).toBeNull();
-    expect(checkProofDuration(45, limits)).toMatch(/under 30 seconds/);
+    expect(checkProofDuration(45, limits)).toMatch(/Trim it to 30 seconds/);
     expect(checkProofDuration(Number.NaN, limits)).toMatch(/Couldn’t read/);
     expect(checkProofDuration(Number.POSITIVE_INFINITY, limits)).toMatch(/Couldn’t read/);
     expect(formatMegabytes(2433)).toBe("2 KB");

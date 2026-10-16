@@ -227,9 +227,9 @@ export default async function LeaderboardsPage({
             ))}
           </div>
         ) : null}
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <div className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <div
-            className="flex gap-1 text-sm"
+            className="flex shrink-0 gap-1 text-sm"
             role="group"
             aria-label="Time period"
           >
@@ -240,7 +240,7 @@ export default async function LeaderboardsPage({
                 scroll={false}
                 aria-current={period === p ? "true" : undefined}
                 className={cn(
-                  "rounded-full px-3 py-1.5 font-medium",
+                  "whitespace-nowrap rounded-full px-3 py-1.5 font-medium",
                   period === p
                     ? "bg-white/[0.09] text-fg"
                     : "text-fg-3 hover:text-fg-2",
@@ -252,7 +252,7 @@ export default async function LeaderboardsPage({
           </div>
           {scope === "nearby" ? (
             <div
-              className="flex gap-1 text-sm"
+              className="flex shrink-0 gap-1 text-sm"
               role="group"
               aria-label="Distance"
             >
@@ -279,7 +279,7 @@ export default async function LeaderboardsPage({
             scroll={false}
             aria-pressed={verified}
             className={cn(
-              "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium",
+              "inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-medium",
               verified ? "bg-white/[0.09] text-fg" : "text-fg-3 hover:text-fg-2",
             )}
           >
@@ -289,7 +289,7 @@ export default async function LeaderboardsPage({
         </div>
       </div>
 
-      <div className="mt-5">
+      <div className="mt-3">
         {board?.reason === "no_gym" ? (
           <div className="glass space-y-4 rounded-[var(--radius-panel)] p-5">
             <div>
@@ -359,10 +359,10 @@ export default async function LeaderboardsPage({
             ) : null}
             {me ? (
               <GlassCard glow="ice" as="div" className="sticky top-2 z-10 mb-4">
-                <div className={cn("flex items-center gap-5 p-5", board.total > 1 && "pr-14")}>
+                <div className={cn("flex items-center gap-4 px-4 py-3", board.total > 1 && "pr-14")}>
                   {board.total <= 1 ? (
-                    <span className="shrink-0 self-start rounded-full border border-white/12 bg-white/[0.06] px-2.5 py-1 text-xs font-medium text-fg-2">
-                      Just you so far
+                    <span className="shrink-0 self-start whitespace-nowrap rounded-full border border-white/12 bg-white/[0.06] px-2.5 py-1 text-xs font-medium text-fg-2">
+                      Just you
                     </span>
                   ) : (
                     <div className="min-w-16 text-center">
@@ -371,7 +371,7 @@ export default async function LeaderboardsPage({
                           <span className="block text-xs font-medium text-fg-3">
                             Top
                           </span>
-                          <span className="num pearl-text block text-[38px] leading-none">
+                          <span className="num pearl-text block text-[30px] leading-none">
                             {topPercent(me.rank, board.total)}%
                           </span>
                           <p className="mt-1 text-xs text-fg-3 tabular">
@@ -380,7 +380,7 @@ export default async function LeaderboardsPage({
                         </>
                       ) : (
                         <>
-                          <span className="num pearl-text block text-[42px] leading-none">
+                          <span className="num pearl-text block text-[32px] leading-none">
                             #{me.rank}
                           </span>
                           <p className="mt-1 text-xs text-fg-3 tabular">
@@ -392,14 +392,14 @@ export default async function LeaderboardsPage({
                   )}
                   <div className="min-w-0 flex-1">
                     <p className="text-sm text-fg-3">Your best</p>
-                    <p className="num text-[26px] leading-tight">
+                    <p className="num text-[22px] leading-tight">
                       {formatLift(me, method, unit, true)}
                     </p>
                     {formatEstimatedMax(me.score, method, unit) &&
                     me.reps !== 1 ? (
                       <p className="text-sm text-fg-3">
-                        Estimated 1RM{" "}
-                        {formatEstimatedMax(me.score, method, unit)}
+                        Est. 1RM{" "}
+                        <span className="whitespace-nowrap">{formatEstimatedMax(me.score, method, unit)}</span>
                       </p>
                     ) : null}
                   </div>
@@ -416,14 +416,8 @@ export default async function LeaderboardsPage({
                     className="absolute right-3 top-3"
                   />
                 ) : null}
-                {topPercent(me.rank, board.total) != null ? (
-                  <p className="-mt-2 px-5 pb-3 text-xs text-fg-3">
-                    Of {board.total} ranked {exercise.name} lifters {scopeText}
-                    {model ? ` on the ${model.label}` : ""}.
-                  </p>
-                ) : null}
                 {above ? (
-                  <p className="border-t border-white/[0.07] px-5 py-3 text-sm text-fg">
+                  <p className="border-t border-white/[0.07] px-4 py-2.5 text-sm text-fg">
                     <Link
                       href={`/u/${above.username}`}
                       className="hover:underline underline-offset-4"
@@ -436,7 +430,7 @@ export default async function LeaderboardsPage({
                     </Link>
                   </p>
                 ) : me.rank === 1 && board.total > 1 ? (
-                  <p className="border-t border-white/[0.07] px-5 py-3 text-sm font-medium text-fg">
+                  <p className="border-t border-white/[0.07] px-4 py-2.5 text-sm font-medium text-fg">
                     You’re on top of this board.
                   </p>
                 ) : null}
@@ -535,7 +529,7 @@ export default async function LeaderboardsPage({
               verified ? (
                 <EmptyState
                   title={`No verified ${exercise.name} lifts here yet.`}
-                  body="Lifts appear here once a reviewer confirms their proof video. Proof is always optional."
+                  body="Lifts appear here once a friend or groupmate verifies their proof video. Proof is always optional."
                   action={
                     <Button asChild variant="secondary">
                       <Link href={href({ verified: undefined })}>Show all lifts</Link>

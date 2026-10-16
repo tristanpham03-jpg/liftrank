@@ -67,11 +67,11 @@ test("Flow F: request proof → upload video → a friend verifies it", async ({
   await expect(badge(b)).toHaveText("Video attached");
   const box = b.getByTestId("verify-box");
   await expect(box).toBeVisible();
-  await expect(box.getByRole("button", { name: "Looks legit: verify" })).toBeDisabled(); // watch first
+  await expect(box.getByRole("button", { name: "Verify lift" })).toBeDisabled(); // watch first
   await box.getByRole("button", { name: "Watch video" }).click();
   await expect(box.locator("video")).toBeVisible();
   await expect.poll(() => box.locator("video").evaluate((v: HTMLVideoElement) => v.readyState)).toBeGreaterThan(0);
-  await box.getByRole("button", { name: "Looks legit: verify" }).click();
+  await box.getByRole("button", { name: "Verify lift" }).click();
   await expect(badge(b)).toHaveText("Verified");
   await expect(b.getByText(new RegExp(`Confirmed by ${friend}`))).toBeVisible();
 

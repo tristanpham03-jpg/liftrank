@@ -4,7 +4,7 @@ import { createConfirmedAndSignIn, hostedAdmin, signUp, submitLift, username } f
 test("Flow I: edit a lift (rescored, notes-only keeps it) → invite link → friend joins through login → deliberate add", async ({ browser }) => {
   test.skip(!hostedAdmin(), "Needs hosted Supabase.");
   const owner = username("edna");
-  const friend = username("ivan");
+  const friend = username("iris");
 
   // Log a lift, then correct it.
   const a = await (await browser.newContext()).newPage();

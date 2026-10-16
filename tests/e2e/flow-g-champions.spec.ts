@@ -87,7 +87,7 @@ test("Flow G: title → achievements, profile, cards, record history → a group
   const box = b.getByTestId("verify-box");
   await box.getByRole("button", { name: "Watch video" }).click();
   await expect(box.locator("video")).toBeVisible();
-  await box.getByRole("button", { name: "Looks legit: verify" }).click();
+  await box.getByRole("button", { name: "Verify lift" }).click();
   await expect(badge(b)).toHaveText("Verified");
 
   // The owner hears who verified it, and still holds the title.

@@ -12,8 +12,8 @@
   --color-elevated: #262d40;
   --color-line: #313a50;
   --color-fg: #f5f5f7;
-  --color-fg-2: #aab0bd;
-  --color-fg-3: #8f97a8;
+  --color-fg-2: #b4bac6;
+  --color-fg-3: #9ca3b3;
 
   /* Pearl is the accent: primary buttons, the current user, focus. */
   --color-accent: #f3f4f8;
@@ -180,4 +180,19 @@ select:focus-visible {
   content: "";
   position: absolute;
   inset: -12px -8px;
+}
+
+/*
+ * Add Lift on phones: a focused field scrolls clear of the floating Submit and
+ * the tab bar. While a text field has focus (the keyboard is up) the tab bar
+ * hides. Submit keeps its place, so it never moves under a finger mid-tap
+ * (on iOS it sits behind the keyboard; on Android it rides just above it).
+ */
+@media (max-width: 767px) {
+  form:has(.lift-submit) :is(input, select, textarea, button, [role="radiogroup"]) {
+    scroll-margin-bottom: calc(var(--nav-height) + var(--safe-bottom) + 96px);
+  }
+  body:has(form .lift-submit):has(:is(input:not([type="checkbox"], [type="radio"]), textarea):focus) nav.mobile-tabs {
+    display: none;
+  }
 }

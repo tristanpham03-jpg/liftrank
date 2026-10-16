@@ -91,7 +91,7 @@ export function checkProofFile(file: { type: string; name: string; size: number 
 export function checkProofDuration(seconds: number, limits: ProofLimits): string | null {
   if (!Number.isFinite(seconds) || seconds <= 0) return "Couldn’t read this video’s length. Try an MP4.";
   if (seconds > limits.max_seconds + 0.5) {
-    return `That video is ${Math.round(seconds)} seconds. Keep it under ${limits.max_seconds} seconds: just the lift.`;
+    return `That video is ${Math.round(seconds)} seconds. Trim it to ${limits.max_seconds} seconds: just the set.`;
   }
   return null;
 }

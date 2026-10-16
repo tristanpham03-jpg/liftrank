@@ -20,7 +20,7 @@ test("Flow A: sign up → onboarding → first lift → ranking, in under a minu
   await expect(page).toHaveURL(/\/leaderboards\?exercise=barbell-bench-press/);
   const myRow = page.getByRole("listitem").filter({ hasText: "You" });
   await expect(myRow).toContainText("185 × 8");
-  await expect(page.getByText("Just you so far")).toBeVisible();
+  await expect(page.getByText("Just you", { exact: true })).toBeVisible();
 
   expect(Date.now() - started).toBeLessThan(60_000);
 });

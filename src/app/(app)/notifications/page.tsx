@@ -34,7 +34,7 @@ function text(n: NotificationItem, unit: WeightUnit, meId: string) {
       return `${who} asked for proof of your ${n.exercise?.name ?? "lift"}${lift ? ` (${lift})` : ""}. Add a video or say no.`;
     case "proof_response":
       return n.detail === "uploaded"
-        ? `${who} added a proof video for their ${n.exercise?.name ?? "lift"}. A reviewer will check it.`
+        ? `${who} added a proof video for their ${n.exercise?.name ?? "lift"}. You can watch it and verify it.`
         : `${who} chose not to add a video for their ${n.exercise?.name ?? "lift"}.`;
     case "proof_reviewed": {
       const exercise = n.exercise?.name ?? "lift";

@@ -68,6 +68,9 @@ export default async function ProfilePage({
   const [topRecord, ...otherRecords] = prs;
   const tz = await getTimeZone();
   const prDate = (d: string) => formatDate(d, tz);
+  // Your own records open that exercise's history (best set, trend, every set); others' open the lift.
+  const recordHref = (r: { lift_id: string; exercise_slug: string }) =>
+    isMe ? `/lifts/exercise/${r.exercise_slug}` : `/lifts/${r.lift_id}`;
 
   return (
     <>
@@ -202,6 +205,9 @@ export default async function ProfilePage({
         >
           Records
         </SectionTitle>
+        {isMe && topRecord ? (
+          <p className="-mt-1 mb-2.5 px-1 text-[13px] text-fg-3">Tap a record to see your history for that exercise.</p>
+        ) : null}
         {!profile.can_see_details ? (
           <EmptyState
             title={`${name}'s records aren’t visible to you.`}
@@ -210,7 +216,7 @@ export default async function ProfilePage({
         ) : topRecord ? (
           <>
             <GlassCard glow="ice" as="article">
-              <Link href={`/lifts/${topRecord.lift_id}`} className="block p-5">
+              <Link href={recordHref(topRecord)} className="block p-5">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="flex items-center gap-1.5 text-[15px] font-medium">
@@ -265,7 +271,7 @@ export default async function ProfilePage({
                   return (
                     <li key={pr.exercise_id}>
                       <Link
-                        href={`/lifts/${pr.lift_id}`}
+                        href={recordHref(pr)}
                         className="flex items-center gap-3 px-4 py-3 hover:bg-white/[0.03]"
                       >
                         <span className="min-w-0 flex-1">

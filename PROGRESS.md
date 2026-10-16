@@ -2,6 +2,34 @@
 
 _Last updated: 2026-10-15 (Claude Code) · Done: Phases 1–7 + friend verification · **Deployed (unlisted) at https://liftrank-roan.vercel.app** · Finishing launch setup (see "Deployment status")_
 
+## 2026-10-15 polish pass (UI only, no migration)
+
+- **Add Lift / Edit Lift on short phones:**
+  - Only Submit floats now, on an opaque, fade-edged backdrop above the tab bar. The visibility row moved back into the normal flow, just above Submit, so it can no longer cover the machine fields.
+  - Focused fields scroll clear of Submit (scroll margin), and opening "Change" scrolls the options into view.
+  - While a text field has focus the tab bar hides. Submit deliberately stays put, because moving it on blur made taps miss: the iPhone SE audit caught this.
+  - New WebKit test `tests/e2e/mobile-forms.spec.ts` (opt-in with `E2E_IOS_AUDIT=1`) checks 320×568 and 375×667 with a machine exercise, for Add and Edit, including taps with a field focused.
+- **Leaderboards, more compact:**
+  - Filters sit in one horizontally scrolling row.
+  - The ranking explanation is one row of chips: "Ranked by est. 1RM ⓘ", the machine picker, and "Same machine" or "Mixed machines · informal". The ⓘ opens the formula, what the logged weight means, and the machine note.
+  - Your-rank card is shorter. The "Of N ranked lifters…" line is gone (#N of N shows it), and "Est. 1RM 262 lb" no longer wraps.
+- **Proof upload copy:** "Film the full set, showing the weight and every claimed rep. Record at 1080p, not 4K, so it fits."
+  - The over-length message now says "Trim it to 30 seconds: just the set."
+  - The limits are unchanged; see the evaluation below.
+- **Consistency:**
+  - Muted text is brighter (`--color-fg-2` #b4bac6, `--color-fg-3` #9ca3b3).
+  - Verification wording now says verify and confirm everywhere. The button reads "Verify lift". The stale "A reviewer will check it" lines now refer to friends (moderators haven't verified since `…1200`). The verified-only empty state was updated to match.
+- **Exercise history from Profile:** on your own profile, tapping a record opens that exercise's history, with a one-line hint. Home is unchanged.
+
+**Video limit evaluation (no change made):** the current limits are 30 s, 25 MB, 3 uploads a day, a 750 MB storage budget and 3 GB of views a month.
+- **Ranked sets:** at most 12 reps, about 2–3 s each, so 25–35 s with the unrack. 30 s covers most ranked sets. The longest 10–12-rep sets and bodyweight max-rep sets (e.g. 30+ push-ups) can run over.
+- **Size is the tighter limit:**
+  - iPhone 1080p30 HEVC is about 1 MB/s, so 30 s is about 30 MB, already over 25 MB; 4K is about 3 MB/s.
+  - Verified videos are kept, so 750 MB holds about 30 full-size videos in total.
+  - Raising the length to 60 s would need about 60 MB per file, above the Free plan's 50 MB per-file cap.
+- **Recommendation:** keep the limits, and ask for 1080p (done in the copy). If longer sets matter, add in-browser compression to 720p (about 0.3 MB/s, so 60 s ≈ 18 MB) before raising `max_seconds`. Or move to Pro storage (100 GB) and raise the budget. Either is a product and cost decision.
+- **Checks:** typecheck, lint, 28/28 unit tests; Playwright 10/10 against hosted Supabase; iPhone audit 3/3; small-phone forms 2/2. Production data was identical to the baseline before and after, and no test accounts remain.
+
 ## 2026-10-15 improvement pass (applied and pushed)
 
 **Migration `…1400` was applied on 2026-10-15 with the owner's approval.**

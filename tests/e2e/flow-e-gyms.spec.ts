@@ -87,7 +87,9 @@ test("Flow E: add a gym → review → gym and nearby boards → machine lifts",
   await expect(a.locator("ol li").first()).toContainText("Hammer Strength");
   await expect(a.locator("ol li").first()).not.toContainText(`Iso Press ${RUN}`);
   await expect(a.getByText("Mixed machines · informal")).toBeVisible();
-  await expect(a.getByText("Ranked by estimated 1RM")).toBeVisible();
+  await expect(a.getByRole("button", { name: /Ranked by est\. 1RM/ })).toBeVisible();
+  await a.getByRole("button", { name: /Ranked by est\. 1RM/ }).click();
+  await expect(a.getByText(/weight × \(1 \+ reps ÷ 30\)/)).toBeVisible();
 
   await a.goto("/moderation");
   await a.getByRole("listitem").filter({ hasText: `Iso Press ${RUN}` }).getByRole("button", { name: "Approve" }).click();
@@ -97,7 +99,7 @@ test("Flow E: add a gym → review → gym and nearby boards → machine lifts",
   await a.getByLabel("Machine", { exact: true }).selectOption({ label: `Hammer Strength Iso Press ${RUN}` });
   await expect(a).toHaveURL(/model=/);
   await expect(a.locator("ol li")).toHaveCount(1);
-  await expect(a.getByText(`Same machine · Hammer Strength Iso Press ${RUN}`)).toBeVisible();
+  await expect(a.getByText("Same machine", { exact: true })).toBeVisible();
 
   // The machine is remembered for next time.
   await b.goto("/lift/new?exercise=machine-chest-press");
