@@ -24,8 +24,8 @@ export function badgeKind(status: VerificationStatus | string | null | undefined
 }
 
 export const BADGE_LABEL: Record<VerificationBadgeKind, string> = {
-  unverified: "Unverified",
-  proof_uploaded: "Proof uploaded",
+  unverified: "Self-reported",
+  proof_uploaded: "Video attached",
   disputed: "Disputed",
   invalid: "Not accepted",
   verified: "Verified",
@@ -35,11 +35,11 @@ export const BADGE_LABEL: Record<VerificationBadgeKind, string> = {
 export function statusExplainer(status: VerificationStatus | string, isOwner: boolean): string {
   switch (badgeKind(status)) {
     case "verified":
-      return "A friend watched the video and confirmed this lift.";
+      return "A friend watched the video and confirmed the weight and every rep. It’s a friend’s check, not an official judgment.";
     case "proof_uploaded":
       return isOwner
-        ? "Your video is waiting for a friend to check it."
-        : "A video was added. Friends and groupmates can watch it and confirm it.";
+        ? "Your video is attached. A friend or groupmate can watch it and confirm the lift."
+        : "A video is attached, not yet confirmed. Friends and groupmates can watch it and confirm it.";
     case "disputed":
       return isOwner
         ? "A friend couldn’t tell from the video. It still counts; you can add a clearer one."
@@ -49,7 +49,7 @@ export function statusExplainer(status: VerificationStatus | string, isOwner: bo
         ? "This lift was ruled out earlier, so it doesn’t count on leaderboards. It stays in your history."
         : "This lift doesn’t count on leaderboards.";
     default:
-      return "Self-reported. Proof videos are optional.";
+      return "Self-reported: no video yet. Proof videos are optional.";
   }
 }
 

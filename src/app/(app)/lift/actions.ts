@@ -99,3 +99,49 @@ export async function deleteLift(liftId: string): Promise<ActionResult> {
     return { ok: false, error: e instanceof AppError ? e.message : GENERIC_ERROR };
   }
 }
+
+/**
+ * Corrects an existing lift (owner only, enforced by edit_lift). Same
+ * validation as logging. A performance change clears verification; the old
+ * proof video, if any, is then removed from Storage.
+ */
+export async function editLift(raw: unknown): Promise<ActionResult<{ performanceChanged: boolean }>> {
+  const userId = await getUserId();
+  if (!userId) return { ok: false, error: "Sign in to continue." };
+  const liftId = (raw as { liftId?: unknown })?.liftId;
+  if (typeof liftId !== "string" || !/^[0-9a-f-]{36}$/i.test(liftId)) return { ok: false, error: GENERIC_ERROR };
+  const exerciseId = (raw as { exerciseId?: unknown })?.exerciseId;
+  const exercise = (await getCatalog()).find((e) => e.id === exerciseId);
+  if (!exercise) return { ok: false, error: "Pick an exercise from the list.", fieldErrors: { exerciseId: "Pick an exercise." } };
+
+  const parsed = liftSchema(exercise).safeParse(raw);
+  if (!parsed.success) {
+    const errors = fieldErrors(parsed.error);
+    return { ok: false, error: Object.values(errors)[0] ?? GENERIC_ERROR, fieldErrors: errors };
+  }
+  const v = parsed.data;
+  if (!v.performedAt) return { ok: false, error: "Pick a date.", fieldErrors: { performedAt: "Pick a date." } };
+
+  const supabase = await createClient();
+  try {
+    const res = await rpc<{ performance_changed: boolean; remove_paths: string[] }>(supabase, "edit_lift", {
+      p_lift_id: liftId,
+      p_exercise_id: v.exerciseId,
+      p_weight: v.weight,
+      p_unit: v.weight == null ? null : v.unit,
+      p_reps: v.reps,
+      p_performed_at: v.performedAt,
+      p_visibility: v.visibility,
+      p_group_ids: v.visibility === "groups" ? v.groupIds : [],
+      p_notes: v.notes || null,
+      p_machine_manufacturer_id: exercise.supports_machine_selection ? (v.machineManufacturerId ?? null) : null,
+      p_machine_model_id: exercise.supports_machine_selection ? (v.machineModelId ?? null) : null,
+    });
+    await removeProofFiles(supabase, res.remove_paths);
+    await track(supabase, userId, "lift_edited", { exercise: exercise.slug, performance: res.performance_changed });
+    revalidatePath("/", "layout");
+    return { ok: true, data: { performanceChanged: res.performance_changed } };
+  } catch (e) {
+    return { ok: false, error: e instanceof AppError ? e.message : GENERIC_ERROR };
+  }
+}

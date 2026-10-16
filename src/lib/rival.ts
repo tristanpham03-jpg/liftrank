@@ -1,4 +1,4 @@
-import { computeScore, displayWeight, formatLift, formatNumber, toKg } from "./scoring";
+import { formatLift, formatNumber } from "./scoring";
 import type { LiftLoad, RankingMethod, WeightUnit } from "./types";
 
 type Scored = LiftLoad & { score: number };
@@ -10,64 +10,52 @@ export function relativeGap(me: { score: number }, rival: { score: number }): nu
   return (r - Number(me.score)) / r;
 }
 
+/** Within this share of the rival's estimated 1RM (or a few reps), a rival counts as close. */
+export const CLOSE_GAP = 0.1;
+
+export type RivalComparison = { kind: "tied" | "close" | "distant" | "informal"; text: string };
+
+/** An estimated-1RM difference (kg) in the viewer's unit: whole lb, or half kg. */
+export function gapInUnit(kg: number, unit: WeightUnit): string {
+  const v = unit === "lb" ? Math.round(kg / 0.45359237) : Math.round(kg * 2) / 2;
+  return v < (unit === "lb" ? 1 : 0.5) ? `less than 1 ${unit}` : `${formatNumber(v)} ${unit}`;
+}
+
 /**
- * "Next target" sentence for Home and the leaderboard. It names the smallest
- * lift at your own rep count that would rank above the rival, using the same
- * score the board ranks by (estimated 1RM, or reps for bodyweight boards).
- * Ties go to whoever lifted first, so matching their score is not enough.
+ * How you compare with the person directly above you, by the board's own
+ * score (estimated 1RM, or reps for bodyweight boards). Close rivals get the
+ * gap; distant ones get their lift, never a suggested weight to train for.
+ * Machine exercises on a mixed-machine board get no precise gap at all.
  */
-export function passText(me: Scored, rival: Scored, method: RankingMethod, unit: WeightUnit, name: string): string {
-  const target = passTarget(me, rival, method, unit);
-  if (!target) return `${name} is ahead on this board.`;
-  // Non-breaking spaces keep "215 lb × 5" on one line.
-  const lift = formatLift(target, method, unit, true).replace(/ /g, "\u00a0");
-  const mine = displayWeight(me, unit);
-  const theirs = displayWeight(rival, unit);
-  if (method !== "max_reps" && mine != null && theirs != null && target.entered_weight != null) {
-    const diff = target.entered_weight - mine;
-    return `${formatNumber(diff)} ${unit} away from passing ${name}: hit ${lift}.`;
+export function rivalComparison(
+  me: Scored,
+  rival: Scored,
+  method: RankingMethod,
+  unit: WeightUnit,
+  name: string,
+  opts: { mixedMachines?: boolean } = {},
+): RivalComparison {
+  const mine = Number(me.score);
+  const theirs = Number(rival.score);
+  const lift = formatLift(rival, method, unit, true).replace(/ /g, "\u00a0");
+  if (opts.mixedMachines) {
+    return { kind: "informal", text: `${name} leads with ${lift}. Machines differ, so this comparison is informal.` };
   }
-  const diff = target.reps - me.reps;
-  return `${diff} more ${diff === 1 ? "rep" : "reps"} to pass ${name}.`;
-}
-
-/** The smallest lift at your rep count (or your rep count + n) that outranks the rival. */
-export function passTarget(me: Scored, rival: Scored, method: RankingMethod, unit: WeightUnit): LiftLoad | null {
-  const rivalScore = Number(rival.score);
+  const gap = theirs - mine;
+  if (gap <= 1e-9) {
+    return {
+      kind: "tied",
+      text: method === "max_reps" ? `Tied with ${name}. They logged it first.` : `Tied with ${name} on estimated 1RM. They logged it first.`,
+    };
+  }
+  const relative = theirs > 0 ? gap / theirs : 1;
   if (method === "max_reps") {
-    return { entered_weight: null, entered_unit: null, weight_kg: null, reps: Math.floor(rivalScore) + 1 };
+    const reps = Math.ceil(gap);
+    return reps <= 3 || relative <= CLOSE_GAP * 1.5
+      ? { kind: "close", text: `${reps} ${reps === 1 ? "rep" : "reps"} behind ${name}.` }
+      : { kind: "distant", text: `${name} leads with ${lift}.` };
   }
-  const mine = displayWeight(me, unit);
-  if (mine == null) return null;
-  const step = unit === "lb" ? 5 : 2.5;
-  let target = mine + step;
-  // Bounded: a rival can be at most a few hundred kg ahead.
-  for (let i = 0; i < 400; i++) {
-    const score = computeScore(method, toKg(target, unit), me.reps).score;
-    if (score != null && score > rivalScore) {
-      return { entered_weight: target, entered_unit: unit, weight_kg: toKg(target, unit), reps: me.reps };
-    }
-    target += step;
-  }
-  return null;
-}
-
-/** Smallest sensible jump for a "beat your PR" target: one small plate pair, or one more rep. */
-export function nextTarget(load: LiftLoad, method: RankingMethod, unit: WeightUnit): string {
-  if (method === "max_reps") return `${load.reps + 1} reps`;
-  const current = displayWeight(load, unit);
-  if (current == null) return `${load.reps + 1} reps`;
-  const step = unit === "lb" ? 5 : 2.5;
-  const prefix = method === "added_load_e1rm" ? "+" : "";
-  return `${prefix}${formatNumber(current + step)} × ${load.reps}`;
-}
-
-/** The same target as a lift, so it can be rendered like any other lift. */
-export function nextTargetLoad(load: LiftLoad, method: RankingMethod, unit: WeightUnit): LiftLoad {
-  const current = displayWeight(load, unit);
-  if (method === "max_reps" || current == null) {
-    return { entered_weight: null, entered_unit: null, weight_kg: null, reps: load.reps + 1 };
-  }
-  const next = current + (unit === "lb" ? 5 : 2.5);
-  return { entered_weight: next, entered_unit: unit, weight_kg: toKg(next, unit), reps: load.reps };
+  return relative <= CLOSE_GAP
+    ? { kind: "close", text: `${gapInUnit(gap, unit)} behind ${name} on estimated 1RM.` }
+    : { kind: "distant", text: `${name} leads with ${lift}.` };
 }

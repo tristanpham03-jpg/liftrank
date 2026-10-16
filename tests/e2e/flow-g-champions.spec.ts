@@ -5,7 +5,7 @@ const badge = (page: Page) => page.locator("[data-verification]").first();
 
 async function uploadVideo(page: Page) {
   await page.getByLabel("Proof video file").setInputFiles({ name: "bench.webm", mimeType: "video/webm", buffer: await recordTestVideo(page) });
-  await expect(badge(page)).toHaveText("Proof uploaded", { timeout: 30_000 });
+  await expect(badge(page)).toHaveText("Video attached", { timeout: 30_000 });
 }
 
 test("Flow G: title → achievements, profile, cards, record history → a groupmate verifies the lift", async ({ browser }) => {

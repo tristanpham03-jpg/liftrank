@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { SITE_URL, GOOGLE_AUTH_ENABLED } from "@/lib/env";
-import { consumePendingInvite, safeNext } from "@/lib/invites";
+import { consumePendingInvite, pendingFriendInvitePath, safeNext } from "@/lib/invites";
 import { createClient } from "@/lib/supabase/server";
 import { emailSchema, fieldErrors, passwordSchema, signInSchema, signUpSchema } from "@/lib/validation";
 
@@ -68,6 +68,8 @@ export async function signIn(_: AuthState, formData: FormData): Promise<AuthStat
 
   const joined = await consumePendingInvite(supabase);
   if (joined) redirect(`/groups/${joined}?joined=1`);
+  const friendInvite = await pendingFriendInvitePath();
+  if (friendInvite) redirect(friendInvite);
   redirect(safeNext(String(formData.get("next") ?? ""), "/home"));
 }
 

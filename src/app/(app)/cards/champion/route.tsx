@@ -4,6 +4,8 @@ import { getMyProfile, rpc } from "@/lib/data";
 import { displayWeight, formatEstimatedMax, formatLift } from "@/lib/scoring";
 import { createClient } from "@/lib/supabase/server";
 import type { Title } from "@/lib/types";
+import { formatDate } from "@/lib/dates";
+import { getTimeZone } from "@/lib/timezone";
 
 /**
  * Share card for a title you hold right now (group champion or gym record).
@@ -27,7 +29,7 @@ export async function GET(req: NextRequest) {
   const weighted = lift && method !== "max_reps" && displayWeight(lift, unit) != null;
   const e1rm = lift && lift.reps !== 1 ? formatEstimatedMax(lift.score, method, unit) : null;
   const where = title.kind === "group" ? title.group?.name : title.gym?.name;
-  const since = new Date(title.since).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  const since = formatDate(title.since, await getTimeZone(), { month: "long", day: "numeric", year: "numeric" });
 
   return renderCard({
     name: me.display_name || me.username,

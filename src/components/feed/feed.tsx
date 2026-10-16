@@ -3,8 +3,9 @@ import { Avatar } from "@/components/ui/avatar";
 import { formatLift } from "@/lib/scoring";
 import type { FeedItem, WeightUnit } from "@/lib/types";
 import { Reactions } from "./reactions";
+import { APP_TIMEZONE, formatDate } from "@/lib/dates";
 
-export function timeAgo(iso: string) {
+export function timeAgo(iso: string, tz: string = APP_TIMEZONE) {
   const s = Math.max(1, Math.round((Date.now() - new Date(iso).getTime()) / 1000));
   if (s < 60) return "just now";
   const m = Math.round(s / 60);
@@ -13,7 +14,7 @@ export function timeAgo(iso: string) {
   if (h < 24) return `${h}h`;
   const d = Math.round(h / 24);
   if (d < 7) return `${d}d`;
-  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return formatDate(iso, tz, { month: "short", day: "numeric" });
 }
 
 type Person = { id: string; username: string; display_name: string | null };

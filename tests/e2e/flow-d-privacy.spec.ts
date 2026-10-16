@@ -8,7 +8,7 @@ test("Flow D: a private lift never reaches another user, even a friend", async (
   const a = await (await browser.newContext()).newPage();
   await signUp(a, owner);
   // Private deadlift.
-  await a.getByRole("button", { name: /^More options/ }).click();
+  await a.getByTestId("visibility").getByRole("button", { name: "Change" }).click();
   await a.getByRole("radio", { name: /Private/ }).check();
   await submitLift(a, "405", "1", "Deadlift");
   await expect(a.getByText("First lift logged")).toBeVisible();

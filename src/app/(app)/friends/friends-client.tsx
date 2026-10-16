@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
-import { Search } from "lucide-react";
+import { DropdownMenu } from "radix-ui";
+import { MoreHorizontal, Search } from "lucide-react";
 import {
   blockUser, cancelFriendRequest, removeFriend, respondFriendRequest, searchUsers, sendFriendRequest, unblockUser,
 } from "@/app/(app)/social-actions";
@@ -125,22 +126,7 @@ export function FriendRowActions({
       </Button>
     );
   }
-  return (
-    <div className="flex gap-1">
-      <Button size="sm" variant="ghost" disabled={pending} onClick={() => go(() => removeFriend(userId), `Remove @${username} as a friend?`)}>
-        Remove
-      </Button>
-      <Button
-        size="sm"
-        variant="ghost"
-        className="text-danger"
-        disabled={pending}
-        onClick={() => go(() => blockUser(userId), `Block @${username}? You won’t see each other’s lifts, profiles or activity.`)}
-      >
-        Block
-      </Button>
-    </div>
-  );
+  return <FriendMenu userId={userId} username={username} isFriend />;
 }
 
 export function UnblockButton({ userId }: { userId: string }) {
@@ -149,5 +135,49 @@ export function UnblockButton({ userId }: { userId: string }) {
     <Button size="sm" variant="ghost" disabled={pending} onClick={() => start(async () => void (await unblockUser(userId)))}>
       Unblock
     </Button>
+  );
+}
+
+/** Remove friend and Block, tucked into a three-dot menu. */
+export function FriendMenu({ userId, username, isFriend }: { userId: string; username: string; isFriend: boolean }) {
+  const [pending, start] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const go = (fn: () => Promise<{ ok: boolean; error?: string }>, confirmText: string) => {
+    if (!window.confirm(confirmText)) return;
+    setError(null);
+    start(async () => {
+      const res = await fn();
+      if (!res.ok) setError(res.error ?? "Something went wrong.");
+    });
+  };
+  const item = "rounded-[8px] px-3 py-2.5 text-sm outline-none cursor-pointer data-[highlighted]:bg-white/[0.06]";
+  return (
+    <>
+      {error ? <span className="sr-only" role="alert">{error}</span> : null}
+      <DropdownMenu.Root>
+        <DropdownMenu.Trigger
+          disabled={pending}
+          className="h-10 w-10 inline-flex shrink-0 items-center justify-center rounded-full text-fg-2 hover:text-fg hover:bg-white/[0.07]"
+          aria-label={`More options for @${username}`}
+        >
+          <MoreHorizontal size={19} />
+        </DropdownMenu.Trigger>
+        <DropdownMenu.Portal>
+          <DropdownMenu.Content align="end" sideOffset={6} className="z-50 min-w-44 rounded-[12px] border border-white/10 bg-[#1a2030]/95 backdrop-blur-xl p-1 shadow-xl">
+            {isFriend ? (
+              <DropdownMenu.Item className={item} onSelect={() => go(() => removeFriend(userId), `Remove @${username} as a friend?`)}>
+                Remove friend
+              </DropdownMenu.Item>
+            ) : null}
+            <DropdownMenu.Item
+              className={`${item} text-danger`}
+              onSelect={() => go(() => blockUser(userId), `Block @${username}? You won’t see each other’s lifts, profiles or activity.`)}
+            >
+              Block
+            </DropdownMenu.Item>
+          </DropdownMenu.Content>
+        </DropdownMenu.Portal>
+      </DropdownMenu.Root>
+    </>
   );
 }

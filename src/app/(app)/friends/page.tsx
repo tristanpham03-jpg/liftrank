@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ShareButton } from "@/components/share-button";
 import { Avatar } from "@/components/ui/avatar";
 import { EmptyState, PageHeader, SectionTitle } from "@/components/ui/misc";
 import { rpc } from "@/lib/data";
-import { SITE_URL } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 import type { FriendsData } from "@/lib/types";
+import { ChevronRight, UsersRound } from "lucide-react";
 import { FriendRowActions, FriendSearch, UnblockButton } from "./friends-client";
+import { InviteFriends } from "./invite-friends";
 
 export const metadata: Metadata = { title: "Friends" };
 
@@ -27,8 +27,23 @@ export default async function FriendsPage() {
 
   return (
     <>
-      <PageHeader title="Friends" subtitle="Friends see your Public and Friends lifts on the Friends board." />
-      <FriendSearch />
+      <PageHeader title="Friends" subtitle="Compete with friends on the friends leaderboard." />
+      <section className="glass space-y-4 rounded-[var(--radius-panel)] p-4" aria-label="Invite and find friends">
+        <InviteFriends />
+        <FriendSearch />
+      </section>
+
+      <Link
+        href="/groups"
+        className="mt-3 flex items-center gap-3 glass-flat rounded-[var(--radius-panel)] px-4 py-3 hover:bg-white/[0.03]"
+      >
+        <UsersRound size={20} className="shrink-0 text-fg-2" aria-hidden />
+        <span className="min-w-0 flex-1">
+          <span className="block font-medium">Groups</span>
+          <span className="block text-sm text-fg-3">Private leaderboards for your crew. Create one or join with a link.</span>
+        </span>
+        <ChevronRight size={18} className="shrink-0 text-fg-3" aria-hidden />
+      </Link>
 
       {data.incoming.length ? (
         <section className="mt-8">
@@ -58,18 +73,7 @@ export default async function FriendsPage() {
         ) : (
           <EmptyState
             title="Invite your friends and see who’s strongest."
-            body="Search by username above, or send them LiftRank."
-            action={
-              <div className="w-full max-w-xs">
-                <ShareButton
-                  url={`${SITE_URL}/signup`}
-                  title="LiftRank"
-                  text="I’m logging my lifts on LiftRank. Join and let’s see who’s stronger."
-                  label="Share LiftRank"
-                  event="invite_shared"
-                />
-              </div>
-            }
+            body="Send your invite link above, or search for their username."
           />
         )}
       </section>

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { GeistSans } from "geist/font/sans";
 import "./globals.css";
+import { TimezoneCookie } from "@/components/timezone-cookie";
 
 export const metadata: Metadata = {
   title: { default: "LiftRank", template: "%s · LiftRank" },
@@ -20,7 +21,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${GeistSans.variable} antialiased`}>
-      <body className="min-h-dvh">{children}</body>
+      <body className="min-h-dvh">
+        <TimezoneCookie />
+        {children}
+      </body>
     </html>
   );
 }

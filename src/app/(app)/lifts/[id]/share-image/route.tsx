@@ -4,6 +4,8 @@ import { getCatalog, getMyProfile, rpc } from "@/lib/data";
 import { displayWeight, formatEstimatedMax, formatLift } from "@/lib/scoring";
 import { createClient } from "@/lib/supabase/server";
 import type { HomeData, Lift, PersonalRecord, PublicProfile } from "@/lib/types";
+import { formatDate } from "@/lib/dates";
+import { getTimeZone } from "@/lib/timezone";
 
 /**
  * A 1080×1920 (9:16) share card for one of your own lifts.
@@ -52,7 +54,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const text = formatLift(lift, method, unit);
   const [weight, reps] = text.split(" × ");
   const e1rm = lift.is_ranked && lift.reps !== 1 ? formatEstimatedMax(lift.score, method, unit) : null;
-  const date = new Date(lift.performed_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  const date = formatDate(lift.performed_at, await getTimeZone(), { month: "long", day: "numeric", year: "numeric" });
   const name = me.display_name || me.username || "LiftRank lifter";
 
   return renderCard({

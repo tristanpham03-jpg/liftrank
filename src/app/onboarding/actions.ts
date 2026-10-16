@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { getUserId, rpc, track } from "@/lib/data";
 import { AppError, GENERIC_ERROR } from "@/lib/errors";
-import { consumePendingInvite } from "@/lib/invites";
+import { consumePendingInvite, pendingFriendInvitePath } from "@/lib/invites";
 import { createClient } from "@/lib/supabase/server";
 import { usernameSchema } from "@/lib/validation";
 
@@ -33,6 +33,8 @@ export async function chooseUsername(_: UsernameState, formData: FormData): Prom
     await track(supabase, userId, "group_joined", { via: "invite" });
     redirect(`/onboarding/gym?group=${joined}`);
   }
+  const friendInvite = await pendingFriendInvitePath();
+  if (friendInvite) redirect(friendInvite);
   redirect("/onboarding/gym");
 }
 

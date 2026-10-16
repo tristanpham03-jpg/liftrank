@@ -16,6 +16,8 @@ import { formatEstimatedMax, formatLift } from "@/lib/scoring";
 import { createClient } from "@/lib/supabase/server";
 import type { FeedItem, HomeData, PublicProfile } from "@/lib/types";
 import { ProfileActions } from "./profile-actions";
+import { formatDate } from "@/lib/dates";
+import { getTimeZone } from "@/lib/timezone";
 
 export async function generateMetadata({
   params,
@@ -64,12 +66,8 @@ export default async function ProfilePage({
     : [];
   const name = profile.display_name || profile.username;
   const [topRecord, ...otherRecords] = prs;
-  const prDate = (d: string) =>
-    new Date(d).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
+  const tz = await getTimeZone();
+  const prDate = (d: string) => formatDate(d, tz);
 
   return (
     <>

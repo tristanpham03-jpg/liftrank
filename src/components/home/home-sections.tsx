@@ -4,9 +4,9 @@ import { ActivitySentence, timeAgo } from "@/components/feed/feed";
 import { Avatar } from "@/components/ui/avatar";
 import { GlassCard } from "@/components/ui/glass";
 import { cn } from "@/lib/cn";
-import { nextTargetLoad, passText } from "@/lib/rival";
+import { rivalComparison } from "@/lib/rival";
 import { formatLift } from "@/lib/scoring";
-import type { FeedItem, HomeBoard, LiftLoad, PersonalRecord, RankingMethod, WeightUnit } from "@/lib/types";
+import type { FeedItem, HomeBoard, LiftLoad, RankingMethod, WeightUnit } from "@/lib/types";
 
 export function boardHref(b: Pick<HomeBoard, "kind" | "group_id">, slug: string) {
   return `/leaderboards?exercise=${slug}${b.kind === "group" ? `&scope=groups&group=${b.group_id}` : ""}`;
@@ -114,69 +114,51 @@ export function RankingRows({ boards, slugs, unit }: { boards: HomeBoard[]; slug
   );
 }
 
-/** Rival above you, compared exactly the way the board ranks. */
-export function RivalTargetCard({ board, slug, unit }: { board: HomeBoard; slug: string; unit: WeightUnit }) {
+/**
+ * The person directly above you on one board. Your own lift and rank are
+ * already under Your rankings, so this shows only them and how you compare.
+ */
+export function RivalCard({ board, slug, unit, mixedMachines }: { board: HomeBoard; slug: string; unit: WeightUnit; mixedMachines: boolean }) {
   const rival = board.above!;
   const name = rival.display_name || rival.username;
+  const comparison = rivalComparison(board.me, rival, board.ranking_method, unit, name, { mixedMachines });
   return (
     <GlassCard glow="peach" as="article">
-      <Link href={boardHref(board, slug)} className="block p-5">
-        <div className="flex items-center justify-between gap-3">
-          <p className="truncate text-[15px] font-medium">{board.exercise_name}</p>
-          <span className="shrink-0 text-xs text-fg-3">
-            #{board.rank} of {board.total}, {boardName(board)}
-          </span>
-        </div>
-        <div className="mt-4 grid grid-cols-2 gap-3">
-          <div>
-            <p className="text-[13px] text-fg-3">You</p>
-            <LiftFigure board={board} unit={unit} className="mt-0.5 block text-[26px] leading-tight" />
-          </div>
-          <div>
-            <p className="flex items-center gap-1.5 text-[13px] text-fg-3">
-              <Avatar name={name} seed={rival.user_id} path={rival.avatar_path} size={16} />
-              <span className="truncate">{name}</span>
+      <Link href={boardHref(board, slug)} className="block p-4">
+        <div className="flex items-center gap-3">
+          <Avatar name={name} seed={rival.user_id} path={rival.avatar_path} size={40} />
+          <div className="min-w-0 flex-1">
+            <p className="truncate font-semibold">{name}</p>
+            <p className="truncate text-[13px] text-fg-3">
+              #{rival.rank} · {board.exercise_name} · {boardName(board)}
             </p>
-            <LiftFigure
-              board={{ me: rival, ranking_method: board.ranking_method }}
-              unit={unit}
-              className="mt-0.5 block text-[26px] leading-tight text-fg-2"
-            />
           </div>
+          <LiftFigure board={{ me: rival, ranking_method: board.ranking_method }} unit={unit} className="shrink-0 text-[22px] leading-none" />
         </div>
-        <p className="mt-4 text-[15px] text-fg">{passText(board.me, rival, board.ranking_method, unit, name)}</p>
+        <p className="mt-3 text-[15px] text-fg" data-kind={comparison.kind}>
+          {comparison.text}
+        </p>
       </Link>
     </GlassCard>
   );
 }
 
-/** No one above you: a small, concrete step past your own best. */
-export function PrTargetCard({ pr, unit }: { pr: PersonalRecord; unit: WeightUnit }) {
+/** No one to chase yet: your record stays under Your rankings; this invites competition. */
+export function InviteRivalsCard() {
   return (
     <GlassCard glow="peach" as="article">
-      <Link href={`/lift/new?exercise=${pr.exercise_slug}`} className="group block p-5" aria-label={`Log ${pr.exercise_name}`}>
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-[13px] text-fg-3">Beat your PR</p>
-            <p className="mt-0.5 truncate text-[15px] font-medium">{pr.exercise_name}</p>
-          </div>
-          <ChevronRight size={18} className="shrink-0 text-fg-3 transition-transform group-hover:translate-x-0.5" aria-hidden />
+      <div className="flex items-center gap-4 p-4">
+        <div className="min-w-0 flex-1">
+          <p className="font-semibold">No one to chase yet</p>
+          <p className="mt-0.5 text-sm text-fg-2">Invite friends and your lifts become a race.</p>
         </div>
-        <div className="mt-4 grid grid-cols-2 gap-3">
-          <div>
-            <p className="text-[13px] text-fg-3">Current</p>
-            <LiftFigure board={{ me: pr, ranking_method: pr.ranking_method }} unit={unit} className="mt-0.5 block text-[26px] leading-tight text-fg-2" />
-          </div>
-          <div>
-            <p className="text-[13px] text-fg-3">Next target</p>
-            <LiftFigure
-              board={{ me: nextTargetLoad(pr, pr.ranking_method, unit), ranking_method: pr.ranking_method }}
-              unit={unit}
-              className="mt-0.5 block text-[26px] leading-tight"
-            />
-          </div>
-        </div>
-      </Link>
+        <Link
+          href="/friends"
+          className="pearl inline-flex h-10 shrink-0 items-center rounded-[11px] px-4 text-sm font-semibold"
+        >
+          Invite friends
+        </Link>
+      </div>
     </GlassCard>
   );
 }

@@ -66,7 +66,7 @@ test("Flow E: add a gym → review → gym and nearby boards → machine lifts",
   await expect(rows).toHaveCount(2);
   await expect(rows.nth(0)).toContainText(other);
   await expect(rows.nth(1)).toContainText("You");
-  await expect(a.getByText(/away from passing/)).toBeVisible();
+  await expect(a.getByText(/behind .+ on estimated 1RM|leads with/)).toBeVisible();
   await a.goto("/leaderboards?exercise=barbell-bench-press&scope=nearby&radius=5");
   await expect(a.locator("ol li")).toHaveCount(2);
   await expect(a.getByText("48.8767")).toHaveCount(0);
@@ -86,7 +86,8 @@ test("Flow E: add a gym → review → gym and nearby boards → machine lifts",
   await a.goto("/leaderboards?exercise=machine-chest-press&scope=gym");
   await expect(a.locator("ol li").first()).toContainText("Hammer Strength");
   await expect(a.locator("ol li").first()).not.toContainText(`Iso Press ${RUN}`);
-  await expect(a.getByText(/Machines differ/)).toBeVisible();
+  await expect(a.getByText("Mixed machines · informal")).toBeVisible();
+  await expect(a.getByText("Ranked by estimated 1RM")).toBeVisible();
 
   await a.goto("/moderation");
   await a.getByRole("listitem").filter({ hasText: `Iso Press ${RUN}` }).getByRole("button", { name: "Approve" }).click();
@@ -96,6 +97,7 @@ test("Flow E: add a gym → review → gym and nearby boards → machine lifts",
   await a.getByLabel("Machine", { exact: true }).selectOption({ label: `Hammer Strength Iso Press ${RUN}` });
   await expect(a).toHaveURL(/model=/);
   await expect(a.locator("ol li")).toHaveCount(1);
+  await expect(a.getByText(`Same machine · Hammer Strength Iso Press ${RUN}`)).toBeVisible();
 
   // The machine is remembered for next time.
   await b.goto("/lift/new?exercise=machine-chest-press");

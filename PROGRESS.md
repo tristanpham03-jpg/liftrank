@@ -2,6 +2,32 @@
 
 _Last updated: 2026-10-15 (Claude Code) · Done: Phases 1–7 + friend verification · **Deployed (unlisted) at https://liftrank-roan.vercel.app** · Finishing launch setup (see "Deployment status")_
 
+## 2026-10-15 improvement pass (committed locally, not pushed, not deployed)
+
+**Needs approval:** migration `20261011001400_edit_lifts_friend_invites.sql` is written and tested but **not applied**. Lift editing and friend invite links need it. Push the code only after `npx supabase db push`; the rest of this pass works without it.
+
+- **Edit lifts:** an Edit lift button opens the Add Lift form prefilled (`/lifts/[id]/edit`), and `edit_lift` handles the save on the server, owner only, with the same validation as `submit_lift`, limited to 30 edits an hour.
+  - Changing the exercise, weight, reps, date or machine clears the video and verification, withdraws open proof requests, and removes the feed items and passed / first place / gym record notifications that described the old numbers. Editing only notes or visibility clears nothing.
+  - Group champions and gym records are recalculated; PRs and boards are computed live.
+  - `lift_edits` keeps an audit row, readable by the owner. Nothing is re-notified or re-awarded on an edit.
+- **Competitive targets:** `rivalComparison` (in `lib/rival.ts`) replaces the "lift X to pass" targets.
+  - Within 10%, it gives the gap in estimated 1RM; further away, the rival's lift; between different machines, it says the comparison is informal and gives no exact gap.
+  - With no rival, Home shows an invite card, and "on top" appears only when the board has more than one person.
+- **Friend invites:** a personal link (`/f/[token]`: hashed, 30 days, 50 uses) with native share and a copy fallback. The link survives signup and login (`lr_friend` cookie), and accepting always needs a tap. Remove and Block moved into a ⋯ menu; Groups are linked from Friends.
+- **Machine boards:** a context line shows "Same machine · model" or "Mixed machines · informal" with the machine filter, plus "Ranked by estimated 1RM ⓘ" (formula explained) and what the logged weight means.
+- **Visibility:** "Visible to Public · Change" sits next to Submit. The wording in `lib/visibility.ts` matches RLS.
+- **Exercise history:** `/lifts/exercise/[slug]` shows your best, a trend line once there are three or more days, and every set with its estimated 1RM, plus a Log again button (prefills from the last set). It's linked from your lift page.
+- **Home:** Your rankings → Your next rival → Recent activity → Check a friend's lift (moved last).
+- **Mobile:** muted text is brighter (`--color-fg-3` #8f97a8); Add Lift is compact and Submit stays above the tab bar.
+- **Verification wording:** the states are now Self-reported / Video attached / Verified / Disputed. The check says "this weight and every rep", the lift page names who confirmed it, and the copy says "a friend's check, not an official judgment". Self-verification and second confirmations were already blocked in `…1200`.
+- **Date bug (Oct 16 vs Oct 15):** stored times were right. Pages rendered on the server in UTC, so evening lifts in Pacific time showed the next day.
+  - Fix: the browser sets a `tz` cookie, and every date goes through `formatDate(iso, tz)`; the fallback is `America/Los_Angeles`.
+  - Add Lift computes "today" in the browser. No data changed.
+- **Tests:**
+  - typecheck, lint and 28/28 unit tests;
+  - `tests/sql/1400_edit_lifts_friend_invites.test.sql` passes in a rolled-back transaction against the hosted schema (9 scenarios);
+  - Playwright against hosted Supabase: all 9 flows pass (D, E and F were updated for the new visibility control and wording), plus the iPhone audit 3/3 (320, 393 and 430 px). The edit and invite screens aren't browser-tested yet because they need `…1400` applied. Add flows for them after approval.
+
 ## Status
 
 Phases 1–7 are built and **verified against the hosted Supabase project** (`yfrwcjvrtcxzifhnppdj`) as of 2026-10-13. All 11 migrations (`…0100` to `…1100`) are applied, and the remote is up to date. Results: 53/53 live checks, 9/9 Playwright flows against real Supabase (plus the opt-in iPhone audit, 3/3 in WebKit), 28/28 unit tests, plus typecheck, lint and production build. **Nothing is deployed.** The folder is a local git repository (branch `main`) and isn't pushed anywhere yet.

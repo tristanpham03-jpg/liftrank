@@ -15,16 +15,16 @@ import { checkProofDuration, checkProofFile, formatMegabytes, proofMime, statusE
 
 type Phase = { kind: "idle" } | { kind: "checking" } | { kind: "uploading"; progress: number } | { kind: "saving" } | { kind: "failed"; message: string; retry: boolean };
 
-export function ProofPanel({ liftId, state, ownerName }: { liftId: string; state: ProofState; ownerName: string }) {
+export function ProofPanel({ liftId, state, ownerName, liftText }: { liftId: string; state: ProofState; ownerName: string; liftText: string }) {
   const by = state.verified_by ? state.verified_by.display_name || `@${state.verified_by.username}` : null;
   return (
     <section className="mt-8 space-y-3" aria-label="Proof video">
       <h2 className="px-1 text-[17px] font-semibold tracking-[-0.01em]">Proof video</h2>
       <p className="px-1 text-sm text-fg-3">
         {statusExplainer(state.status, state.is_owner)}
-        {by && state.status === "verified" ? ` Verified by ${by}.` : ""}
+        {by && state.status === "verified" ? ` Confirmed by ${by}.` : ""}
       </p>
-      {state.is_owner ? <OwnerProof liftId={liftId} state={state} /> : <ViewerProof liftId={liftId} state={state} ownerName={ownerName} />}
+      {state.is_owner ? <OwnerProof liftId={liftId} state={state} /> : <ViewerProof liftId={liftId} state={state} ownerName={ownerName} liftText={liftText} />}
     </section>
   );
 }
@@ -192,7 +192,7 @@ function DeclineRequest({ challengeId, liftId }: { challengeId: string; liftId: 
   );
 }
 
-function ViewerProof({ liftId, state, ownerName }: { liftId: string; state: ProofState; ownerName: string }) {
+function ViewerProof({ liftId, state, ownerName, liftText }: { liftId: string; state: ProofState; ownerName: string; liftText: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
@@ -248,7 +248,7 @@ function ViewerProof({ liftId, state, ownerName }: { liftId: string; state: Proo
         )
       ) : null}
       {state.can_verify ? (
-        <VerifyBox liftId={liftId} ownerName={ownerName} />
+        <VerifyBox liftId={liftId} ownerName={ownerName} liftText={liftText} />
       ) : state.has_video ? (
         <ProofVideo liftId={liftId} />
       ) : null}
@@ -257,7 +257,7 @@ function ViewerProof({ liftId, state, ownerName }: { liftId: string; state: Proo
 }
 
 /** Watch first, then confirm it or say you can't tell. The first friend to decide settles it. */
-function VerifyBox({ liftId, ownerName }: { liftId: string; ownerName: string }) {
+function VerifyBox({ liftId, ownerName, liftText }: { liftId: string; ownerName: string; liftText: string }) {
   const router = useRouter();
   const [watched, setWatched] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -273,7 +273,10 @@ function VerifyBox({ liftId, ownerName }: { liftId: string; ownerName: string })
     <div className="glass space-y-3 rounded-[var(--radius-panel)] p-4" data-testid="verify-box">
       <div>
         <p className="font-semibold">Check {ownerName}’s lift</p>
-        <p className="mt-1 text-sm text-fg-3">Watch the video. Confirm it if it shows this lift: the full rep and the weight.</p>
+        <p className="mt-1 text-sm text-fg-2">
+          Confirm only if the video shows {liftText}: this weight, and every rep at full range. If you can’t tell, say so. It’s a
+          friend’s check, not an official ruling.
+        </p>
       </div>
       <ProofVideo liftId={liftId} onLoaded={() => setWatched(true)} />
       <FormMessage>{error}</FormMessage>

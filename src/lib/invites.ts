@@ -41,3 +41,19 @@ export function safeNext(next: string | null | undefined, fallback = "/home") {
   if (!next || !next.startsWith("/") || next.startsWith("//") || next.startsWith("/\\")) return fallback;
   return next;
 }
+
+// ───────────── Friend invite links ─────────────
+export const FRIEND_INVITE_COOKIE = "lr_friend";
+
+/**
+ * After signing up or in through a friend's invite link, send the person back
+ * to that invite so they can choose to add the friend (never added
+ * automatically). Clears the cookie.
+ */
+export async function pendingFriendInvitePath(): Promise<string | null> {
+  const store = await cookies();
+  const token = store.get(FRIEND_INVITE_COOKIE)?.value;
+  if (!token) return null;
+  store.delete(FRIEND_INVITE_COOKIE);
+  return isInviteToken(token) ? `/f/${token}` : null;
+}

@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { blockUser, cancelFriendRequest, removeFriend, respondFriendRequest, sendFriendRequest, unblockUser } from "@/app/(app)/social-actions";
+import { cancelFriendRequest, respondFriendRequest, sendFriendRequest, unblockUser } from "@/app/(app)/social-actions";
+import { Check } from "lucide-react";
+import { FriendMenu } from "@/app/(app)/friends/friends-client";
 import { Button } from "@/components/ui/button";
 import { FormMessage } from "@/components/ui/form";
 import type { Relationship } from "@/lib/types";
@@ -53,23 +55,17 @@ export function ProfileActions({
           </Button>
         ) : null}
         {relationship === "friends" ? (
-          <Button variant="secondary" disabled={pending} onClick={() => run(() => removeFriend(userId), `Remove @${username} as a friend?`)}>
-            Remove friend
-          </Button>
+          <span className="inline-flex h-11 items-center gap-1.5 rounded-[var(--radius-control)] border border-white/10 px-4 text-[15px] font-semibold text-fg-2">
+            <Check size={16} aria-hidden />
+            Friends
+          </span>
         ) : null}
         {relationship === "blocked" ? (
           <Button variant="secondary" disabled={pending} onClick={() => run(() => unblockUser(userId))}>
             Unblock
           </Button>
         ) : (
-          <Button
-            variant="ghost"
-            className="text-danger"
-            disabled={pending}
-            onClick={() => run(() => blockUser(userId), `Block @${username}? You won’t see each other’s lifts, profiles or activity.`)}
-          >
-            Block
-          </Button>
+          <FriendMenu userId={userId} username={username} isFriend={relationship === "friends"} />
         )}
       </div>
       <FormMessage>{error}</FormMessage>

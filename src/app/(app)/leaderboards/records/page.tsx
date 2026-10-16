@@ -9,13 +9,14 @@ import { getCatalog, requireProfile, rpc } from "@/lib/data";
 import { formatLift } from "@/lib/scoring";
 import { createClient } from "@/lib/supabase/server";
 import type { GroupSummary, MyProfile, RecordEntry, RecordHistory, WeightUnit } from "@/lib/types";
+import { formatDate } from "@/lib/dates";
+import { getTimeZone } from "@/lib/timezone";
 
 export const metadata: Metadata = { title: "Record history" };
 
-const day = (iso: string) =>
-  new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+// month is a calendar date ("2026-09-01"); format it as-is, without shifting zones.
 const monthName = (date: string) =>
-  new Date(`${date}T12:00:00`).toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  new Date(`${date}T12:00:00Z`).toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
 
 function Holder({ entry, unit, method, meId, sub }: { entry: RecordEntry; unit: WeightUnit; method: Parameters<typeof formatLift>[1]; meId: string; sub: string }) {
   const name = entry.user ? (entry.user.id === meId ? "You" : entry.user.display_name || entry.user.username) : "Deleted user";
@@ -50,6 +51,7 @@ export default async function RecordsPage({
 }) {
   const sp = await searchParams;
   const me: MyProfile = await requireProfile();
+  const tz = await getTimeZone();
   const exercise = (await getCatalog()).find((e) => e.slug === sp.exercise);
   const kind = sp.kind === "gym" ? "gym" : sp.kind === "group" ? "group" : null;
   if (!exercise || !kind || !/^[0-9a-f-]{36}$/i.test(sp.scope ?? "")) notFound();
@@ -91,7 +93,7 @@ export default async function RecordsPage({
               <Crown size={16} className="text-silver" aria-hidden />
               {kind === "group" ? "Current champion" : "Current record"}
             </div>
-            <Holder entry={holding} unit={unit} method={method} meId={me.id} sub={`since ${day(holding.since)}`} />
+            <Holder entry={holding} unit={unit} method={method} meId={me.id} sub={`since ${formatDate(holding.since, tz)}`} />
           </div>
         </section>
       ) : null}
@@ -107,7 +109,7 @@ export default async function RecordsPage({
                   unit={unit}
                   method={method}
                   meId={me.id}
-                  sub={`${day(r.since)} – ${r.until ? day(r.until) : "now"}`}
+                  sub={`${formatDate(r.since, tz)} – ${r.until ? formatDate(r.until, tz) : "now"}`}
                 />
               </li>
             ))}

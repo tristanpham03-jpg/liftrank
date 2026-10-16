@@ -9,6 +9,7 @@ import { formatLift } from "@/lib/scoring";
 import { createClient } from "@/lib/supabase/server";
 import type { NotificationItem, WeightUnit } from "@/lib/types";
 import { FriendRequestActions, MarkAllRead } from "./notifications-client";
+import { getTimeZone } from "@/lib/timezone";
 
 export const metadata: Metadata = { title: "Notifications" };
 
@@ -83,6 +84,7 @@ function href(n: NotificationItem) {
 
 export default async function NotificationsPage() {
   const profile = await requireProfile();
+  const tz = await getTimeZone();
   const supabase = await createClient();
   const items = await rpc<NotificationItem[]>(supabase, "get_notifications", {
     p_limit: 60,
@@ -140,7 +142,7 @@ export default async function NotificationsPage() {
                               aria-label="Unread"
                             />
                           ) : null}
-                          {timeAgo(n.created_at)}
+                          {timeAgo(n.created_at, tz)}
                         </p>
                         {n.type === "friend_request" &&
                         n.friendship_pending &&

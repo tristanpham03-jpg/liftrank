@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { normalize, scoreExercise, searchExercises, similarity } from "./exercise-search";
-import { nextTarget, passTarget, passText, relativeGap } from "./rival";
+import { gapInUnit, relativeGap, rivalComparison } from "./rival";
 import { standingText, topPercent } from "./standing";
 import {
   LB_TO_KG, computeScore, displayWeight, estimatedMax, formatEstimatedMax, formatLift, roundForDisplay, toKg,
@@ -51,46 +51,46 @@ describe("scoring", () => {
   });
 });
 
-describe("rival gap text", () => {
+describe("rival comparison", () => {
   const plain = (t: string) => t.replace(/\u00a0/g, " ");
   const lb = (w: number, reps: number) => {
-    const kg = w * LB_TO_KG;
-    return { entered_weight: w, entered_unit: "lb" as const, weight_kg: kg, reps, score: computeScore("e1rm", kg, reps).score! };
+    const kgv = w * LB_TO_KG;
+    return { entered_weight: w, entered_unit: "lb" as const, weight_kg: kgv, reps, score: computeScore("e1rm", kgv, reps).score! };
   };
+  const kg = (w: number, reps: number) => ({ entered_weight: w, entered_unit: "kg" as const, weight_kg: w, reps, score: computeScore("e1rm", w, reps).score! });
+  const r = (n: number) => ({ entered_weight: null, entered_unit: null, weight_kg: null, reps: n, score: n });
 
-  it("names the smallest lift at your reps that passes, since ties go to whoever lifted first", () => {
-    expect(plain(passText(lb(225, 5), lb(230, 5), "e1rm", "lb", "Alex"))).toBe("10 lb away from passing Alex: hit 235 lb × 5.");
-    expect(plain(passText(lb(225, 5), lb(225, 5), "e1rm", "lb", "Alex"))).toBe("5 lb away from passing Alex: hit 230 lb × 5.");
+  it("gives close rivals the estimated-1RM gap, never a weight to train for", () => {
+    const c = rivalComparison(lb(225, 5), lb(230, 5), "e1rm", "lb", "Alex");
+    expect(c.kind).toBe("close");
+    expect(plain(c.text)).toBe("6 lb behind Alex on estimated 1RM.");
+    expect(c.text).not.toMatch(/hit|lift \d/);
+    // Different rep counts compare on estimated 1RM too.
+    expect(plain(rivalComparison(lb(205, 5), lb(185, 10), "e1rm", "lb", "Jordan").text)).toBe("8 lb behind Jordan on estimated 1RM.") // 239.2 vs 246.7;
+    expect(plain(rivalComparison(kg(100, 3), kg(105, 3), "e1rm", "kg", "Kim").text)).toBe("5.5 kg behind Kim on estimated 1RM.");
   });
 
-  it("uses estimated 1RM when rep counts differ", () => {
-    // Jordan 185 × 10 (≈247 e1RM) is ahead of 205 × 5 (≈239), even though 205 is heavier.
-    expect(plain(passText(lb(205, 5), lb(185, 10), "e1rm", "lb", "Jordan"))).toBe("10 lb away from passing Jordan: hit 215 lb × 5.");
-    expect(plain(passText(lb(200, 3), lb(240, 5), "e1rm", "lb", "Alex"))).toBe("55 lb away from passing Alex: hit 255 lb × 3.");
-    const target = passTarget(lb(205, 5), lb(185, 10), "e1rm", "lb")!;
-    expect(computeScore("e1rm", target.weight_kg, 5).score!).toBeGreaterThan(lb(185, 10).score);
-    expect(computeScore("e1rm", toKg(210, "lb"), 5).score!).toBeLessThan(lb(185, 10).score);
+  it("shows a distant rival's lift without suggesting a jump", () => {
+    const c = rivalComparison(lb(135, 5), lb(315, 5), "e1rm", "lb", "Alex");
+    expect(c.kind).toBe("distant");
+    expect(plain(c.text)).toBe("Alex leads with 315 lb × 5.");
   });
 
-  it("works in kilograms", () => {
-    const kg = (w: number, reps: number) => ({ entered_weight: w, entered_unit: "kg" as const, weight_kg: w, reps, score: computeScore("e1rm", w, reps).score! });
-    expect(plain(passText(kg(100, 3), kg(105, 3), "e1rm", "kg", "Kim"))).toBe("7.5 kg away from passing Kim: hit 107.5 kg × 3.");
+  it("calls ties ties, and keeps machine comparisons informal", () => {
+    expect(rivalComparison(lb(225, 5), lb(225, 5), "e1rm", "lb", "Alex").kind).toBe("tied");
+    const m = rivalComparison(lb(300, 8), lb(310, 8), "e1rm", "lb", "Sam", { mixedMachines: true });
+    expect(m.kind).toBe("informal");
+    expect(m.text).not.toMatch(/\d+ lb behind/);
   });
 
-  it("counts reps for bodyweight boards", () => {
-    const r = (n: number) => ({ entered_weight: null, entered_unit: null, weight_kg: null, reps: n, score: n });
-    expect(plain(passText(r(10), r(12), "max_reps", "lb", "Sam"))).toBe("3 more reps to pass Sam.");
-    expect(plain(passText(r(10), r(10), "max_reps", "lb", "Sam"))).toBe("1 more rep to pass Sam.");
+  it("counts reps on bodyweight boards", () => {
+    expect(rivalComparison(r(10), r(12), "max_reps", "lb", "Sam").text).toBe("2 reps behind Sam.");
+    expect(rivalComparison(r(10), r(11), "max_reps", "lb", "Sam").text).toBe("1 rep behind Sam.");
+    expect(rivalComparison(r(5), r(30), "max_reps", "lb", "Sam").kind).toBe("distant");
   });
 
-  it("suggests a small, concrete PR target", () => {
-    expect(nextTarget(lb(220, 6), "e1rm", "lb")).toBe("225 × 6");
-    expect(nextTarget({ entered_weight: 100, entered_unit: "kg", weight_kg: 100, reps: 3 }, "e1rm", "kg")).toBe("102.5 × 3");
-    expect(nextTarget(lb(45, 5), "added_load_e1rm", "lb")).toBe("+50 × 5");
-    expect(nextTarget({ entered_weight: null, entered_unit: null, weight_kg: null, reps: 12 }, "max_reps", "lb")).toBe("13 reps");
-  });
-
-  it("orders rivals by relative gap", () => {
+  it("formats tiny gaps and orders rivals by relative gap", () => {
+    expect(gapInUnit(0.1, "lb")).toBe("less than 1 lb");
     expect(relativeGap({ score: 95 }, { score: 100 })).toBeCloseTo(0.05);
   });
 });
@@ -225,7 +225,7 @@ describe("proof verification", () => {
     expect(badgeKind("rejected")).toBe("invalid");
     expect(badgeKind("verified")).toBe("verified");
     expect(badgeKind(undefined)).toBe("unverified");
-    expect(Object.values(BADGE_LABEL)).toEqual(["Unverified", "Proof uploaded", "Disputed", "Not accepted", "Verified"]);
+    expect(Object.values(BADGE_LABEL)).toEqual(["Self-reported", "Video attached", "Disputed", "Not accepted", "Verified"]);
   });
 
   it("explains each state without implying cheating", () => {
@@ -271,5 +271,14 @@ describe("proof verification", () => {
     expect(codes.length).toBeGreaterThan(10);
     for (const code of new Set(codes)) expect(errorCode({ message: code }), code).toBe(code);
     expect(friendlyError({ message: "proof_storage_full" })).toMatch(/paused/);
+  });
+});
+
+describe("verification wording", () => {
+  it("separates self-reported, video attached and verified, without official language", () => {
+    expect(BADGE_LABEL.unverified).toBe("Self-reported");
+    expect(BADGE_LABEL.proof_uploaded).toBe("Video attached");
+    expect(statusExplainer("verified", false)).toMatch(/every rep/);
+    expect(statusExplainer("verified", false)).toMatch(/not an official/);
   });
 });

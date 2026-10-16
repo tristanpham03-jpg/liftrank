@@ -7,6 +7,7 @@ import { gymPlace } from "@/components/gyms/gym-picker";
 import { Button } from "@/components/ui/button";
 import { FormMessage, Hint, Input, Label } from "@/components/ui/form";
 import type { Gym } from "@/lib/types";
+import { APP_TIMEZONE, formatDate } from "@/lib/dates";
 
 export type PendingGym = Gym & { submitted_by: string | null; created_at: string };
 export type PendingModel = { id: string; name: string; manufacturer: string; equipment_type: string; submitted_by: string | null; created_at: string };
@@ -22,7 +23,7 @@ export function parseCoordinates(text: string): { lat: number; lng: number } | n
 }
 
 function when(iso: string) {
-  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return formatDate(iso, APP_TIMEZONE, { month: "short", day: "numeric" });
 }
 
 export function GymReview({ gym }: { gym: PendingGym }) {

@@ -4,10 +4,10 @@ import { Plus } from "lucide-react";
 import {
   ActivityList,
   FeaturedRankingCard,
-  PrTargetCard,
   QuietLink,
   RankingRows,
-  RivalTargetCard,
+  RivalCard,
+  InviteRivalsCard,
   SectionHeading,
 } from "@/components/home/home-sections";
 import { BellLink } from "@/components/nav/app-shell";
@@ -17,7 +17,7 @@ import { GlassCard } from "@/components/ui/glass";
 import { getCatalog, requireProfile, rpc } from "@/lib/data";
 import { relativeGap } from "@/lib/rival";
 import { createClient } from "@/lib/supabase/server";
-import type { FeedItem, HomeBoard, HomeData, PersonalRecord, ProofToCheck } from "@/lib/types";
+import type { FeedItem, HomeBoard, HomeData, ProofToCheck } from "@/lib/types";
 import { Avatar } from "@/components/ui/avatar";
 import { formatLift } from "@/lib/scoring";
 
@@ -41,27 +41,23 @@ export default async function HomePage() {
   const profile = await requireProfile();
   const unit = profile.preferred_unit;
   const supabase = await createClient();
-  const [home, feed, catalog, prs, toCheck] = await Promise.all([
+  const [home, feed, catalog, toCheck] = await Promise.all([
     rpc<HomeData>(supabase, "get_home"),
     rpc<FeedItem[]>(supabase, "get_feed", { p_limit: 4 }),
     getCatalog(),
-    rpc<PersonalRecord[]>(supabase, "get_prs", { p_user_id: null }),
     rpc<ProofToCheck[]>(supabase, "get_proofs_to_check"),
   ]);
   const slugs = new Map(catalog.map((e) => [e.id, e.slug]));
+  const machineExercises = new Set(catalog.filter((e) => e.supports_machine_selection).map((e) => e.id));
 
   const rankings = pickRankings(home.boards);
   const [featured, ...rest] = rankings;
   const hasCompetition = home.boards.some((b) => b.total >= 2);
 
-  // Next target: the closest person directly above you on a recently trained exercise…
+  // Next rival: the closest person directly above you, preferring exercises you trained recently.
   const rival = [...home.boards]
-    .filter((b) => b.above && b.recent)
-    .sort((a, b) => relativeGap(a.me, a.above!) - relativeGap(b.me, b.above!))[0];
-  // …otherwise your most recent PR.
-  // (prefer an exercise that isn't already the featured ranking).
-  const recentPrs = [...prs].sort((a, b) => b.performed_at.localeCompare(a.performed_at));
-  const pr = rival ? undefined : (recentPrs.find((p) => p.exercise_id !== featured?.exercise_id) ?? recentPrs[0]);
+    .filter((b) => b.above)
+    .sort((a, b) => Number(b.recent) - Number(a.recent) || relativeGap(a.me, a.above!) - relativeGap(b.me, b.above!))[0];
 
   const activity = feed.slice(0, 3);
 
@@ -107,33 +103,42 @@ export default async function HomePage() {
                   </Link>
                 </p>
               )}
-              {!hasCompetition ? (
-                <p className="mt-4 px-1 text-sm text-fg-2">
-                  Rankings mean more with friends.{" "}
-                  <Link href="/friends" className="tap font-medium text-fg underline decoration-white/30 underline-offset-4 hover:decoration-white">
-                    Invite someone
-                  </Link>
-                </p>
-              ) : null}
             </>
           )}
         </section>
 
-        {/* 2. Next target */}
-        {rival || pr ? (
+        {/* 2. Next rival (or, with no competitors yet, an invitation) */}
+        {rival || (featured && !hasCompetition) ? (
           <section aria-labelledby="target-heading">
             <SectionHeading>
-              <span id="target-heading">Next target</span>
+              <span id="target-heading">Your next rival</span>
             </SectionHeading>
             {rival ? (
-              <RivalTargetCard board={rival} slug={slugs.get(rival.exercise_id) ?? ""} unit={unit} />
+              <RivalCard
+                board={rival}
+                slug={slugs.get(rival.exercise_id) ?? ""}
+                unit={unit}
+                mixedMachines={machineExercises.has(rival.exercise_id)}
+              />
             ) : (
-              <PrTargetCard pr={pr!} unit={unit} />
+              <InviteRivalsCard />
             )}
           </section>
         ) : null}
 
-        {/* Friends' proof videos waiting for someone to check (only when there are any). */}
+        {/* 3. Recent activity */}
+        <section aria-labelledby="activity-heading">
+          <SectionHeading action={feed.length > 3 ? <QuietLink href="/activity">View all</QuietLink> : undefined}>
+            <span id="activity-heading">Recent activity</span>
+          </SectionHeading>
+          {activity.length ? (
+            <ActivityList items={activity} unit={unit} meId={profile.id} />
+          ) : (
+            <p className="px-1 text-sm text-fg-3">No activity yet. PRs and passes from your friends and groups will show up here.</p>
+          )}
+        </section>
+
+        {/* Secondary: friends' proof videos waiting for a check (only when there are any). */}
         {toCheck.length ? (
           <section aria-labelledby="check-heading">
             <SectionHeading>
@@ -155,18 +160,6 @@ export default async function HomePage() {
             </ul>
           </section>
         ) : null}
-
-        {/* 3. Recent activity */}
-        <section aria-labelledby="activity-heading">
-          <SectionHeading action={feed.length > 3 ? <QuietLink href="/activity">View all</QuietLink> : undefined}>
-            <span id="activity-heading">Recent activity</span>
-          </SectionHeading>
-          {activity.length ? (
-            <ActivityList items={activity} unit={unit} meId={profile.id} />
-          ) : (
-            <p className="px-1 text-sm text-fg-3">No activity yet. PRs and passes from your friends and groups will show up here.</p>
-          )}
-        </section>
       </div>
     </>
   );

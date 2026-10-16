@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { useMemo, useRef, useState, useSyncExternalStore, useTransition } from "react";
 import { ChevronDown } from "lucide-react";
-import { submitLift, toggleFavorite } from "@/app/(app)/lift/actions";
+import { editLift, submitLift, toggleFavorite } from "@/app/(app)/lift/actions";
 import { useOnline } from "@/components/nav/offline-banner";
 import { Button } from "@/components/ui/button";
 import { FieldError, FormMessage, Label, Textarea } from "@/components/ui/form";
@@ -22,50 +23,54 @@ import type {
   WeightUnit,
 } from "@/lib/types";
 import { fieldErrors, isUnrankedRepCount, liftSchema } from "@/lib/validation";
+import { VISIBILITY, visibilityLabel } from "@/lib/visibility";
 import { ExerciseInfo } from "./exercise-art";
 import { ExercisePicker } from "./exercise-picker";
 import { MachineField, type MachineValue } from "./machine-field";
 import { LiftResult } from "./lift-result";
 
-const VISIBILITY: { value: LiftVisibility; label: string; help: string }[] = [
-  {
-    value: "public",
-    label: "Public",
-    help: "Friends, all your groups, and your profile",
-  },
-  { value: "friends", label: "Friends", help: "Your friends board only" },
-  {
-    value: "groups",
-    label: "Selected groups",
-    help: "Only the groups you pick",
-  },
-  {
-    value: "private",
-    label: "Private",
-    help: "Only you. Counts toward your PRs",
-  },
-];
+const noSubscribe = () => () => {};
 
 function newKey() {
   return crypto.randomUUID();
 }
 
+/** Today's date on this device ("YYYY-MM-DD"). Only call in the browser. */
 function todayLocal() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-/** A past calendar day becomes noon local time on that day; today means "now". */
+/** A past calendar day becomes noon local time on that day; today (or blank) means "now". */
 function performedAtFromDate(date: string): string | null {
   if (!date || date === todayLocal()) return null;
   const [y, m, d] = date.split("-").map(Number);
   return new Date(y, m - 1, d, 12, 0, 0).toISOString();
 }
 
+/** An existing lift being corrected. `date` is its day in the viewer's time zone. */
+export type EditingLift = {
+  liftId: string;
+  exerciseId: string;
+  weight: string;
+  unit: WeightUnit;
+  reps: string;
+  date: string;
+  performedAt: string;
+  visibility: LiftVisibility;
+  groupIds: string[];
+  notes: string;
+  machine: MachineValue;
+  /** Has a video or a friend's confirmation that a performance change would clear. */
+  hasProof: boolean;
+};
+
 type Props = {
   catalog: Exercise[];
   defaults: LiftDefaults;
   initialExerciseId?: string | null;
+  /** Edit an existing lift instead of logging a new one. */
+  editing?: EditingLift;
   /** Rendered after a successful submit, replacing the default result actions. */
   resultActions?: (result: SubmitResult, exercise: Exercise) => React.ReactNode;
 };
@@ -75,10 +80,13 @@ export function AddLiftForm({
   defaults,
   initialExerciseId,
   resultActions,
+  editing,
 }: Props) {
   const online = useOnline();
+  const router = useRouter();
   const byId = useMemo(() => new Map(catalog.map((e) => [e.id, e])), [catalog]);
   const startExercise =
+    (editing && byId.get(editing.exerciseId)) ||
     (initialExerciseId && byId.get(initialExerciseId)) ||
     (defaults.last && byId.get(defaults.last.exercise_id)) ||
     null;
@@ -99,18 +107,24 @@ export function AddLiftForm({
   };
 
   const [exercise, setExercise] = useState<Exercise | null>(startExercise);
-  const initial = prefill(startExercise);
+  const initial = editing
+    ? { weight: editing.weight, reps: editing.reps, unit: editing.unit, machine: editing.machine }
+    : prefill(startExercise);
   const [weight, setWeight] = useState(initial.weight);
   const [unit, setUnit] = useState<WeightUnit>(initial.unit);
   const [machine, setMachine] = useState<MachineValue>(initial.machine);
   const [reps, setReps] = useState(initial.reps);
   const [moreOpen, setMoreOpen] = useState(false);
-  const [date, setDate] = useState(todayLocal());
+  // "" means today. Today is worked out in the browser after mount: the page
+  // renders on the server (UTC), where "today" can already be tomorrow.
+  const [date, setDate] = useState(editing?.date ?? "");
+  const today = useSyncExternalStore(noSubscribe, todayLocal, () => "");
   const [visibility, setVisibility] = useState<LiftVisibility>(
-    defaults.default_visibility ?? "public",
+    editing?.visibility ?? defaults.default_visibility ?? "public",
   );
-  const [groupIds, setGroupIds] = useState<string[]>([]);
-  const [notes, setNotes] = useState("");
+  const [visOpen, setVisOpen] = useState(false);
+  const [groupIds, setGroupIds] = useState<string[]>(editing?.groupIds ?? []);
+  const [notes, setNotes] = useState(editing?.notes ?? "");
   const [key, setKey] = useState(newKey);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
@@ -149,6 +163,11 @@ export function AddLiftForm({
 
   function selectExercise(ex: Exercise) {
     setExercise(ex);
+    if (editing) {
+      setMachine({ manufacturerId: null, modelId: null });
+      setErrors({});
+      return;
+    }
     const p = prefill(ex);
     setWeight(p.weight);
     setReps(p.reps);
@@ -171,7 +190,11 @@ export function AddLiftForm({
       weight: bodyweight ? null : weight === "" ? NaN : Number(weight),
       unit,
       reps: reps === "" ? NaN : Number(reps),
-      performedAt: performedAtFromDate(date),
+      performedAt: editing
+        ? date === editing.date
+          ? editing.performedAt
+          : (performedAtFromDate(date) ?? new Date().toISOString())
+        : performedAtFromDate(date),
       visibility,
       groupIds: visibility === "groups" ? groupIds : [],
       notes: notes.trim() || null,
@@ -183,12 +206,24 @@ export function AddLiftForm({
     if (!parsed.success) {
       const errs = fieldErrors(parsed.error);
       setErrors(errs);
-      if (errs.performedAt || errs.groupIds || errs.notes) setMoreOpen(true);
+      if (errs.performedAt || errs.notes) setMoreOpen(true);
+      if (errs.groupIds) setVisOpen(true);
       return;
     }
     setErrors({});
     setFormError(null);
     startTransition(async () => {
+      if (editing) {
+        const res = await editLift({ ...parsed.data, liftId: editing.liftId });
+        if (!res.ok) {
+          setFormError(res.error);
+          if (res.fieldErrors) setErrors(res.fieldErrors);
+          return;
+        }
+        router.push(`/lifts/${editing.liftId}?saved=1`);
+        router.refresh();
+        return;
+      }
       const res = await submitLift(parsed.data);
       if (!res.ok) {
         setFormError(res.error);
@@ -209,7 +244,7 @@ export function AddLiftForm({
     setResult(null);
     setKey(newKey());
     setNotes("");
-    setDate(todayLocal());
+    setDate("");
   }
 
   if (result) {
@@ -226,10 +261,30 @@ export function AddLiftForm({
     );
   }
 
+  const isToday = !date || date === today;
+  const unitToggle = (
+    <div role="radiogroup" aria-label="Unit" className="grid grid-rows-2 w-[60px] shrink-0 rounded-[14px] bg-white/[0.045] border border-white/10 p-1">
+      {(["lb", "kg"] as const).map((u) => (
+        <button
+          key={u}
+          type="button"
+          role="radio"
+          aria-checked={unit === u}
+          onClick={() => setUnit(u)}
+          className={cn("rounded-[9px] text-sm font-semibold transition-colors", unit === u ? "pearl" : "text-fg-2 hover:text-fg")}
+        >
+          {u}
+        </button>
+      ))}
+    </div>
+  );
+  const bigInput =
+    "num min-w-0 w-full h-[60px] rounded-[14px] bg-white/[0.045] border border-white/10 px-3.5 text-[30px] transition-colors outline-none focus:border-white/40 focus:bg-white/[0.07] aria-[invalid=true]:border-danger/70";
+
   return (
-    <form onSubmit={submit} noValidate className="space-y-4">
+    <form onSubmit={submit} noValidate className="space-y-3">
       <GlassCard glow="ice" as="div" className="animate-rise">
-        <div className="space-y-5 p-5">
+        <div className="space-y-4 p-4 sm:p-5">
           <div>
             <Label>Exercise</Label>
             <ExercisePicker
@@ -244,86 +299,57 @@ export function AddLiftForm({
             {exercise ? <ExerciseInfo key={exercise.id} exercise={exercise} /> : null}
           </div>
 
-          {exercise && !bodyweight ? (
-            <div>
-              <Label htmlFor="weight">
-                {exercise.ranking_method === "added_load_e1rm"
-                  ? "Added weight"
-                  : "Weight"}
-              </Label>
-              <div className="flex gap-2">
-                <input
-                  ref={weightRef}
-                  id="weight"
-                  inputMode="decimal"
-                  enterKeyHint="next"
-                  autoComplete="off"
-                  placeholder="0"
-                  value={weight}
-                  onChange={(e) =>
-                    setWeight(
-                      e.target.value.replace(",", ".").replace(/[^0-9.]/g, ""),
-                    )
-                  }
-                  aria-invalid={Boolean(errors.weight)}
-                  aria-describedby="weight-hint weight-error"
-                  className="num min-w-0 flex-1 h-[68px] rounded-[16px] bg-white/[0.045] border border-white/10 px-4 text-[36px] transition-colors outline-none focus:border-white/40 focus:bg-white/[0.07] aria-[invalid=true]:border-danger/70"
-                />
-                <div
-                  role="radiogroup"
-                  aria-label="Unit"
-                  className="grid grid-rows-2 w-[72px] rounded-[16px] bg-white/[0.045] border border-white/10 p-1"
-                >
-                  {(["lb", "kg"] as const).map((u) => (
-                    <button
-                      key={u}
-                      type="button"
-                      role="radio"
-                      aria-checked={unit === u}
-                      onClick={() => setUnit(u)}
-                      className={cn(
-                        "rounded-[10px] text-sm font-semibold",
-                        unit === u ? "pearl" : "text-fg-3 hover:text-fg-2",
-                      )}
-                    >
-                      {u}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <p id="weight-hint" className="mt-1.5 text-sm text-fg-3">
-                {CONVENTION_HINT[exercise.weight_convention]}
-              </p>
-              <FieldError id="weight-error">{errors.weight}</FieldError>
-            </div>
-          ) : null}
-
           {exercise ? (
             <div>
-              <Label htmlFor="reps">Reps</Label>
-              <input
-                id="reps"
-                inputMode="numeric"
-                enterKeyHint="done"
-                autoComplete="off"
-                placeholder="0"
-                value={reps}
-                onChange={(e) =>
-                  setReps(e.target.value.replace(/[^0-9]/g, "").slice(0, 3))
-                }
-                aria-invalid={Boolean(errors.reps)}
-                aria-describedby="reps-error reps-note"
-                className="num w-full h-[68px] rounded-[16px] bg-white/[0.045] border border-white/10 px-4 text-[36px] transition-colors outline-none focus:border-white/40 focus:bg-white/[0.07] aria-[invalid=true]:border-danger/70"
-              />
+              <div className="flex items-end gap-2">
+                {!bodyweight ? (
+                  <div className="min-w-0 flex-1">
+                    <Label htmlFor="weight">{exercise.ranking_method === "added_load_e1rm" ? "Added weight" : "Weight"}</Label>
+                    <div className="flex gap-1.5">
+                      <input
+                        ref={weightRef}
+                        id="weight"
+                        inputMode="decimal"
+                        enterKeyHint="next"
+                        autoComplete="off"
+                        placeholder="0"
+                        value={weight}
+                        onChange={(e) => setWeight(e.target.value.replace(",", ".").replace(/[^0-9.]/g, ""))}
+                        aria-invalid={Boolean(errors.weight)}
+                        aria-describedby="weight-hint weight-error"
+                        className={bigInput}
+                      />
+                      {unitToggle}
+                    </div>
+                  </div>
+                ) : null}
+                <div className={bodyweight ? "flex-1" : "w-[88px] shrink-0"}>
+                  <Label htmlFor="reps">Reps</Label>
+                  <input
+                    id="reps"
+                    inputMode="numeric"
+                    enterKeyHint="done"
+                    autoComplete="off"
+                    placeholder="0"
+                    value={reps}
+                    onChange={(e) => setReps(e.target.value.replace(/[^0-9]/g, "").slice(0, 3))}
+                    aria-invalid={Boolean(errors.reps)}
+                    aria-describedby="reps-error reps-note"
+                    className={bigInput}
+                  />
+                </div>
+              </div>
+              <FieldError id="weight-error">{errors.weight}</FieldError>
               <FieldError id="reps-error">{errors.reps}</FieldError>
-              <p id="reps-note" className="mt-1.5 text-sm text-fg-3 min-h-5">
+              <p id="weight-hint" className="mt-1.5 text-sm text-fg-3">
+                {bodyweight ? "Ranked by reps." : `Logged weight: ${CONVENTION_HINT[exercise.weight_convention].toLowerCase()}.`}
+              </p>
+              <p id="reps-note" className="text-sm text-fg-2 min-h-5">
                 {unranked
                   ? "Sets over 12 reps are saved to your history but don’t count for rankings."
-                  : bodyweight
-                    ? "Ranked by reps."
-                    : preview
-                      ? `Estimated 1RM ≈ ${preview}`
-                      : null}
+                  : preview
+                    ? `Estimated 1RM ≈ ${preview}`
+                    : null}
               </p>
             </div>
           ) : null}
@@ -342,16 +368,13 @@ export function AddLiftForm({
           className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-fg-2"
         >
           <span>
-            More options
+            Date and note
             <span className="ml-2 text-fg-3 font-normal">
-              {VISIBILITY.find((v) => v.value === visibility)?.label}
-              {date !== todayLocal() ? `, ${date}` : ""}
+              {isToday ? "Today" : date}
+              {notes.trim() ? " · note" : ""}
             </span>
           </span>
-          <ChevronDown
-            size={18}
-            className={cn("transition-transform", moreOpen && "rotate-180")}
-          />
+          <ChevronDown size={18} className={cn("transition-transform", moreOpen && "rotate-180")} />
         </button>
         {moreOpen ? (
           <div className="px-4 pb-4 space-y-4">
@@ -360,63 +383,76 @@ export function AddLiftForm({
               <input
                 id="date"
                 type="date"
-                value={date}
-                max={todayLocal()}
+                value={date || today}
+                max={today || undefined}
                 onChange={(e) => setDate(e.target.value)}
                 className="w-full h-12 rounded-[var(--radius-control)] bg-white/[0.045] border border-white/10 px-4 text-base outline-none focus:border-white/40 focus:bg-white/[0.07] [color-scheme:dark]"
               />
               <FieldError>{errors.performedAt}</FieldError>
-              {date !== todayLocal() ? (
-                <p className="mt-1.5 text-sm text-fg-3">
-                  Lifts logged more than 3 days late count all-time, not on
-                  monthly boards.
-                </p>
+              {!isToday ? (
+                <p className="mt-1.5 text-sm text-fg-3">Lifts logged more than 3 days late count all-time, not on monthly boards.</p>
               ) : null}
             </div>
-            <fieldset>
-              <legend className="block text-sm font-medium text-fg-2 mb-1.5">
-                Who can see it
-              </legend>
-              <div className="grid gap-1.5">
-                {VISIBILITY.map((v) => (
-                  <label
+            <div>
+              <Label htmlFor="notes">Note (optional)</Label>
+              <Textarea id="notes" value={notes} maxLength={280} onChange={(e) => setNotes(e.target.value)} />
+              <FieldError>{errors.notes}</FieldError>
+            </div>
+          </div>
+        ) : null}
+      </div>
+
+      {editing?.hasProof ? (
+        <p className="px-1 text-sm text-fg-2">
+          Changing the exercise, weight, reps, date or machine clears this lift’s proof video and verification. Notes and visibility don’t.
+        </p>
+      ) : null}
+      <FormMessage>{formError}</FormMessage>
+
+      {/* Stays reachable above the tab bar on small phones. */}
+      <div className="sticky z-20 bottom-[calc(var(--nav-height)+16px+var(--safe-bottom))] md:bottom-4 -mx-1 rounded-[22px] px-1 pt-1 pb-1 space-y-2">
+        <div className="glass-flat rounded-[16px]" data-testid="visibility">
+          <div className="flex items-center justify-between gap-2 px-3.5 py-2 text-sm">
+            <span className="min-w-0 truncate text-fg-2">
+              Visible to <span className="font-semibold text-fg">{visibilityLabel(visibility)}</span>
+            </span>
+            <button
+              type="button"
+              aria-expanded={visOpen}
+              onClick={() => setVisOpen((o) => !o)}
+              className="tap shrink-0 font-semibold text-fg underline decoration-white/30 underline-offset-4 hover:decoration-white"
+            >
+              {visOpen ? "Done" : "Change"}
+            </button>
+          </div>
+          {visOpen ? (
+            <div className="space-y-1.5 px-2 pb-2" role="radiogroup" aria-label="Who can see it">
+              {VISIBILITY.map((v) => {
+                const disabled = v.value === "groups" && defaults.groups.length === 0;
+                const on = visibility === v.value;
+                return (
+                  <button
                     key={v.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={on}
+                    disabled={disabled}
+                    onClick={() => setVisibility(v.value)}
                     className={cn(
-                      "flex items-start gap-3 rounded-[12px] border px-3 py-2.5 cursor-pointer",
-                      visibility === v.value
-                        ? "border-white/30 bg-white/[0.07]"
-                        : "border-white/10 hover:border-fg-3/50",
+                      "flex w-full items-start gap-2.5 rounded-[12px] border px-3 py-2 text-left disabled:opacity-40",
+                      on ? "border-white/30 bg-white/[0.08]" : "border-white/10 hover:bg-white/[0.04]",
                     )}
                   >
-                    <input
-                      type="radio"
-                      name="visibility"
-                      value={v.value}
-                      checked={visibility === v.value}
-                      onChange={() => setVisibility(v.value)}
-                      className="mt-1 accent-[var(--color-accent)]"
-                      disabled={
-                        v.value === "groups" && defaults.groups.length === 0
-                      }
-                    />
-                    <span>
-                      <span className="block font-medium">{v.label}</span>
-                      <span className="block text-sm text-fg-3">
-                        {v.value === "groups" && defaults.groups.length === 0
-                          ? "Join or create a group first"
-                          : v.help}
-                      </span>
+                    <span aria-hidden className={cn("mt-1 h-3.5 w-3.5 shrink-0 rounded-full border", on ? "border-transparent pearl" : "border-white/30")} />
+                    <span className="min-w-0">
+                      <span className="block text-sm font-semibold">{v.label}</span>
+                      <span className="block text-[13px] text-fg-2">{disabled ? "Join or create a group first." : v.help}</span>
                     </span>
-                  </label>
-                ))}
-              </div>
-            </fieldset>
-            {visibility === "groups" ? (
-              <fieldset>
-                <legend className="block text-sm font-medium text-fg-2 mb-1.5">
-                  Share with
-                </legend>
-                <div className="flex flex-wrap gap-2">
+                  </button>
+                );
+              })}
+              {visibility === "groups" ? (
+                <div className="flex flex-wrap gap-2 px-1 pt-1" aria-label="Share with">
                   {defaults.groups.map((g) => {
                     const on = groupIds.includes(g.id);
                     return (
@@ -424,53 +460,23 @@ export function AddLiftForm({
                         key={g.id}
                         type="button"
                         aria-pressed={on}
-                        onClick={() =>
-                          setGroupIds(
-                            on
-                              ? groupIds.filter((x) => x !== g.id)
-                              : [...groupIds, g.id],
-                          )
-                        }
-                        className={cn(
-                          "rounded-full border px-3 py-1.5 text-sm font-medium",
-                          on
-                            ? "border-transparent pearl"
-                            : "border-white/10 text-fg-2",
-                        )}
+                        onClick={() => setGroupIds(on ? groupIds.filter((x) => x !== g.id) : [...groupIds, g.id])}
+                        className={cn("rounded-full border px-3 py-1.5 text-sm font-medium", on ? "border-transparent pearl" : "border-white/10 text-fg-2")}
                       >
                         {g.name}
                       </button>
                     );
                   })}
                 </div>
-                <FieldError>{errors.groupIds}</FieldError>
-              </fieldset>
-            ) : null}
-            <div>
-              <Label htmlFor="notes">Note</Label>
-              <Textarea
-                id="notes"
-                value={notes}
-                maxLength={280}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Optional"
-              />
-              <FieldError>{errors.notes}</FieldError>
+              ) : null}
+              <FieldError>{errors.groupIds}</FieldError>
             </div>
-          </div>
-        ) : null}
+          ) : null}
+        </div>
+        <Button type="submit" size="xl" block disabled={pending || !online || !exercise}>
+          {!online ? "Offline: can’t save" : pending ? "Saving…" : editing ? "Save changes" : "Submit lift"}
+        </Button>
       </div>
-
-      <FormMessage>{formError}</FormMessage>
-
-      <Button
-        type="submit"
-        size="xl"
-        block
-        disabled={pending || !online || !exercise}
-      >
-        {!online ? "Offline: can’t save" : pending ? "Saving…" : "Submit lift"}
-      </Button>
     </form>
   );
 }

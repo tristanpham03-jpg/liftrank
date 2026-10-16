@@ -194,7 +194,7 @@ export function SettingsForm({ profile, prExercises }: { profile: MyProfile; prE
               { value: "private", label: "Private" },
             ]}
           />
-          <Hint>You can change this for any single lift under More options.</Hint>
+          <Hint>You can change this for any single lift next to Submit.</Hint>
         </div>
       </section>
 

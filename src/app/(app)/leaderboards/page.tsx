@@ -14,7 +14,8 @@ import { Button } from "@/components/ui/button";
 import { EmptyState, PageHeader, TabLinks } from "@/components/ui/misc";
 import { cn } from "@/lib/cn";
 import { getCatalog, requireProfile, rpc } from "@/lib/data";
-import { passText } from "@/lib/rival";
+import { rivalComparison } from "@/lib/rival";
+import { BoardContext } from "@/components/boards/board-context";
 import { formatEstimatedMax, formatLift } from "@/lib/scoring";
 import { createClient } from "@/lib/supabase/server";
 import { topPercent } from "@/lib/standing";
@@ -24,6 +25,8 @@ import type {
   LiftDefaults,
   MachineOptions,
 } from "@/lib/types";
+import { formatDate } from "@/lib/dates";
+import { getTimeZone } from "@/lib/timezone";
 
 export const metadata: Metadata = { title: "Leaderboards" };
 
@@ -42,14 +45,9 @@ type SearchParams = {
 };
 const RADII = [5, 10, 25] as const;
 
-function since(date: string) {
-  const d = new Date(date);
-  const sameYear = d.getFullYear() === new Date().getFullYear();
-  return d.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    ...(sameYear ? {} : { year: "numeric" }),
-  });
+function since(date: string, tz: string) {
+  const sameYear = formatDate(date, tz, { year: "numeric" }) === formatDate(new Date().toISOString(), tz, { year: "numeric" });
+  return formatDate(date, tz, { month: "short", day: "numeric", ...(sameYear ? {} : { year: "numeric" }) });
 }
 
 export default async function LeaderboardsPage({
@@ -59,6 +57,7 @@ export default async function LeaderboardsPage({
 }) {
   const sp = await searchParams;
   const profile = await requireProfile();
+  const tz = await getTimeZone();
   const unit = profile.preferred_unit;
   const supabase = await createClient();
   const [catalog, defaults, groups] = await Promise.all([
@@ -287,9 +286,6 @@ export default async function LeaderboardsPage({
             <BadgeCheck size={15} className={verified ? "text-silver" : undefined} aria-hidden />
             Verified only
           </Link>
-          {models.length ? (
-            <ModelFilter models={models} value={model?.id ?? null} />
-          ) : null}
         </div>
       </div>
 
@@ -354,15 +350,12 @@ export default async function LeaderboardsPage({
                 <GymBoardOptIn initial={false} />
               </div>
             ) : null}
-            {exercise.supports_machine_selection &&
-            !model &&
-            board.rows.length > 0 ? (
-              <p className="mb-3 px-1 text-sm text-fg-3">
-                Machines differ, so this board mixes different machines.
-                {models.length
-                  ? " Pick one above to compare like for like."
-                  : ""}
-              </p>
+            {board.rows.length > 0 ? (
+              <BoardContext
+                exercise={exercise}
+                model={model}
+                machineFilter={models.length ? <ModelFilter models={models} value={model?.id ?? null} /> : null}
+              />
             ) : null}
             {me ? (
               <GlassCard glow="ice" as="div" className="sticky top-2 z-10 mb-4">
@@ -435,13 +428,11 @@ export default async function LeaderboardsPage({
                       href={`/u/${above.username}`}
                       className="hover:underline underline-offset-4"
                     >
-                      {passText(
-                        me,
-                        above,
-                        method,
-                        unit,
-                        above.display_name || above.username || "them",
-                      )}
+                      {
+                        rivalComparison(me, above, method, unit, above.display_name || above.username || "them", {
+                          mixedMachines: exercise.supports_machine_selection && !model,
+                        }).text
+                      }
                     </Link>
                   </p>
                 ) : me.rank === 1 && board.total > 1 ? (
@@ -477,7 +468,7 @@ export default async function LeaderboardsPage({
                     {board.champion.since ? (
                       <span className="font-normal text-fg-3">
                         {" "}
-                        since {since(board.champion.since)}
+                        since {since(board.champion.since, tz)}
                       </span>
                     ) : null}
                   </p>

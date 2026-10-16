@@ -7,6 +7,8 @@ import { getCatalog, requireProfile } from "@/lib/data";
 import { formatLift } from "@/lib/scoring";
 import { createClient } from "@/lib/supabase/server";
 import type { Lift } from "@/lib/types";
+import { formatDate } from "@/lib/dates";
+import { getTimeZone } from "@/lib/timezone";
 
 export const metadata: Metadata = { title: "Lift history" };
 
@@ -16,6 +18,7 @@ export default async function LiftHistoryPage({ searchParams }: { searchParams: 
   const { page: p } = await searchParams;
   const page = Math.max(1, Number(p) || 1);
   const profile = await requireProfile();
+  const tz = await getTimeZone();
   const supabase = await createClient();
   const [catalog, { data, count }] = await Promise.all([
     getCatalog(),
@@ -32,7 +35,7 @@ export default async function LiftHistoryPage({ searchParams }: { searchParams: 
 
   const groups = new Map<string, Lift[]>();
   for (const l of lifts) {
-    const day = new Date(l.performed_at).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" });
+    const day = formatDate(l.performed_at, tz, { weekday: "short", month: "short", day: "numeric", year: "numeric" });
     groups.set(day, [...(groups.get(day) ?? []), l]);
   }
   const pages = Math.max(1, Math.ceil((count ?? 0) / PAGE));

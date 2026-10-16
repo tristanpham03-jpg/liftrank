@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getUserId, rpc, track } from "@/lib/data";
 import { AppError, GENERIC_ERROR } from "@/lib/errors";
+import { SITE_URL } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 import type { ActionResult, UserSearchResult } from "@/lib/types";
 import { groupSchema } from "@/lib/validation";
@@ -138,4 +139,34 @@ export async function acceptInvite(token: string) {
   if (me) await track(supabase, me, "group_joined", { via: "invite" });
   revalidatePath("/", "layout");
   redirect(`/groups/${groupId}?joined=1`);
+}
+
+/** A personal invite link: anyone who opens it can choose to add you as a friend. */
+export async function createFriendInvite(): Promise<ActionResult<{ url: string }>> {
+  const userId = await getUserId();
+  if (!userId) return { ok: false, error: "Sign in to continue." };
+  const supabase = await createClient();
+  try {
+    const token = await rpc<string>(supabase, "create_friend_invite");
+    await track(supabase, userId, "friend_invite_created");
+    return { ok: true, data: { url: `${SITE_URL}/f/${token}` } };
+  } catch (e) {
+    return { ok: false, error: e instanceof AppError ? e.message : GENERIC_ERROR };
+  }
+}
+
+/** The invitee's deliberate "Add friend" on an invite link. */
+export async function acceptFriendInvite(token: string): Promise<ActionResult<{ username: string }>> {
+  const userId = await getUserId();
+  if (!userId) return { ok: false, error: "Sign in to continue." };
+  if (!/^[0-9a-f]{64}$/.test(token)) return { ok: false, error: "This invite link is invalid or expired." };
+  const supabase = await createClient();
+  try {
+    const res = await rpc<{ status: string; username: string }>(supabase, "accept_friend_invite", { p_token: token });
+    if (res.status === "friends") await track(supabase, userId, "friend_invite_accepted");
+    revalidatePath("/", "layout");
+    return { ok: true, data: { username: res.username } };
+  } catch (e) {
+    return { ok: false, error: e instanceof AppError ? e.message : GENERIC_ERROR };
+  }
 }

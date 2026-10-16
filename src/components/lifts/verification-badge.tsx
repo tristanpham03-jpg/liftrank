@@ -3,7 +3,7 @@ import { cn } from "@/lib/cn";
 import type { VerificationStatus } from "@/lib/types";
 import { BADGE_LABEL, badgeKind } from "@/lib/verification";
 
-/** Pill for the lift page: every state, so "Unverified" is stated plainly there. */
+/** Pill for the lift page: every state, so "Self-reported" is stated plainly there. */
 export function VerificationBadge({ status }: { status: VerificationStatus | string }) {
   const kind = badgeKind(status);
   const Icon =
