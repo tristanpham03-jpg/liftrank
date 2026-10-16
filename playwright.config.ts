@@ -25,6 +25,9 @@ export default defineConfig({
     ...devices["Pixel 7"],
     baseURL: external ?? "http://127.0.0.1:3210",
     trace: "retain-on-failure",
+    // Fail fast on a stalled page instead of waiting out the whole test (diagnostics: LR_NET_DEBUG in the server log).
+    actionTimeout: 20_000,
+    navigationTimeout: 30_000,
     // Use a system Chromium when Playwright's bundled browser isn't installed.
     launchOptions: process.env.PW_CHROMIUM_PATH ? { executablePath: process.env.PW_CHROMIUM_PATH } : {},
     screenshot: "only-on-failure",

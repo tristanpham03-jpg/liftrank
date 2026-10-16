@@ -2,7 +2,19 @@
 
 _Last updated: 2026-10-15 (Claude Code) · Done: Phases 1–7 + friend verification · **Deployed (unlisted) at https://liftrank-roan.vercel.app** · Finishing launch setup (see "Deployment status")_
 
-## 2026-10-16 13 new exercises with illustrations, muscle search, unsaved-set warnings (committed locally; migration `…1600` awaits approval)
+## 2026-10-16 13 new exercises with illustrations, muscle search, unsaved-set warnings (applied and deployed)
+
+**Migration `…1600` was applied on 2026-10-16 with the owner's approval.**
+- **Before applying:**
+  - Only three statements; the one delete removes exactly the 2 moved alias rows.
+  - Permission diff empty. Dry run listed only `…1600`.
+  - Baseline taken of every lift, the 50 exercise rows, all other aliases, records, training data, notifications, achievements and files.
+- **After applying:** identical to the baseline, 63 exercises, live checks 64/64.
+- **Test run:**
+  - A first full run was interrupted when the Mac slept, which left the test server's connections to Supabase stalling for minutes.
+  - Diagnosis: `src/instrumentation.ts` with `src/lib/net-debug.ts`, opt-in through `LR_NET_DEBUG=1`, which `scripts/e2e-supabase.sh` sets. It prints server-side Supabase requests slower than 2 s and stalls over 5 s, with no headers or keys. Playwright now uses a 20 s action timeout and a 30 s navigation timeout.
+  - Final run on a fresh server: hosted 16/16 (including all 63 illustrations, the unsaved warning and muscle search) and iPhone 7/7, with 0 stalls and no request slower than 2 s.
+  - No test accounts remain.
 
 **Migration `20261011001600_more_exercises.sql` (NOT applied).** It inserts 13 exercises (50 → 63) and their aliases, and moves the aliases `sldl` and `stiff leg deadlift` from Romanian Deadlift to the new Stiff-Leg Deadlift. It's additive otherwise: no existing exercise row, lift, score, ranking, function or permission changes.
 - **Rolled-back test** (`tests/sql/1600_more_exercises.test.sql`, run after a snapshot) passes. It checks:
