@@ -25,7 +25,7 @@ async function floating(page: Page): Promise<{ name: string; rect: Rect }[]> {
       out.push({ name: "submit bar", rect: { top: r.top, bottom: r.bottom, left: r.left, right: r.right } });
     }
     const nav = document.querySelector<HTMLElement>("nav.mobile-tabs");
-    if (nav && getComputedStyle(nav).display !== "none") {
+    if (nav && getComputedStyle(nav).visibility !== "hidden") {
       const r = nav.getBoundingClientRect();
       out.push({ name: "tab bar", rect: { top: r.top, bottom: r.bottom, left: r.left, right: r.right } });
     }
@@ -58,7 +58,7 @@ async function typeInto(page: Page, el: Locator, label: string) {
   });
   await expect(el).toBeFocused();
   expect(await page.evaluate(() => getComputedStyle(document.querySelector(".lift-submit")!).position)).toBe("sticky");
-  expect(await page.evaluate(() => getComputedStyle(document.querySelector("nav.mobile-tabs")!).display)).toBe("none");
+  expect(await page.evaluate(() => getComputedStyle(document.querySelector("nav.mobile-tabs")!).visibility)).toBe("hidden");
   await expectClear(page, el, label);
 }
 
@@ -78,6 +78,7 @@ async function checkForm(page: Page, tag: string) {
   await typeInto(page, weight, `${tag} weight`);
   await typeInto(page, reps, `${tag} reps`);
   await page.locator("body").click({ position: { x: 5, y: 5 } }); // dismiss the keyboard
+  await page.waitForTimeout(400); // the tab bar returns just after typing ends
 
   // Selects (no keyboard): focusing scrolls them clear of Submit and the tab bar.
   for (const [el, label] of [[mfr, "manufacturer"], [visibility, "visibility"]] as const) {

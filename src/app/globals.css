@@ -183,16 +183,27 @@ select:focus-visible {
 }
 
 /*
- * Add Lift on phones: a focused field scrolls clear of the floating Submit and
- * the tab bar. While a text field has focus (the keyboard is up) the tab bar
- * hides. Submit keeps its place, so it never moves under a finger mid-tap
- * (on iOS it sits behind the keyboard; on Android it rides just above it).
+ * Phones. Any focused field scrolls clear of the tab bar, and while a text
+ * field has focus (the keyboard is up) the tab bar hides (and returns just
+ * after, never under a tap in progress). On Add Lift, fields
+ * also clear the floating Submit, which keeps its place so it never moves
+ * under a finger mid-tap (on iOS it sits behind the keyboard; on Android it
+ * rides just above it).
  */
 @media (max-width: 767px) {
+  main :is(input, select, textarea) {
+    scroll-margin-bottom: calc(var(--nav-height) + var(--safe-bottom) + 24px);
+  }
   form:has(.lift-submit) :is(input, select, textarea, button, [role="radiogroup"]) {
     scroll-margin-bottom: calc(var(--nav-height) + var(--safe-bottom) + 96px);
   }
-  body:has(form .lift-submit):has(:is(input:not([type="checkbox"], [type="radio"]), textarea):focus) nav.mobile-tabs {
-    display: none;
+  /* Comes back 0.35s after typing ends, so a tap on a button the bar would
+     cover (e.g. Send, right after the keyboard closes) lands first. */
+  nav.mobile-tabs {
+    transition: visibility 0s linear 0.35s;
+  }
+  body:has(main :is(input:not([type="checkbox"], [type="radio"], [type="date"]), textarea):focus) nav.mobile-tabs {
+    visibility: hidden;
+    transition-delay: 0s;
   }
 }

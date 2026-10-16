@@ -7,7 +7,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const supabase = await createClient();
   const unread = await rpc<number>(supabase, "unread_notification_count").catch(() => 0);
   return (
-    <AppShell username={profile.username} unread={unread}>
+    <AppShell username={profile.username} userId={profile.id} displayName={profile.display_name} avatarPath={profile.avatar_path} unread={unread}>
       {children}
     </AppShell>
   );

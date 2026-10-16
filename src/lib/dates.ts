@@ -28,3 +28,15 @@ export function dayKey(iso: string, tz: string) {
   const get = (t: string) => p.find((x) => x.type === t)?.value ?? "";
   return `${get("year")}-${get("month")}-${get("day")}`;
 }
+
+/** Today's date on this device ("YYYY-MM-DD"). Browser only. */
+export function todayLocal(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/** Noon on a past calendar day in this device's time zone, as an ISO instant. Browser only. */
+export function localNoon(date: string): string {
+  const [y, m, d] = date.split("-").map(Number);
+  return new Date(y, m - 1, d, 12, 0, 0).toISOString();
+}

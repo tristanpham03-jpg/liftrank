@@ -2,6 +2,53 @@
 
 _Last updated: 2026-10-15 (Claude Code) · Done: Phases 1–7 + friend verification · **Deployed (unlisted) at https://liftrank-roan.vercel.app** · Finishing launch setup (see "Deployment status")_
 
+## 2026-10-16 My Training: personal tracker (committed locally, NOT pushed; needs migration `…1500`)
+
+**Waiting for approval:** `supabase/migrations/20261011001500_training_tracker.sql` is written and tested in a rolled-back transaction, but **not applied**. The new pages need it, so don't push this commit until it's applied.
+
+**What the migration changes** (additive only: no existing row or function is modified):
+- **New tables, private to the owner:** `training_splits`, `training_days`, `training_day_exercises` and `training_sets`.
+  - RLS allows select by the owner only, and clients get no insert, update or delete grants; every write goes through the functions below.
+  - Each set stores the exercise, the weight as typed, kg, reps, the score and whether it's ranked (same `compute_score` as lifts), the local date, the time, the set number and optional machine fields.
+  - Unique indexes cover (user, exercise, local date, set number) and (user, client key), so a double tap can't create a duplicate.
+- **`lifts.training_set_id`:** a new nullable column with a partial unique index on live lifts, so each set can have only one board entry.
+- **New SECURITY DEFINER functions:** all use `search_path ''` and `auth.uid()`, and none takes a user id.
+  - Routines: `import_training_split`, `set_active_training_split`, `save_training_day`, `add_training_day`, `delete_training_day`.
+  - Sets: `log_training_set`, `update_training_set`, `delete_training_set`, `dismiss_training_pr`.
+  - `submit_training_set`: locks the set row, refuses a second live submission, then calls the existing `submit_lift` and links the result. All board rules, notifications and rival logic apply only at that point.
+- **Rule for sets on a board:** their numbers and date are locked (`training_set_submitted`); edit the board entry instead. Deleting such a set leaves the board entry as it is, just unlinked.
+- **PR rule:** the set must be ranked (12 reps or fewer), there must be earlier history (a set from an earlier day or a counted lift), and it must beat every earlier counted performance. The UI prompts only for the featured exercises in `FEATURED_SLUGS`.
+
+**App changes:**
+- **Navigation:** the phone bar is Home | Boards | Training | + | Friends. A header with the logo, bell and avatar (to your profile) appears on every phone page. The desktop sidebar adds Training and keeps Profile.
+- **`/training`:**
+  - A split chooser with 7 templates and 1x / 2x / 3x / Rotate options, where frequency repeats the same days.
+  - Day chips with a "Next" suggestion.
+  - Spreadsheet rows: set, previous (tap to copy), weight, reps and ✓. Enter moves from weight to reps, then saves.
+  - Saved rows turn green and can be corrected in place. Nothing is written until ✓.
+  - An editor to rename, add, remove, replace, reorder and change set counts, plus add or remove days. Changing splits keeps every set, and older splits can be switched back to.
+- **`/training/exercise/[slug]`:** your best set, a trend chart, and every set by day, each of which can be edited (including its date) or deleted. Each set shows "Submit" or "On board".
+- **+ (`/lift/new`):** two tabs, "From Training" (best sets with featured exercises first, then recent ones) and "Enter a lift" (the existing form, which is still the default).
+  - Choosing a set shows its numbers. You pick visibility and submit, and see the usual result screen.
+  - A proof video can be added from the lift page afterwards.
+- **Phones:** while typing, the tab bar hides and returns 0.35 s after the keyboard closes. That delay prevents the bar from covering a button mid-tap (Flow H caught this). Focused fields scroll clear of it.
+
+**Tests:**
+- typecheck and lint pass; unit tests 32/32 (template slugs exist, rotation text, next-day order, set formatting).
+- `tests/sql/1500_training_tracker.test.sql` passes in a rolled-back transaction against the live schema, covering:
+  - import, customize, log, double tap, slot duplicates, PR rules, edit, delete, submit, a second submission refused;
+  - linked-set lock, deleting a linked set, privacy between friends (RLS as `authenticated` and RPC ownership), and switching splits keeping history;
+  - existing lifts unchanged.
+  A deliberate canary failure was reported correctly.
+- Hosted Playwright: all existing flows pass, including A, H and I, plus the 6 iPhone checks.
+- Waiting for the migration: `flow-j-training.spec.ts` (20 scenarios end to end) and `training-ios.spec.ts` (320 px). Both skip until `…1500` is applied.
+
+**Not done yet:**
+- New competitive notifications ("approaching a close rival") and giving featured exercises more weight in rival notifications. The existing pass and first-place notifications still apply to submitted lifts.
+- Choosing a machine for training sets (the database supports it; the UI doesn't yet).
+
+**Production note:** a real account, `babana`, signed up on 2026-10-16 at 06:36 UTC and logged 2 lifts. It's untouched.
+
 ## 2026-10-16 exercise illustrations (all 50, no migration)
 
 - **Source:** the approved set of 50 transparent 1254px PNGs (blue wireframe, red/orange muscle highlights), one per catalog slug. None are missing or extra.

@@ -34,6 +34,8 @@ type Props = {
   onToggleFavorite?: (exerciseId: string, favorite: boolean) => Promise<void>;
   triggerClassName?: string;
   label?: string;
+  /** A custom trigger (e.g. a small "Replace" button) instead of the exercise field. */
+  trigger?: React.ReactElement;
 };
 
 export function ExercisePicker({
@@ -45,6 +47,7 @@ export function ExercisePicker({
   onToggleFavorite,
   triggerClassName,
   label = "Exercise",
+  trigger,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -83,19 +86,23 @@ export function ExercisePicker({
 
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
-      <Dialog.Trigger
-        className={cn(
-          "group w-full flex items-center justify-between gap-3 rounded-[var(--radius-control)] bg-white/[0.06] border border-white/10 px-4 h-14 text-left hover:border-fg-3/60",
-          triggerClassName,
-        )}
-        aria-label={value ? `${label}: ${value.name}. Change` : `Choose ${label.toLowerCase()}`}
-      >
-        <span className="flex min-w-0 items-center gap-3">
-          {value ? <ExerciseThumb key={value.id} exercise={value} size={34} /> : null}
-          <span className="block truncate text-[17px] font-semibold">{value ? value.name : "Choose an exercise"}</span>
-        </span>
-        <ChevronDown size={20} className="text-fg-3 group-hover:text-fg-2 shrink-0" />
-      </Dialog.Trigger>
+      {trigger ? (
+        <Dialog.Trigger asChild>{trigger}</Dialog.Trigger>
+      ) : (
+        <Dialog.Trigger
+          className={cn(
+            "group w-full flex items-center justify-between gap-3 rounded-[var(--radius-control)] bg-white/[0.06] border border-white/10 px-4 h-14 text-left hover:border-fg-3/60",
+            triggerClassName,
+          )}
+          aria-label={value ? `${label}: ${value.name}. Change` : `Choose ${label.toLowerCase()}`}
+        >
+          <span className="flex min-w-0 items-center gap-3">
+            {value ? <ExerciseThumb key={value.id} exercise={value} size={34} /> : null}
+            <span className="block truncate text-[17px] font-semibold">{value ? value.name : "Choose an exercise"}</span>
+          </span>
+          <ChevronDown size={20} className="text-fg-3 group-hover:text-fg-2 shrink-0" />
+        </Dialog.Trigger>
+      )}
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-[#05070c]/60 backdrop-blur-[2px] data-[state=open]:animate-in" />
         <Dialog.Content

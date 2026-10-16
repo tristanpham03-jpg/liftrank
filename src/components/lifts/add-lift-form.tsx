@@ -28,6 +28,7 @@ import { ExerciseInfo } from "./exercise-art";
 import { ExercisePicker } from "./exercise-picker";
 import { MachineField, type MachineValue } from "./machine-field";
 import { LiftResult } from "./lift-result";
+import { localNoon, todayLocal } from "@/lib/dates";
 
 const noSubscribe = () => () => {};
 
@@ -35,17 +36,10 @@ function newKey() {
   return crypto.randomUUID();
 }
 
-/** Today's date on this device ("YYYY-MM-DD"). Only call in the browser. */
-function todayLocal() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
 /** A past calendar day becomes noon local time on that day; today (or blank) means "now". */
 function performedAtFromDate(date: string): string | null {
   if (!date || date === todayLocal()) return null;
-  const [y, m, d] = date.split("-").map(Number);
-  return new Date(y, m - 1, d, 12, 0, 0).toISOString();
+  return localNoon(date);
 }
 
 /** An existing lift being corrected. `date` is its day in the viewer's time zone. */

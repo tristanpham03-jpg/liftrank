@@ -10,8 +10,6 @@ import {
   InviteRivalsCard,
   SectionHeading,
 } from "@/components/home/home-sections";
-import { BellLink } from "@/components/nav/app-shell";
-import { Logo } from "@/components/nav/logo";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/glass";
 import { getCatalog, requireProfile, rpc } from "@/lib/data";
@@ -63,10 +61,6 @@ export default async function HomePage() {
 
   return (
     <>
-      <header className="flex items-center justify-between py-4 md:hidden">
-        <Logo />
-        <BellLink unread={home.unread} />
-      </header>
       <h1 className="sr-only">Home</h1>
 
       <div className="space-y-9 md:pt-2">

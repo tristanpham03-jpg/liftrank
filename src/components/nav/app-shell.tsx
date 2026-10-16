@@ -2,29 +2,34 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, Home, Plus, Trophy, User, Users } from "lucide-react";
+import { Bell, Dumbbell, Home, Plus, Trophy, User, Users } from "lucide-react";
+import { Avatar } from "@/components/ui/avatar";
 import { AmbientBackground } from "@/components/ui/glass";
 import { cn } from "@/lib/cn";
 import { Logo } from "./logo";
 import { OfflineBanner } from "./offline-banner";
 
-type Props = { username: string; unread: number; children: React.ReactNode };
+type Props = { username: string; userId: string; displayName: string | null; avatarPath: string | null; unread: number; children: React.ReactNode };
 
-// Five destinations, Add Lift in the middle. Groups live under Leaderboards;
-// notifications behind the bell. The phone bar uses a shorter label where needed.
+// Phone bar: five destinations, with + (put a lift on the leaderboards) in the
+// middle. Profile lives in the header avatar on phones (and in the sidebar on
+// desktop); notifications behind the bell. Groups live under Leaderboards.
 const TABS = [
   { href: "/home", label: "Home", icon: Home, match: ["/home", "/notifications", "/activity"] },
   { href: "/leaderboards", label: "Leaderboards", short: "Boards", icon: Trophy, match: ["/leaderboards", "/groups"] },
-  { href: "/lift/new", label: "Add Lift", icon: Plus, match: ["/lift"] },
+  { href: "/lift/new", label: "Add to leaderboard", short: "Add", icon: Plus, match: ["/lift"] },
+  { href: "/training", label: "Training", icon: Dumbbell, match: ["/training"] },
   { href: "/friends", label: "Friends", icon: Users, match: ["/friends"] },
-  { href: "/profile", label: "Profile", icon: User, match: ["/profile", "/u/", "/settings", "/lifts"] },
 ];
+const PROFILE = { href: "/profile", label: "Profile", icon: User, match: ["/profile", "/u/", "/settings", "/lifts"] };
+// Phone order: Home | Boards | Training | + | Friends.
+const PHONE_TABS = [TABS[0], TABS[1], TABS[3], TABS[2], TABS[4]];
 
 function isActive(pathname: string, match: string[]) {
   return match.some((m) => pathname === m || pathname.startsWith(m.endsWith("/") ? m : `${m}/`));
 }
 
-export function AppShell({ username, unread, children }: Props) {
+export function AppShell({ username, userId, displayName, avatarPath, unread, children }: Props) {
   const pathname = usePathname();
 
   return (
@@ -40,7 +45,7 @@ export function AppShell({ username, unread, children }: Props) {
           <BellLink unread={unread} />
         </div>
         <nav aria-label="Main" className="flex flex-col gap-1">
-          {TABS.map((t) => {
+          {[...TABS, PROFILE].map((t) => {
             const active = isActive(pathname, t.match);
             const isAdd = t.href === "/lift/new";
             if (isAdd) {
@@ -52,7 +57,7 @@ export function AppShell({ username, unread, children }: Props) {
                   className="pearl my-2 flex items-center gap-3 rounded-[14px] px-3 py-2.5 font-semibold transition-[filter] hover:brightness-[1.03]"
                 >
                   <t.icon size={18} strokeWidth={2.6} />
-                  {t.label}
+                  Add Lift
                 </Link>
               );
             }
@@ -78,7 +83,24 @@ export function AppShell({ username, unread, children }: Props) {
 
       <div className="min-w-0">
         <OfflineBanner />
-        <main className="mx-auto w-full max-w-[600px] px-4 pt-safe pb-nav md:pb-16 md:pt-10">{children}</main>
+        {/* Phones: logo, notifications and your profile, on every page. */}
+        <header className="mx-auto flex w-full max-w-[600px] items-center justify-between px-4 pt-safe md:hidden">
+          <Link href="/home" aria-label="LiftRank home" className="py-3">
+            <Logo />
+          </Link>
+          <div className="flex items-center gap-1">
+            <BellLink unread={unread} />
+            <Link
+              href="/profile"
+              aria-label="Your profile"
+              aria-current={isActive(pathname, PROFILE.match) ? "page" : undefined}
+              className={cn("rounded-full p-0.5 ring-2", isActive(pathname, PROFILE.match) ? "ring-pearl/80" : "ring-transparent")}
+            >
+              <Avatar name={displayName || username} seed={userId} path={avatarPath} size={34} />
+            </Link>
+          </div>
+        </header>
+        <main className="mx-auto w-full max-w-[600px] px-4 pb-nav md:pb-16 md:pt-10">{children}</main>
       </div>
 
       {/* Mobile: floating frosted tab bar */}
@@ -88,7 +110,7 @@ export function AppShell({ username, unread, children }: Props) {
         style={{ bottom: "calc(10px + var(--safe-bottom))" }}
       >
         <ul className="glass grid h-[var(--nav-height)] grid-cols-5 rounded-[26px] px-1">
-          {TABS.map((t) => {
+          {PHONE_TABS.map((t) => {
             const active = isActive(pathname, t.match);
             const isAdd = t.href === "/lift/new";
             return (

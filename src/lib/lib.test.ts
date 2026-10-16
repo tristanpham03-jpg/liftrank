@@ -282,3 +282,36 @@ describe("verification wording", () => {
     expect(statusExplainer("verified", false)).toMatch(/not an official/);
   });
 });
+
+describe("training templates", () => {
+  it("only use exercises that exist in the catalog", async () => {
+    const { TEMPLATES, FEATURED_SLUGS } = await import("./training");
+    const { EXERCISE_IMAGES } = await import("./exercise-images"); // one entry per catalog slug
+    for (const t of TEMPLATES) for (const d of t.days) for (const slug of d.exercises) expect(EXERCISE_IMAGES.has(slug), `${t.id}: ${slug}`).toBe(true);
+    for (const slug of FEATURED_SLUGS) expect(EXERCISE_IMAGES.has(slug), slug).toBe(true);
+  });
+  it("frequency repeats the same days instead of copying them", async () => {
+    const { TEMPLATES, rotationText } = await import("./training");
+    const ul = TEMPLATES.find((t) => t.id === "ul")!;
+    expect(ul.days).toHaveLength(2);
+    expect(rotationText(["Upper", "Lower"], "2x")).toBe("Upper → Lower → Upper → Lower");
+    expect(rotationText(["Upper", "Lower"], "3x")).toBe("Upper → Lower → Upper → Lower → Upper → Lower");
+    expect(rotationText(["Upper", "Lower"], "infinite")).toBe("Upper → Lower → repeat");
+    expect(rotationText(["Full Body"], "infinite", "fbeod")).toBe("Full Body → rest → repeat");
+    expect(TEMPLATES.map((t) => t.id)).toEqual(["ul", "ppl", "ap", "arnold", "full_body", "fbeod", "custom"]);
+  });
+  it("suggests the day after the one you last trained, wrapping around", async () => {
+    const { nextDayIndex } = await import("./training");
+    expect(nextDayIndex(["a", "b", "c"], null)).toBe(0);
+    expect(nextDayIndex(["a", "b", "c"], "a")).toBe(1);
+    expect(nextDayIndex(["a", "b", "c"], "c")).toBe(0);
+    expect(nextDayIndex(["a", "b"], "gone")).toBe(0);
+  });
+  it("shows sets in your unit, exactly as typed when the unit matches", async () => {
+    const { formatSet } = await import("./training");
+    expect(formatSet({ entered_weight: 185, entered_unit: "lb", weight_kg: 83.91, reps: 8 }, "e1rm", "lb")).toBe("185 × 8");
+    expect(formatSet({ entered_weight: 100, entered_unit: "kg", weight_kg: 100, reps: 5 }, "e1rm", "lb")).toBe("220.5 × 5");
+    expect(formatSet({ entered_weight: 25, entered_unit: "lb", weight_kg: 11.34, reps: 6 }, "added_load_e1rm", "lb")).toBe("+25 × 6");
+    expect(formatSet({ entered_weight: null, entered_unit: null, weight_kg: null, reps: 12 }, "max_reps", "lb")).toBe("12 reps");
+  });
+});
