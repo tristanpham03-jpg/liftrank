@@ -91,7 +91,7 @@ export function ExercisePicker({
         aria-label={value ? `${label}: ${value.name}. Change` : `Choose ${label.toLowerCase()}`}
       >
         <span className="flex min-w-0 items-center gap-3">
-          {value ? <ExerciseThumb exercise={value} size={34} /> : null}
+          {value ? <ExerciseThumb key={value.id} exercise={value} size={34} /> : null}
           <span className="block truncate text-[17px] font-semibold">{value ? value.name : "Choose an exercise"}</span>
         </span>
         <ChevronDown size={20} className="text-fg-3 group-hover:text-fg-2 shrink-0" />

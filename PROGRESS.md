@@ -2,6 +2,29 @@
 
 _Last updated: 2026-10-15 (Claude Code) · Done: Phases 1–7 + friend verification · **Deployed (unlisted) at https://liftrank-roan.vercel.app** · Finishing launch setup (see "Deployment status")_
 
+## 2026-10-16 exercise illustrations (all 50, no migration)
+
+- **Source:** the approved set of 50 transparent 1254px PNGs (blue wireframe, red/orange muscle highlights), one per catalog slug. None are missing or extra.
+- **Optimization:** `scripts/optimize-exercise-images.py <folder>` trims the transparent margins, pads each image back to a square (no stretching), and writes WebP with transparency to `public/exercises/img/`:
+  - `<slug>.webp` at 800 px, about 121 KB on average, for the panel;
+  - `<slug>-thumb.webp` at 112 px, about 6.5 KB, for search results;
+  - 6.4 MB in total, down from 77 MB.
+  The script also generates `src/lib/exercise-images.ts`. The original PNGs stay outside the repo. Re-run the script if the set changes.
+- **Display:**
+  - `ExerciseThumb` and `ExerciseInfo` choose by slug: the WebP first, then the older SVG (`exercises.illustration`), then the dumbbell icon. A failed load moves to the next option.
+  - "About this exercise" stays collapsed and loads the full picture only when opened. Its legend dots match the red/orange highlights.
+  - `/exercises/*` is cached for a week, with background refresh.
+- **No data changes:** exercise names, IDs, `illustration` values, lifts and rankings are untouched.
+- **Tests:**
+  - `exercise-art.spec.ts`: thumbnails load in search and across the full list; the panel is collapsed by default; the 800 px image loads square only on open; no sideways scroll; and the fallback chain works with the WebP files blocked.
+  - `exercise-art-ios.spec.ts`: the same at 320 px in WebKit.
+  - All 12 hosted flows and 6 iPhone checks pass.
+- **Review notes:** all 50 images show the right exercise. The muscle highlights are stylized rather than clinical. Images worth a second look:
+  - `chin-up` and `weighted-chin-up`: the underhand grip isn't clearly shown.
+  - `front-squat`: obliques are highlighted, which is unusual for this lift.
+  - `deadlift`: the bar reads as slightly behind the shins from this rear view.
+- **Production data:** `tristanpham` verifying `tptest`'s proof in the live app (2026-10-16 06:19 UTC) changed that lift's status and added 2 notifications. That was real use, not the tests.
+
 ## 2026-10-15 polish pass (UI only, no migration)
 
 - **Add Lift / Edit Lift on short phones:**
