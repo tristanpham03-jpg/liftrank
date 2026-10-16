@@ -27,3 +27,38 @@ test("Exercise pictures fall back to the older drawings, then a plain icon", asy
   await expect(legPress.locator("img")).toHaveCount(0);
   await expect(legPress.locator("svg").first()).toBeVisible();
 });
+
+test("Every exercise's thumbnail and full picture load (all categories)", async ({ page }) => {
+  test.skip(!hostedAdmin(), "Needs hosted Supabase.");
+  test.setTimeout(120_000);
+  const total = (await hostedAdmin()!.from("exercises").select("id", { count: "exact", head: true }).eq("is_active", true)).count ?? 0;
+  await signUp(page, username("artall"));
+  await page.goto("/lift/new");
+  await openPicker(page);
+  const dialog = page.getByRole("dialog");
+  const chips = dialog.getByRole("group", { name: "Filter by category" }).getByRole("button");
+  const labels = (await chips.allTextContents()).filter((l) => l !== "All");
+  expect(labels).toContain("Abs/Core");
+  const seen = new Map<string, string>();
+  for (const label of labels) {
+    await chips.filter({ hasText: label }).click();
+    const rows = dialog.getByRole("listitem");
+    const n = await rows.count();
+    for (let i = 0; i < n; i++) {
+      const row = rows.nth(i);
+      await row.scrollIntoViewIfNeeded();
+      const name = (await row.locator("span.font-medium").first().textContent())!;
+      const img = row.locator("img");
+      await expect(img, name).toHaveAttribute("src", /^\/exercises\/img\/[a-z0-9-]+-thumb\.webp$/);
+      await expect.poll(() => img.evaluate((i: HTMLImageElement) => i.complete && i.naturalWidth), { message: name }).toBe(112);
+      seen.set(name, (await img.getAttribute("src"))!.replace("-thumb.webp", ".webp"));
+    }
+  }
+  expect(seen.size).toBe(total);
+  // Full-size pictures (loaded when "About this exercise" opens): every file is served.
+  for (const [name, src] of seen) {
+    const res = await page.request.get(src);
+    expect(res.status(), name).toBe(200);
+    expect(res.headers()["content-type"], name).toBe("image/webp");
+  }
+});
