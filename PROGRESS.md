@@ -2,7 +2,7 @@
 
 _Last updated: 2026-10-15 (Claude Code) · Done: Phases 1–7 + friend verification · **Deployed (unlisted) at https://liftrank-roan.vercel.app** · Finishing launch setup (see "Deployment status")_
 
-## 2026-10-16 13 new exercises, muscle search, unsaved-set warnings (committed locally; migration `…1600` awaits approval)
+## 2026-10-16 13 new exercises with illustrations, muscle search, unsaved-set warnings (committed locally; migration `…1600` awaits approval)
 
 **Migration `20261011001600_more_exercises.sql` (NOT applied).** It inserts 13 exercises (50 → 63) and their aliases, and moves the aliases `sldl` and `stiff leg deadlift` from Romanian Deadlift to the new Stiff-Leg Deadlift. It's additive otherwise: no existing exercise row, lift, score, ranking, function or permission changes.
 - **Rolled-back test** (`tests/sql/1600_more_exercises.test.sql`, run after a snapshot) passes. It checks:
@@ -44,8 +44,11 @@ The "added weight" hint now mentions a held plate.
 - Hosted Playwright 15/15, including new Flow K1 (unsaved: day switch, tab bar, Back, refresh, Edit day, editing a saved set, copying previous values, several unsaved rows, keyboard Enter) and K2 (search in the + and Training pickers, category chips). iPhone 7/7.
 - Production data unchanged. The two training splits in production are the owner's own.
 
-**Images:** all 13 illustrations exist in the Codex output folder `liftrank-additions`, but its README marks them pending approval, so they aren't integrated. The new exercises show the dumbbell icon for now.
-- **To integrate:** run `scripts/optimize-exercise-images.py` on the folder. Rename `smith-machine-jm-press.png` to `jm-smith-press.png` first, and include the original 50 so `exercise-images.ts` keeps them.
+**Images:** all 13 new illustrations are integrated, with the owner's go-ahead (2026-10-16), from the Codex output folder `liftrank-additions`.
+- `smith-machine-jm-press.png` was renamed to the slug `jm-smith-press`.
+- They went through `scripts/optimize-exercise-images.py` (800 px panel and 112 px thumbnail WebP, transparency kept; 1.7 MB for the 13).
+- All 63 were processed in a scratch folder and only the 26 new files were copied in. Re-encoding reproduced the existing 100 files byte for byte, so the original 50 are untouched.
+- `exercise-images.ts` lists all 63, and a unit test checks that every catalog exercise has both files. The images appear once migration `…1600` adds the exercises.
 
 **Scoring limitations:**
 - Crunches, abduction, adduction and wrist curls rank by est. 1RM on the stack number, as every cable or machine exercise does. They're often done for more than 12 reps, and those sets save but don't rank.

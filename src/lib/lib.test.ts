@@ -348,6 +348,12 @@ describe("63-exercise catalog and muscle search", () => {
     );
     for (const e of catalog) expect(EXERCISE_MUSCLES[e.slug], e.slug).toBeDefined();
     expect(CATEGORY_LABEL.core).toBe("Abs/Core");
+    // Every exercise has an approved illustration (panel + thumbnail) on disk.
+    const { EXERCISE_IMAGES } = await import("./exercise-images");
+    expect([...EXERCISE_IMAGES].sort()).toEqual(catalog.map((e) => e.slug).sort());
+    for (const slug of EXERCISE_IMAGES) {
+      for (const f of [`${slug}.webp`, `${slug}-thumb.webp`]) expect(readFileSync(path.join(process.cwd(), "public/exercises/img", f)).byteLength, f).toBeGreaterThan(1000);
+    }
   });
 
   it("finds triceps work by any spelling, name matches first", () => {
