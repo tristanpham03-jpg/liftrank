@@ -1,6 +1,6 @@
 # LiftRank: Progress
 
-_Last updated: 2026-10-13 (Claude Code) · Done: Phases 1–7 · **Ready for a private beta once the owner completes the launch checklist below** · Not deployed_
+_Last updated: 2026-10-15 (Claude Code) · Done: Phases 1–7 · **Deployed (unlisted) at https://liftrank-roan.vercel.app** · Finishing launch setup (see "Deployment status")_
 
 ## Status
 
@@ -80,6 +80,28 @@ Re-verify any time with `npm run verify:supabase` and `bash scripts/e2e-supabase
 
 See `.env.example` and SUPABASE_SETUP.md: Supabase URL, publishable key, secret key (server only), site URL. Auth URL configuration. Confirm-email off for development and tests, on with SMTP for launch.
 
+## Deployment status (Oct 15, 2026)
+
+- **GitHub:** private repo `tristanpham03-jpg/liftrank`; `main` pushed. A secret scan of the full history before the push found nothing.
+- **Vercel:** project `liftrank` (Hobby) at **https://liftrank-roan.vercel.app**. Production on Hobby is reachable by URL; Deployment Protection covers previews only. Env vars are set; `NEXT_PUBLIC_SITE_URL` was corrected to the real URL and the app redeployed.
+- **Verified from outside, no sign-in:**
+  - public pages load, and app pages redirect signed-out visitors to login;
+  - `/api/cron/daily` and the card routes return 404 without auth;
+  - security headers and HSTS are served;
+  - no secrets are in the live JS;
+  - the invite cookie is `Secure`, so the site URL is https.
+- **Email:** custom SMTP through Gmail (app password) works.
+- **Found and fixed (Oct 15):** `NEXT_PUBLIC_SUPABASE_URL` in Vercel was wrong, so the live site couldn't reach Supabase. Public pages hid it because they don't call Supabase, and the reset page shows the same message either way. The owner corrected it and redeployed; a reset email from the site then arrived.
+- **Still open:** reset links land on `/?code=…` instead of `/auth/confirm`, meaning `https://liftrank-roan.vercel.app/**` isn't yet in Supabase → Authentication → URL Configuration → Redirect URLs, so Supabase falls back to the Site URL. Add it and retest.
+- **Added:** server-side logging of auth failures (`logAuthError` in `src/app/(auth)/actions.ts`): reset-request errors always, and sign-up, sign-in or Google errors the app doesn't recognize. It logs step, status, code and message, never the email; the user-facing messages are unchanged. Look for these lines in Vercel → Logs.
+- **Pending (owner):**
+  - turn on Confirm email;
+  - Supabase URL Configuration (Site URL, plus redirect `https://liftrank-roan.vercel.app/**`), if not done;
+  - make `tristanpham` a moderator;
+  - run the cron once from Vercel;
+  - smoke test with a second account.
+- **Testing note:** `scripts/e2e-supabase.sh` signs up through the UI, so it needs Confirm email **off**. Switch it off briefly to run it, or use a separate test project.
+
 ## Launch checklist (private beta)
 
 Done by Claude, verified:
@@ -93,9 +115,9 @@ Done by Claude, verified:
 - [x] Local git repository with secrets excluded; deploy guide (SUPABASE_SETUP.md §7); `vercel.json` daily cron
 
 **For the owner** (needs your accounts; see SUPABASE_SETUP.md §7):
-1. [ ] Create a **private** GitHub repo and push (`git remote add origin …` then `git push -u origin main`).
-2. [ ] Import into Vercel, add the env vars (incl. `NEXT_PUBLIC_SITE_URL` = production URL and `CRON_SECRET`), and turn on Deployment Protection. **Don't make it public until you decide to.**
-3. [ ] Supabase Auth: Site URL and redirect URLs for the production domain; **Confirm email on**; custom **SMTP** (e.g. Resend free tier); optionally leaked-password protection.
+1. [x] Create a **private** GitHub repo and push.
+2. [x] Import into Vercel and add the env vars (`NEXT_PUBLIC_SITE_URL` = https://liftrank-roan.vercel.app, `CRON_SECRET`). Production is reachable by URL on Hobby.
+3. [~] Supabase Auth: custom **SMTP** done (Gmail). Still to do: **Confirm email on**, and confirm the Site URL and redirect URLs; optionally leaked-password protection.
 4. [ ] Make yourself (and ideally a second person, for appeals) a moderator.
 5. [ ] Smoke test on the deployed URL with a real email (SUPABASE_SETUP.md §7f).
 6. [ ] Optional: a privacy note and terms page, and a support email, before inviting people outside your circle.
