@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { hostedAdmin, makeModerator, recordTestVideo, signedInClient, signUp, submitLift, username } from "./helpers";
+import { hostedAdmin, recordTestVideo, signedInClient, signUp, submitLift, username } from "./helpers";
 
 const badge = (page: Page) => page.locator("[data-verification]").first();
 
@@ -8,14 +8,12 @@ async function uploadVideo(page: Page) {
   await expect(badge(page)).toHaveText("Proof uploaded", { timeout: 30_000 });
 }
 
-test("Flow G: title → achievements and cards → rejected (title lost) → appeal to another reviewer → title back", async ({ browser }) => {
-  test.skip(!hostedAdmin(), "Needs hosted Supabase (Storage) and the secret key to create moderators.");
+test("Flow G: title → achievements, profile, cards, record history → a groupmate verifies the lift", async ({ browser }) => {
+  test.skip(!hostedAdmin(), "Needs hosted Supabase (Storage) and the secret key.");
   test.setTimeout(240_000);
   const owner = username("rhea");
   const second = username("ivan");
   const third = username("zoe");
-  const reviewer = username("kai");
-  const appealReviewer = username("nico");
 
   const a = await (await browser.newContext()).newPage();
   const b = await (await browser.newContext()).newPage();
@@ -78,57 +76,27 @@ test("Flow G: title → achievements and cards → rejected (title lost) → app
   await expect(b.getByRole("heading", { name: "Record history" })).toBeVisible();
   await expect(b.getByRole("region", { name: "Current champion" })).toContainText(owner);
 
-  // Proof → rejected: the lift leaves the board and the title moves on.
+  // Proof: the owner adds a video; a groupmate finds it on Home, watches it and verifies it.
   await a.goto(liftPath);
   await uploadVideo(a);
-  const m = await (await browser.newContext()).newPage();
-  await signUp(m, reviewer);
-  await makeModerator(reviewer);
-  await m.goto("/moderation");
-  const item = m.getByTestId("proof-review").filter({ hasText: `@${owner}` });
-  await item.getByRole("button", { name: "Load video" }).click();
-  await expect(item.locator("video")).toBeVisible();
-  m.once("dialog", (d) => void d.accept());
-  await item.getByRole("button", { name: "Reject" }).click();
-  await expect(m.getByText(new RegExp(`by @${owner}: rejected`))).toBeVisible();
+  await b.goto("/home");
+  const toCheck = b.getByRole("region", { name: "Check a friend’s lift" });
+  await expect(toCheck).toContainText(owner);
+  await toCheck.getByRole("link", { name: new RegExp(owner) }).click();
+  await expect(b).toHaveURL(new RegExp(`${liftPath}$`));
+  const box = b.getByTestId("verify-box");
+  await box.getByRole("button", { name: "Watch video" }).click();
+  await expect(box.locator("video")).toBeVisible();
+  await box.getByRole("button", { name: "Looks legit: verify" }).click();
+  await expect(badge(b)).toHaveText("Verified");
 
-  await a.goto(liftPath);
-  await expect(badge(a)).toHaveText("Not accepted");
-  await b.goto(boardUrl);
-  await expect(b.locator("ol li").filter({ hasText: owner })).toHaveCount(0);
-  await expect(b.locator("ol li").first()).toContainText("You");
-  // Only two ranked lifters remain, and a champion needs three: nobody holds the title now.
-  await expect(b.getByText("Current champion")).toHaveCount(0);
-
-  // One appeal, with a new video.
-  await a.getByRole("button", { name: "Appeal" }).click();
-  await a.getByLabel("Why should a reviewer look again?").fill("The side angle shows the bar touching my chest.");
-  await a.getByRole("button", { name: "Send appeal" }).click();
-  await expect(a.getByTestId("appeal-status")).toContainText("Add a new video");
-  await expect(a.getByRole("button", { name: "Appeal" })).toHaveCount(0);
-  await uploadVideo(a);
-  await expect(a.getByText("Your appeal and new video are waiting for a different reviewer.")).toBeVisible();
-
-  // The moderator who rejected it doesn't get the appeal; another one does.
-  await m.goto("/moderation");
-  await expect(m.getByTestId("proof-review").filter({ hasText: `@${owner}` })).toHaveCount(0);
-  const n = await (await browser.newContext()).newPage();
-  await signUp(n, appealReviewer);
-  await makeModerator(appealReviewer);
-  await n.goto("/moderation");
-  const appeal = n.getByTestId("proof-review").filter({ hasText: `@${owner}` });
-  await expect(appeal.getByTestId("appeal-note")).toContainText("side angle");
-  await appeal.getByRole("button", { name: "Load video" }).click();
-  await expect(appeal.locator("video")).toBeVisible();
-  await appeal.getByRole("button", { name: "Verify" }).click();
-  await expect(n.getByText(new RegExp(`by @${owner}: verified`))).toBeVisible();
-
-  // Back on the board, with the title.
-  await a.goto(liftPath);
-  await expect(badge(a)).toHaveText("Verified");
+  // The owner hears who verified it, and still holds the title.
+  await a.goto("/notifications");
+  await expect(a.getByText(new RegExp(`${second} verified your Barbell Bench Press`))).toBeVisible();
   await b.goto(boardUrl);
   await expect(b.locator("ol li").first()).toContainText(owner);
   await expect(b.getByText("Current champion")).toBeVisible();
   await a.goto(`/u/${owner}`);
   await expect(a.getByRole("region", { name: "Titles" })).toContainText("Barbell Bench Press champion");
+  await expect(a.getByRole("region", { name: "Achievements" })).toContainText("Verified Lifter");
 });

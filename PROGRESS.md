@@ -1,6 +1,6 @@
 # LiftRank: Progress
 
-_Last updated: 2026-10-15 (Claude Code) · Done: Phases 1–7 · **Deployed (unlisted) at https://liftrank-roan.vercel.app** · Finishing launch setup (see "Deployment status")_
+_Last updated: 2026-10-15 (Claude Code) · Done: Phases 1–7 + friend verification · **Deployed (unlisted) at https://liftrank-roan.vercel.app** · Finishing launch setup (see "Deployment status")_
 
 ## Status
 
@@ -94,6 +94,7 @@ See `.env.example` and SUPABASE_SETUP.md: Supabase URL, publishable key, secret 
 - **Found and fixed (Oct 15):** `NEXT_PUBLIC_SUPABASE_URL` in Vercel was wrong, so the live site couldn't reach Supabase. Public pages hid it because they don't call Supabase, and the reset page shows the same message either way. The owner corrected it and redeployed; a reset email from the site then arrived.
 - **Still open:** reset links land on `/?code=…` instead of `/auth/confirm`, meaning `https://liftrank-roan.vercel.app/**` isn't yet in Supabase → Authentication → URL Configuration → Redirect URLs, so Supabase falls back to the Site URL. Add it and retest.
 - **Added:** server-side logging of auth failures (`logAuthError` in `src/app/(auth)/actions.ts`): reset-request errors always, and sign-up, sign-in or Google errors the app doesn't recognize. It logs step, status, code and message, never the email; the user-facing messages are unchanged. Look for these lines in Vercel → Logs.
+- **Smoke test in progress:** `tptest` (second account) exists, with a pending gym "Equinox" and a proof video waiting for a friend to check it. Delete `tptest` from its Settings when done.
 - **Pending (owner):**
   - turn on Confirm email;
   - Supabase URL Configuration (Site URL, plus redirect `https://liftrank-roan.vercel.app/**`), if not done;
@@ -101,6 +102,25 @@ See `.env.example` and SUPABASE_SETUP.md: Supabase URL, publishable key, secret 
   - run the cron once from Vercel;
   - smoke test with a second account.
 - **Testing note:** `scripts/e2e-supabase.sh` signs up through the UI, so it needs Confirm email **off**. Switch it off briefly to run it, or use a separate test project.
+
+## Friend verification and UI changes (Oct 15, 2026; owner's request during the smoke test)
+
+- **Migration `…1200_friend_verification`** (dry-run, then applied):
+  - **Who verifies:** any friend or groupmate who can see the lift (`_can_verify`: visibility and blocks apply, never the owner) can watch its proof video and confirm it with `verify_proof`. One confirmation → Verified. They must have opened the video first (`watch_first`).
+  - **"Not enough to tell":** → Disputed, the lift still counts, the video is removed, and the owner may add a clearer one. The first decision settles it.
+  - **No rejections:** nobody can mark a lift "Not accepted" any more. Moderators no longer review videos (`mod_review_proof`, `mod_proof_queue` and `appeal_proof` are no longer granted). They keep reports, gyms and machine models. The invalid-lift and appeal tables stay, unused, so history is kept.
+  - **Notifications:** the owner hears who checked their lift; the person who asked for proof hears the outcome.
+  - **Home:** `get_proofs_to_check` feeds a "Check a friend's lift" section that appears only when videos are waiting.
+- **Lift page:**
+  - New order: the lift card, then Share and the leaderboard link, then a titled "Proof video" section with "Verified by …" and the verify box (watch first, then "Looks legit: verify" or "Not enough to tell").
+  - "Sharing and notes" became **"Who can see this lift"**, a separate panel where each option has a one-line description, an optional note with a hint, and "Save changes".
+  - **Delete lift** is its own section at the bottom.
+- **Navigation:** Friends is a tab in the desktop sidebar and in the phone bar (Home · Boards · + · Friends · Profile). It fits at 320 px (iPhone audit passes).
+- **Tests:**
+  - Live checks rewritten for the friend rules: 53/53.
+  - Browser flows F and G now verify through a friend or groupmate: 9/9.
+  - **E2E accounts:** created pre-confirmed with the secret key and signed in through the login page, so tests run with Confirm email on and send no emails. Set `E2E_UI_SIGNUP=1` (with Confirm email off) to exercise the signup form itself.
+  - One earlier run, before that change, triggered about 9 confirmation emails to fake `@example.com` addresses. Expect a few harmless bounce notices in the Gmail inbox.
 
 ## Launch checklist (private beta)
 

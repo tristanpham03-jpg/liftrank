@@ -8,8 +8,20 @@ export function username(base: string) {
   return `${base}_${RUN}`.slice(0, 20);
 }
 
-/** Signs up a fresh account, picks a username and skips the gym step. Leaves the page on /onboarding/lift. */
-export async function signUp(page: Page, name: string, opts: { from?: "landing" | "signup" } = {}) {
+const PASSWORD = "correct-horse-42";
+const emailOf = (name: string) => `${name}@${process.env.E2E_EMAIL_DOMAIN ?? "example.com"}`;
+
+/**
+ * Creates a fresh account and leaves the page on the username step (/onboarding).
+ *
+ * Against hosted Supabase with "Confirm email" on, signing up through the form
+ * would email a confirmation link (to an address nobody reads). So by default
+ * the account is created already-confirmed with the secret key, then signed in
+ * through the real login page: no email is sent. Set E2E_UI_SIGNUP=1 (with
+ * Confirm email off) to exercise the signup form itself. Locally (stand-in)
+ * the form is always used.
+ */
+export async function createAccount(page: Page, name: string, opts: { from?: "landing" | "signup" } = {}) {
   if (opts.from === "landing") {
     await page.goto("/");
     await page.getByRole("link", { name: "Start competing" }).first().click();
@@ -17,10 +29,25 @@ export async function signUp(page: Page, name: string, opts: { from?: "landing" 
     await page.goto("/signup");
   }
   await expect(page).toHaveURL(/\/signup/);
-  await page.getByLabel("Email").fill(`${name}@${process.env.E2E_EMAIL_DOMAIN ?? "example.com"}`);
-  await page.getByLabel("Password").fill("correct-horse-42");
-  await page.getByRole("button", { name: "Create account" }).click();
+  const admin = process.env.E2E_UI_SIGNUP ? null : hostedAdmin();
+  if (admin) {
+    const { error } = await admin.auth.admin.createUser({ email: emailOf(name), password: PASSWORD, email_confirm: true });
+    if (error) throw new Error(`create ${name}: ${error.message}`);
+    await page.goto("/login");
+    await page.getByLabel("Email").fill(emailOf(name));
+    await page.getByLabel("Password").fill(PASSWORD);
+    await page.getByRole("button", { name: "Sign in" }).click();
+  } else {
+    await page.getByLabel("Email").fill(emailOf(name));
+    await page.getByLabel("Password").fill(PASSWORD);
+    await page.getByRole("button", { name: "Create account" }).click();
+  }
   await expect(page).toHaveURL(/\/onboarding/);
+}
+
+/** Creates an account, picks a username and skips the gym step. Leaves the page on /onboarding/lift. */
+export async function signUp(page: Page, name: string, opts: { from?: "landing" | "signup" } = {}) {
+  await createAccount(page, name, opts);
   await page.getByLabel("Username").fill(name);
   await page.getByRole("button", { name: "Continue" }).click();
   await expect(page).toHaveURL(/\/onboarding\/gym/);
@@ -119,7 +146,7 @@ export async function signedInClient(name: string): Promise<SupabaseClient> {
   });
   const { error } = await client.auth.signInWithPassword({
     email: `${name}@${process.env.E2E_EMAIL_DOMAIN ?? "example.com"}`,
-    password: "correct-horse-42",
+    password: PASSWORD,
   });
   if (error) throw new Error(`sign in ${name}: ${error.message}`);
   return client;

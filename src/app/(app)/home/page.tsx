@@ -17,7 +17,9 @@ import { GlassCard } from "@/components/ui/glass";
 import { getCatalog, requireProfile, rpc } from "@/lib/data";
 import { relativeGap } from "@/lib/rival";
 import { createClient } from "@/lib/supabase/server";
-import type { FeedItem, HomeBoard, HomeData, PersonalRecord } from "@/lib/types";
+import type { FeedItem, HomeBoard, HomeData, PersonalRecord, ProofToCheck } from "@/lib/types";
+import { Avatar } from "@/components/ui/avatar";
+import { formatLift } from "@/lib/scoring";
 
 export const metadata: Metadata = { title: "Home" };
 
@@ -39,11 +41,12 @@ export default async function HomePage() {
   const profile = await requireProfile();
   const unit = profile.preferred_unit;
   const supabase = await createClient();
-  const [home, feed, catalog, prs] = await Promise.all([
+  const [home, feed, catalog, prs, toCheck] = await Promise.all([
     rpc<HomeData>(supabase, "get_home"),
     rpc<FeedItem[]>(supabase, "get_feed", { p_limit: 4 }),
     getCatalog(),
     rpc<PersonalRecord[]>(supabase, "get_prs", { p_user_id: null }),
+    rpc<ProofToCheck[]>(supabase, "get_proofs_to_check"),
   ]);
   const slugs = new Map(catalog.map((e) => [e.id, e.slug]));
 
@@ -127,6 +130,29 @@ export default async function HomePage() {
             ) : (
               <PrTargetCard pr={pr!} unit={unit} />
             )}
+          </section>
+        ) : null}
+
+        {/* Friends' proof videos waiting for someone to check (only when there are any). */}
+        {toCheck.length ? (
+          <section aria-labelledby="check-heading">
+            <SectionHeading>
+              <span id="check-heading">Check a friend’s lift</span>
+            </SectionHeading>
+            <ul className="glass-flat divide-y divide-white/[0.06] overflow-hidden rounded-[18px]">
+              {toCheck.slice(0, 3).map((p) => (
+                <li key={p.lift_id}>
+                  <Link href={`/lifts/${p.lift_id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-white/[0.03]">
+                    <Avatar name={p.user.display_name || p.user.username} seed={p.user.id} path={p.user.avatar_path} size={32} />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-medium">{p.user.display_name || p.user.username}</span>
+                      <span className="block truncate text-[13px] text-fg-3">{p.exercise_name} · video to check</span>
+                    </span>
+                    <span className="num shrink-0 text-lg">{formatLift(p, p.ranking_method, unit)}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
           </section>
         ) : null}
 

@@ -12,7 +12,7 @@ import { FriendRequestActions, MarkAllRead } from "./notifications-client";
 
 export const metadata: Metadata = { title: "Notifications" };
 
-function text(n: NotificationItem, unit: WeightUnit) {
+function text(n: NotificationItem, unit: WeightUnit, meId: string) {
   const who = n.actor ? n.actor.display_name || n.actor.username : "Someone";
   const lift =
     n.lift && n.exercise
@@ -37,17 +37,19 @@ function text(n: NotificationItem, unit: WeightUnit) {
         : `${who} chose not to add a video for their ${n.exercise?.name ?? "lift"}.`;
     case "proof_reviewed": {
       const exercise = n.exercise?.name ?? "lift";
-      // No actor: it's about your own lift. With an actor: a lift you asked about.
-      if (!n.actor) {
+      // Your own lift: the actor is the friend who checked it (none for older,
+      // moderator-reviewed ones). Someone else's: a lift you asked about, actor = its owner.
+      if (!n.lift?.user_id || n.lift.user_id === meId) {
+        const by = n.actor ? `${who} ` : "";
         return n.detail === "verified"
-          ? `Your ${exercise}${lift ? ` ${lift}` : ""} is verified.`
+          ? `${by ? `${by}verified` : "Verified:"} your ${exercise}${lift ? ` ${lift}` : ""}.`
           : n.detail === "insufficient"
-            ? `The video for your ${exercise} wasn’t enough to verify it. You can add a clearer one.`
-            : `Your ${exercise} wasn’t accepted, so it no longer counts on leaderboards. You can appeal once.`;
+            ? `${by ? `${who} couldn’t tell from` : "Not enough to tell from"} your ${exercise} video. It still counts; you can add a clearer one.`
+            : `Your ${exercise} wasn’t accepted, so it doesn’t count on leaderboards.`;
       }
       return n.detail === "verified"
         ? `${who}’s ${exercise}${lift ? ` ${lift}` : ""} is verified.`
-        : `A reviewer couldn’t verify ${who}’s ${exercise}.`;
+        : `A friend couldn’t tell from ${who}’s ${exercise} video. It still counts.`;
     }
     case "gym_record":
       return `${who} took the ${n.exercise?.name ?? "lift"} record at ${n.gym?.name ?? "your gym"}.`;
@@ -129,7 +131,7 @@ export default async function NotificationsPage() {
                             n.read_at ? "text-fg-2" : "text-fg",
                           )}
                         >
-                          {text(n, profile.preferred_unit)}
+                          {text(n, profile.preferred_unit, profile.id)}
                         </Link>
                         <p className="mt-1 flex items-center text-xs text-fg-3">
                           {!n.read_at ? (

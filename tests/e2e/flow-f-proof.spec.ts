@@ -1,16 +1,15 @@
 import { expect, test, type Page } from "@playwright/test";
-import { hostedAdmin, makeModerator, recordTestVideo, signUp, submitLift, username } from "./helpers";
+import { hostedAdmin, recordTestVideo, signUp, submitLift, username } from "./helpers";
 
-async function badge(page: Page) {
+function badge(page: Page) {
   return page.locator("[data-verification]").first();
 }
 
-test("Flow F: request proof → upload video → review → verified", async ({ browser }) => {
+test("Flow F: request proof → upload video → a friend verifies it", async ({ browser }) => {
   // Needs real Supabase Storage, so it runs against the hosted project only.
-  test.skip(!hostedAdmin(), "Needs hosted Supabase (Storage) and the secret key to create a moderator.");
+  test.skip(!hostedAdmin(), "Needs hosted Supabase (Storage).");
   const owner = username("lena");
   const friend = username("theo");
-  const reviewer = username("mona");
 
   // The owner logs a lift. Nothing about it asks for a video.
   const a = await (await browser.newContext()).newPage();
@@ -57,37 +56,30 @@ test("Flow F: request proof → upload video → review → verified", async ({ 
   expect(video.byteLength).toBeGreaterThan(1000);
   await fileInput.setInputFiles({ name: "deadlift.webm", mimeType: "video/webm", buffer: video });
   await expect(await badge(a)).toHaveText("Proof uploaded", { timeout: 30_000 });
-  await expect(a.getByText("Your video is waiting for a reviewer.")).toBeVisible();
+  await expect(a.getByText("Your video is waiting for a friend to check it.")).toBeVisible();
   // Uploading is not verification.
   await expect(a.getByText("Verified", { exact: true })).toHaveCount(0);
 
-  // The friend who asked hears back, sees the status, and may watch the video they asked for.
+  // The friend who asked hears back, watches the video, and confirms it.
   await b.goto("/notifications");
   await expect(b.getByText(/added a proof video for their Deadlift/)).toBeVisible();
   await b.goto(liftPath);
-  await expect(await badge(b)).toHaveText("Proof uploaded");
-  await b.getByRole("button", { name: "Watch video" }).click();
-  await expect(b.locator("video")).toBeVisible();
+  await expect(badge(b)).toHaveText("Proof uploaded");
+  const box = b.getByTestId("verify-box");
+  await expect(box).toBeVisible();
+  await expect(box.getByRole("button", { name: "Looks legit: verify" })).toBeDisabled(); // watch first
+  await box.getByRole("button", { name: "Watch video" }).click();
+  await expect(box.locator("video")).toBeVisible();
+  await expect.poll(() => box.locator("video").evaluate((v: HTMLVideoElement) => v.readyState)).toBeGreaterThan(0);
+  await box.getByRole("button", { name: "Looks legit: verify" }).click();
+  await expect(badge(b)).toHaveText("Verified");
+  await expect(b.getByText(new RegExp(`Verified by ${friend}`))).toBeVisible();
 
-  // A moderator watches it and verifies it.
-  const m = await (await browser.newContext()).newPage();
-  await signUp(m, reviewer);
-  await makeModerator(reviewer);
-  await m.goto("/moderation");
-  const item = m.getByTestId("proof-review").filter({ hasText: `@${owner}` });
-  await expect(item).toBeVisible();
-  await expect(item.getByRole("button", { name: "Verify" })).toBeDisabled();
-  await item.getByRole("button", { name: "Load video" }).click();
-  await expect(item.locator("video")).toBeVisible();
-  await expect.poll(() => item.locator("video").evaluate((v: HTMLVideoElement) => v.readyState)).toBeGreaterThan(0);
-  await item.getByRole("button", { name: "Verify" }).click();
-  await expect(m.getByText(new RegExp(`by @${owner}: verified`))).toBeVisible();
-
-  // Verified everywhere: the lift page, notifications, and the verified-only board.
+  // Verified everywhere: the owner's lift page, their notifications, and the verified-only board.
   await a.goto(liftPath);
-  await expect(await badge(a)).toHaveText("Verified");
+  await expect(badge(a)).toHaveText("Verified");
   await a.goto("/notifications");
-  await expect(a.getByText(/Your Deadlift .* is verified/)).toBeVisible();
+  await expect(a.getByText(new RegExp(`${friend} verified your Deadlift`))).toBeVisible();
 
   await b.goto("/leaderboards?exercise=deadlift&scope=friends&verified=1");
   await expect(b.getByRole("link", { name: "Verified only" })).toHaveAttribute("aria-pressed", "true");

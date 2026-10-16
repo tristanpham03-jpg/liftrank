@@ -231,13 +231,14 @@ describe("proof verification", () => {
   it("explains each state without implying cheating", () => {
     for (const status of ["unverified", "proof_uploaded", "disputed", "rejected", "verified"]) {
       for (const owner of [true, false]) {
-        expect(statusExplainer(status, owner)).not.toMatch(/cheat|fake|lie|dishonest/i);
+        expect(statusExplainer(status, owner)).not.toMatch(/\b(cheat\w*|fake\w*|lie[sd]?|lying|dishonest\w*)\b/i);
       }
     }
     expect(statusExplainer("disputed", false)).toMatch(/still counts/);
     expect(statusExplainer("rejected", false)).toMatch(/doesn’t count on leaderboards/);
     expect(statusExplainer("rejected", true)).toMatch(/stays in your history/);
-    expect(statusExplainer("proof_uploaded", true, { appealing: true })).toMatch(/different reviewer/);
+    expect(statusExplainer("verified", false)).toMatch(/friend watched the video/);
+    expect(statusExplainer("proof_uploaded", false)).toMatch(/Friends and groupmates/);
   });
 
   it("accepts MP4, MOV and WebM, by type or by extension when the type is missing", () => {

@@ -68,6 +68,7 @@ const MESSAGES: Record<string, string> = {
   already_appealed: "This lift has already been appealed once.",
   appeal_note_invalid: "Say briefly why the decision should change (3–500 characters).",
   appeal_needs_other_reviewer: "A different moderator needs to review this appeal.",
+  watch_first: "Watch the video before you decide.",
   invalid_avatar: "That picture didn't upload. Try again.",
   too_many_avatar_changes: "You've changed your picture a lot today. Try again tomorrow.",
   invalid_report: "Pick what's wrong.",

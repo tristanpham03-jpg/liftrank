@@ -104,39 +104,20 @@ export async function getProofVideoUrl(liftId: string): Promise<ActionResult<{ u
   }
 }
 
-export async function reviewProof(
-  liftId: string,
-  decision: "verified" | "insufficient" | "rejected",
-  notes: string,
-): Promise<ActionResult> {
+/**
+ * A friend or groupmate confirms a waiting video ("verified") or says it isn't
+ * enough to tell ("insufficient": Disputed, the lift still counts). The RPC
+ * checks they may verify this lift and that they opened the video first.
+ */
+export async function verifyProof(liftId: string, decision: "verified" | "insufficient"): Promise<ActionResult> {
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Sign in to continue." };
   if (!UUID.test(liftId)) return { ok: false, error: GENERIC_ERROR };
   const supabase = await createClient();
   try {
-    const res = await rpc<{ remove_paths: string[] }>(supabase, "mod_review_proof", {
-      p_lift_id: liftId,
-      p_decision: decision,
-      p_notes: notes.trim().slice(0, 500) || null,
-    });
+    const res = await rpc<{ remove_paths: string[] }>(supabase, "verify_proof", { p_lift_id: liftId, p_decision: decision });
     await removeProofFiles(supabase, res.remove_paths);
-    await track(supabase, userId, "proof_reviewed", { decision });
-    // No revalidation: the reviewed card stays on screen with its outcome until the next visit.
-    return { ok: true, data: undefined };
-  } catch (e) {
-    return fail(e);
-  }
-}
-
-/** One appeal per confirmed-invalid lift. The owner then adds a new video; a different moderator decides. */
-export async function appealProof(liftId: string, note: string): Promise<ActionResult> {
-  const userId = await getUserId();
-  if (!userId) return { ok: false, error: "Sign in to continue." };
-  if (!UUID.test(liftId)) return { ok: false, error: GENERIC_ERROR };
-  const supabase = await createClient();
-  try {
-    await rpc(supabase, "appeal_proof", { p_lift_id: liftId, p_note: note.trim().slice(0, 500) });
-    await track(supabase, userId, "proof_appealed");
+    await track(supabase, userId, "proof_verified", { decision });
     revalidatePath(`/lifts/${liftId}`);
     return { ok: true, data: undefined };
   } catch (e) {

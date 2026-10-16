@@ -131,7 +131,7 @@ The local folder is already a git repository with a first commit (secrets exclud
 
 **e. Moderators**
 
-In the Supabase SQL editor: `update public.profiles set is_moderator = true where username = '<name>';`. Use two moderators if you want appeals to be decided (an appeal goes to someone other than the moderator who rejected the lift). Moderators handle reports, proof videos, appeals, gyms and machine models at `/moderation`. To suspend an account, ban it in **Authentication → Users**.
+In the Supabase SQL editor: `update public.profiles set is_moderator = true where username = '<name>';`. Moderators handle reports, gyms and machine models at `/moderation`. Proof videos are verified by the lifter's friends and groupmates, not moderators. To suspend an account, ban it in **Authentication → Users**.
 
 **f. Smoke test on the deployed site**
 
@@ -142,6 +142,6 @@ Sign up with a real address (confirm the email), log a lift, invite a second acc
 - Free projects pause after about a week without activity. Open the dashboard and click **Restore** to wake one.
 - Database size, auth users, and bandwidth limits are generous for an MVP. Check **Settings → Usage**.
 - Proof videos (Phase 5) use the private Storage bucket `lift-proofs`, created by migration `…0800`. Free plan: 1 GB storage, 50 MB per file, 5 GB egress a month. LiftRank's limits live in `public.proof_settings` (25 MB / 30 s per video, a 750 MB storage budget, a 3 GB monthly playback budget, daily caps). Change them in the SQL editor, e.g. `update public.proof_settings set max_seconds = 45;`. The bucket's size cap follows `max_bytes` automatically.
-- Moderators review proof videos, gyms and machine models at `/moderation`. Make someone a moderator with `update public.profiles set is_moderator = true where username = '<name>';`.
+- Moderators handle reports, gyms and machine models at `/moderation`; friends and groupmates verify proof videos. Make someone a moderator with `update public.profiles set is_moderator = true where username = '<name>';`.
 - Profile pictures use the public-read bucket `avatars` (`…1100`): own-folder writes only, images only, 512 KB cap (the app uploads ~20 KB WebP files), at most 3 files per person.
 - On Vercel, set `CRON_SECRET` (any long random string) so the daily job in `vercel.json` can run. Locally, `npm run cleanup:proofs -- --delete` sweeps proof videos.

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, Home, Plus, Trophy, User } from "lucide-react";
+import { Bell, Home, Plus, Trophy, User, Users } from "lucide-react";
 import { AmbientBackground } from "@/components/ui/glass";
 import { cn } from "@/lib/cn";
 import { Logo } from "./logo";
@@ -10,12 +10,14 @@ import { OfflineBanner } from "./offline-banner";
 
 type Props = { username: string; unread: number; children: React.ReactNode };
 
-// Four destinations. Groups live under Leaderboards; notifications behind the bell.
+// Five destinations, Add Lift in the middle. Groups live under Leaderboards;
+// notifications behind the bell. The phone bar uses a shorter label where needed.
 const TABS = [
   { href: "/home", label: "Home", icon: Home, match: ["/home", "/notifications", "/activity"] },
-  { href: "/leaderboards", label: "Leaderboards", icon: Trophy, match: ["/leaderboards", "/groups"] },
+  { href: "/leaderboards", label: "Leaderboards", short: "Boards", icon: Trophy, match: ["/leaderboards", "/groups"] },
   { href: "/lift/new", label: "Add Lift", icon: Plus, match: ["/lift"] },
-  { href: "/profile", label: "Profile", icon: User, match: ["/profile", "/u/", "/settings", "/friends", "/lifts"] },
+  { href: "/friends", label: "Friends", icon: Users, match: ["/friends"] },
+  { href: "/profile", label: "Profile", icon: User, match: ["/profile", "/u/", "/settings", "/lifts"] },
 ];
 
 function isActive(pathname: string, match: string[]) {
@@ -85,7 +87,7 @@ export function AppShell({ username, unread, children }: Props) {
         className="md:hidden fixed inset-x-3 z-40"
         style={{ bottom: "calc(10px + var(--safe-bottom))" }}
       >
-        <ul className="glass grid h-[var(--nav-height)] grid-cols-4 rounded-[26px] px-1">
+        <ul className="glass grid h-[var(--nav-height)] grid-cols-5 rounded-[26px] px-1">
           {TABS.map((t) => {
             const active = isActive(pathname, t.match);
             const isAdd = t.href === "/lift/new";
@@ -96,7 +98,7 @@ export function AppShell({ username, unread, children }: Props) {
                   aria-current={active ? "page" : undefined}
                   aria-label={t.label}
                   className={cn(
-                    "flex flex-1 flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors",
+                    "flex min-w-0 flex-1 flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors",
                     active ? "text-fg" : "text-fg-3",
                   )}
                 >
@@ -108,7 +110,7 @@ export function AppShell({ username, unread, children }: Props) {
                     <>
                       <t.icon size={21} strokeWidth={active ? 2.2 : 1.8} />
                       <span className="flex items-center gap-1">
-                        {t.label}
+                        {t.short ?? t.label}
                       </span>
                       <span aria-hidden className={cn("h-1 w-1 rounded-full", active ? "bg-pearl" : "bg-transparent")} />
                     </>

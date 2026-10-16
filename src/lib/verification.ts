@@ -32,21 +32,22 @@ export const BADGE_LABEL: Record<VerificationBadgeKind, string> = {
 };
 
 /** One line under the badge on the lift page. Never implies cheating. */
-export function statusExplainer(status: VerificationStatus | string, isOwner: boolean, opts: { appealing?: boolean } = {}): string {
+export function statusExplainer(status: VerificationStatus | string, isOwner: boolean): string {
   switch (badgeKind(status)) {
     case "verified":
-      return "A reviewer watched the video and confirmed this lift.";
+      return "A friend watched the video and confirmed this lift.";
     case "proof_uploaded":
-      if (opts.appealing) return "Your appeal and new video are waiting for a different reviewer.";
-      return isOwner ? "Your video is waiting for a reviewer." : "A video was added and is waiting for a reviewer.";
+      return isOwner
+        ? "Your video is waiting for a friend to check it."
+        : "A video was added. Friends and groupmates can watch it and confirm it.";
     case "disputed":
       return isOwner
-        ? "The video wasn’t enough to confirm this lift. It still counts; you can add a clearer one."
-        : "A reviewer couldn’t confirm this lift from the video. It still counts.";
+        ? "A friend couldn’t tell from the video. It still counts; you can add a clearer one."
+        : "A friend couldn’t confirm this lift from the video. It still counts.";
     case "invalid":
       return isOwner
-        ? "A reviewer found this lift doesn’t meet the standard, so it no longer counts on leaderboards. It stays in your history."
-        : "A reviewer found this lift doesn’t meet the standard, so it doesn’t count on leaderboards.";
+        ? "This lift was ruled out earlier, so it doesn’t count on leaderboards. It stays in your history."
+        : "This lift doesn’t count on leaderboards.";
     default:
       return "Self-reported. Proof videos are optional.";
   }

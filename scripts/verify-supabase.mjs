@@ -427,104 +427,99 @@ try {
     assert((await rpc(b.client, "get_proof_state", { p_lift_id: proofLift })).challenge.status === "proof_submitted", "request not updated");
     assert((await notesOf(b, "proof_response")).some((n) => n.detail === "uploaded"), "requester not notified");
   });
-  await check("only the owner, moderators and the person who asked can watch, through a short-lived grant", async () => {
-    // c can see this public lift but never asked for proof.
-    await rejects(c.client.rpc("request_proof_view", { p_lift_id: proofLift }), "not_found");
-    const direct = await c.client.storage.from(BUCKET).createSignedUrl(proofPath, 60);
-    assert(direct.error || !direct.data?.signedUrl, "someone who didn't ask could sign a URL for the video");
+  await check("the owner, the person who asked, and friends/groupmates can watch; strangers and moderators can't", async () => {
+    // mod can see this public lift but is neither a friend nor in a group with a.
+    await rejects(mod.client.rpc("request_proof_view", { p_lift_id: proofLift }), "not_found");
+    const st = await rpc(mod.client, "get_proof_state", { p_lift_id: proofLift });
+    assert(!st.has_video && !st.can_verify, "a stranger is offered the video or the verify buttons");
+    const direct = await mod.client.storage.from(BUCKET).createSignedUrl(proofPath, 60);
+    assert(direct.error || !direct.data?.signedUrl, "a stranger could sign a URL for the video");
     const pub = await fetch(`${url}/storage/v1/object/public/${BUCKET}/${proofPath}`);
     assert(!pub.ok, "the video is reachable without signing");
-    assert(!(await rpc(c.client, "get_proof_state", { p_lift_id: proofLift })).has_video, "non-requester told there's a video to watch");
     const unsigned = await b.client.storage.from(BUCKET).createSignedUrl(proofPath, 60);
-    assert(unsigned.error || !unsigned.data?.signedUrl, "the requester could sign without a grant");
+    assert(unsigned.error || !unsigned.data?.signedUrl, "signing worked without a grant");
 
-    // b asked for this proof: allowed, through the same grant.
-    assert((await rpc(b.client, "get_proof_state", { p_lift_id: proofLift })).has_video, "requester not offered the video");
+    // b (friend, asked for it) and c (groupmate) may watch, and may verify.
+    for (const u of [b, c]) {
+      const s2 = await rpc(u.client, "get_proof_state", { p_lift_id: proofLift });
+      assert(s2.has_video && s2.can_verify, `${u.tag} not offered the video and verify buttons`);
+    }
     await rpc(b.client, "request_proof_view", { p_lift_id: proofLift });
     const theirs = await b.client.storage.from(BUCKET).createSignedUrl(proofPath, 60);
-    if (theirs.error) throw new Error(`requester sign: ${theirs.error.message}`);
-    assert((await (await fetch(theirs.data.signedUrl)).arrayBuffer()).byteLength === 2048, "requester download failed");
+    if (theirs.error) throw new Error(`friend sign: ${theirs.error.message}`);
+    assert((await (await fetch(theirs.data.signedUrl)).arrayBuffer()).byteLength === 2048, "friend download failed");
 
     await rpc(a.client, "request_proof_view", { p_lift_id: proofLift });
     const signed = await a.client.storage.from(BUCKET).createSignedUrl(proofPath, 60);
     if (signed.error) throw new Error(`owner sign: ${signed.error.message}`);
-    const body = await (await fetch(signed.data.signedUrl)).arrayBuffer();
-    assert(body.byteLength === 2048, `downloaded ${body.byteLength} bytes`);
-    await rpc(mod.client, "request_proof_view", { p_lift_id: proofLift });
-    assert(!(await mod.client.storage.from(BUCKET).createSignedUrl(proofPath, 60)).error, "moderator can't sign");
+    assert((await rpc(a.client, "get_proof_state", { p_lift_id: proofLift })).can_verify === false, "owner can verify their own lift");
   });
-  await check("a file in use can't be deleted, even by its owner", async () => {
+  await check("a file in use can't be deleted, even by its owner or a friend who watched it", async () => {
     await a.client.storage.from(BUCKET).remove([proofPath]);
-    await mod.client.storage.from(BUCKET).remove([proofPath]);
-    assert(await exists(proofPath), "the proof under review was deleted");
+    await b.client.storage.from(BUCKET).remove([proofPath]);
+    assert(await exists(proofPath), "the proof waiting for a check was deleted");
   });
-  await check("only moderators review, never their own lifts; the queue lists waiting proof", async () => {
-    for (const u of [a, b]) await rejects(u.client.rpc("mod_review_proof", { p_lift_id: proofLift, p_decision: "verified" }), "forbidden");
-    await rejects(b.client.rpc("mod_proof_queue"), "forbidden");
-    const queue = await rpc(mod.client, "mod_proof_queue");
-    assert(queue.some((q) => q.lift_id === proofLift && q.requested), "lift missing from the queue");
-    const own = (await lift(mod, deadlift, 300, 1)).lift_id;
-    const s = await slot(mod, own);
-    if ((await put(mod, s.path)).error) throw new Error("moderator upload failed");
-    await rpc(mod.client, "complete_proof_upload", { p_upload_id: s.upload_id });
-    assert(!(await rpc(mod.client, "mod_proof_queue")).some((q) => q.lift_id === own), "own lift in own queue");
-    await rejects(mod.client.rpc("mod_review_proof", { p_lift_id: own, p_decision: "verified" }), "cannot_review_own");
+  await check("only friends/groupmates who watched can decide; nobody can reject; moderators can't review", async () => {
+    await rejects(a.client.rpc("verify_proof", { p_lift_id: proofLift, p_decision: "verified" }), "not_found"); // own lift
+    await rejects(mod.client.rpc("verify_proof", { p_lift_id: proofLift, p_decision: "verified" }), "not_found"); // stranger
+    await rejects(c.client.rpc("verify_proof", { p_lift_id: proofLift, p_decision: "verified" }), "watch_first");
+    await rejects(b.client.rpc("verify_proof", { p_lift_id: proofLift, p_decision: "rejected" }), "invalid_decision");
+    for (const fn of ["mod_review_proof", "mod_proof_queue", "appeal_proof"]) {
+      const args = fn === "mod_proof_queue" ? {} : fn === "appeal_proof" ? { p_lift_id: proofLift, p_note: "please" } : { p_lift_id: proofLift, p_decision: "verified" };
+      await rejects(mod.client.rpc(fn, args), "permission denied");
+    }
+    assert((await rpc(c.client, "get_proofs_to_check")).some((x) => x.lift_id === proofLift), "groupmate's to-check list misses it");
+    assert(!(await rpc(mod.client, "get_proofs_to_check")).some((x) => x.lift_id === proofLift), "a stranger is asked to check it");
+    assert(!(await rpc(a.client, "get_proofs_to_check")).some((x) => x.lift_id === proofLift), "owner asked to check their own lift");
   });
-  await check("verifying shows the badge, fills the verified-only board, and tells both people", async () => {
+  await check("one friend's confirmation verifies it, fills the verified-only board, and tells both people", async () => {
     const before = await rpc(b.client, "get_leaderboard", { p_exercise_id: deadlift, p_kind: "friends", p_verified: true });
     assert(!before.rows.some((r) => r.user_id === a.id), "unverified lift on the verified-only board");
-    const res = await rpc(mod.client, "mod_review_proof", { p_lift_id: proofLift, p_decision: "verified", p_notes: "Clear lockout." });
+    await rpc(c.client, "request_proof_view", { p_lift_id: proofLift }); // c watches…
+    const res = await rpc(c.client, "verify_proof", { p_lift_id: proofLift, p_decision: "verified" }); // …and confirms
     assert(res.remove_paths.length === 0 && (await exists(proofPath)), "verified video was removed");
+    await rejects(b.client.rpc("verify_proof", { p_lift_id: proofLift, p_decision: "insufficient" }), "not_found"); // already settled
     const after = await rpc(b.client, "get_leaderboard", { p_exercise_id: deadlift, p_kind: "friends", p_verified: true });
     const row = after.rows.find((r) => r.user_id === a.id);
     assert(row?.lift_id === proofLift && row.verification_status === "verified", "verified lift missing from the verified-only board");
     assert(after.champion == null, "verified-only boards shouldn't crown anyone");
-    assert((await notesOf(a, "proof_reviewed")).some((n) => n.detail === "verified" && !n.actor), "owner not told");
+    const st = await rpc(b.client, "get_proof_state", { p_lift_id: proofLift });
+    assert(st.status === "verified" && st.verified_by?.id === c.id, "verified_by missing");
+    assert((await notesOf(a, "proof_reviewed")).some((n) => n.detail === "verified" && n.actor?.id === c.id), "owner not told who verified it");
     assert((await notesOf(b, "proof_reviewed")).some((n) => n.detail === "verified" && n.actor?.id === a.id), "requester not told");
     assert((await rpc(a.client, "get_proof_state", { p_lift_id: proofLift })).can_upload === false, "verified lift accepts new proof");
     await rejects(slotRefused(a, proofLift), "proof_not_needed");
   });
-  await check("insufficient keeps the lift competing; rejected (confirmed invalid) takes it off boards and PRs", async () => {
+  await check("'not enough to tell' keeps the lift competing, removes the video, and lets the owner try again", async () => {
     benchLift = (await lift(a, bench, 275, 1)).lift_id;
     let s = await slot(a, benchLift);
     if ((await put(a, s.path)).error) throw new Error("upload failed");
     await rpc(a.client, "complete_proof_upload", { p_upload_id: s.upload_id });
-    let res = await rpc(mod.client, "mod_review_proof", { p_lift_id: benchLift, p_decision: "insufficient" });
-    await mod.client.storage.from(BUCKET).remove(res.remove_paths); // what the app does next
+    await rpc(b.client, "request_proof_view", { p_lift_id: benchLift });
+    const res = await rpc(b.client, "verify_proof", { p_lift_id: benchLift, p_decision: "insufficient" });
+    await b.client.storage.from(BUCKET).remove(res.remove_paths); // what the app does next (the friend who watched may)
     assert(!(await exists(s.path)), "insufficient video not removed");
-    assert((await rpc(a.client, "get_proof_state", { p_lift_id: benchLift })).status === "disputed", "not disputed");
-    let fb = await board(b, bench);
-    assert(fb.rows.find((r) => r.user_id === a.id)?.lift_id === benchLift, "an insufficient-evidence lift left the board");
+    const own = await rpc(a.client, "get_proof_state", { p_lift_id: benchLift });
+    assert(own.status === "disputed" && own.can_upload && !own.can_appeal, "not disputed, or owner can't try again");
+    const fb = await board(b, bench);
+    assert(fb.rows.find((r) => r.user_id === a.id)?.lift_id === benchLift, "a disputed lift left the board");
+    assert((await notesOf(a, "proof_reviewed")).some((n) => n.detail === "insufficient" && n.actor?.id === b.id), "owner not told");
 
-    s = await slot(a, benchLift); // you may try again
+    s = await slot(a, benchLift); // try again with a clearer video
     if ((await put(a, s.path)).error) throw new Error("re-upload failed");
     await rpc(a.client, "complete_proof_upload", { p_upload_id: s.upload_id });
-    res = await rpc(mod.client, "mod_review_proof", { p_lift_id: benchLift, p_decision: "rejected", p_notes: "Different lift." });
-    await mod.client.storage.from(BUCKET).remove(res.remove_paths);
-    assert(!(await exists(s.path)), "rejected video not removed");
-    const own = await rpc(a.client, "get_proof_state", { p_lift_id: benchLift });
-    assert(own.status === "rejected" && own.review?.notes === "Different lift.", "owner doesn't see the outcome and note");
-    assert(own.invalidated && own.can_appeal && !own.can_upload, "owner can't appeal, or can upload without appealing");
-    const seen = await rpc(b.client, "get_proof_state", { p_lift_id: benchLift });
-    assert(seen.status === "rejected" && seen.review === null && !seen.can_appeal, "others see the reviewer's note or can appeal");
-    fb = await board(b, bench);
-    assert(!fb.rows.some((r) => r.lift_id === benchLift), "a confirmed-invalid lift is still on the board");
-    assert(fb.rows.find((r) => r.user_id === a.id), "the owner's other lifts left the board too");
-    const prs = (await rpc(b.client, "get_profile", { p_username: a.username })).prs;
-    assert(!prs.some((p) => p.lift_id === benchLift), "a confirmed-invalid lift shows as a PR");
-    const mine = await a.client.from("lifts").select("id").eq("id", benchLift);
-    assert(mine.data?.length === 1, "the invalid lift vanished from its owner's history");
-    await rejects(slotRefused(a, benchLift), "proof_not_needed"); // only through an appeal
+    assert((await rpc(a.client, "get_proof_state", { p_lift_id: benchLift })).status === "proof_uploaded", "re-upload not waiting");
     await rejects(slotRefused(a, (await lift(a, deadlift, 185, 3)).lift_id), "too_many_uploads"); // 3 a day by default
   });
   await check("declining a request changes nothing about the lift", async () => {
-    await rpc(b.client, "request_proof", { p_lift_id: benchLift });
-    const ch = (await rpc(a.client, "get_proof_state", { p_lift_id: benchLift })).challenge;
+    const declineLift = (await lift(a, bench, 245, 1)).lift_id;
+    await rpc(b.client, "request_proof", { p_lift_id: declineLift });
+    const ch = (await rpc(a.client, "get_proof_state", { p_lift_id: declineLift })).challenge;
     await rejects(b.client.rpc("decline_proof_request", { p_challenge_id: ch.id }), "not_found"); // only the owner
     await rpc(a.client, "decline_proof_request", { p_challenge_id: ch.id, p_response: "No camera that day." });
-    const seen = await rpc(b.client, "get_proof_state", { p_lift_id: benchLift });
+    const seen = await rpc(b.client, "get_proof_state", { p_lift_id: declineLift });
     assert(seen.challenge.status === "declined" && seen.challenge.response === "No camera that day.", "decline not shown to the requester");
-    assert(seen.status === "rejected" && !seen.can_request, "declining changed the status or allows asking again");
+    assert(seen.status === "unverified" && !seen.can_request, "declining changed the status or allows asking again");
     assert((await notesOf(b, "proof_response")).some((n) => n.detail === "declined"), "requester not told");
   });
   await check("proof requests are limited per day", async () => {
@@ -554,50 +549,25 @@ try {
     await rejects(a.client.rpc("proof_orphans"), "permission denied");
   });
 
-  // ───────────── Appeals (Phase 5 refinement) and Phase 6 ─────────────
-  let e, mod2, appealLift;
+  // ───────────── Phase 6 setup: a new top lifter whose lift a groupmate verifies ─────────────
+  let e, mod2, eLift;
   const groupBoardKey = () => `group:${group}:${bench}`;
-  console.log("Appeals");
-  await check("a confirmed-invalid lift leaves its group title; one appeal, decided by a different moderator, restores it", async () => {
+  console.log("Champions");
+  await check("a new top lifter becomes group champion; a groupmate verifies the lift", async () => {
     e = await makeUser("e");
-    mod2 = await makeUser("n");
+    mod2 = await makeUser("n"); // a stranger to the group, used below
     for (const u of [e, mod2]) await rpc(u.client, "complete_username", { p_username: u.username });
-    if ((await admin.from("profiles").update({ is_moderator: true }).eq("id", mod2.id)).error) throw new Error("promote failed");
     const inv = await rpc(a.client, "create_group_invite", { p_group_id: group, p_expires_in_days: 1, p_max_uses: 2 });
     await rpc(e.client, "accept_group_invite", { p_token: inv.token });
-    appealLift = (await lift(e, bench, 300, 1)).lift_id;
-    let gb = await board(a, bench, "group", group);
+    eLift = (await lift(e, bench, 300, 1)).lift_id;
+    const gb = await board(a, bench, "group", group);
     assert(gb.champion?.user_id === e.id, "new top lifter isn't champion");
-
-    let s = await slot(e, appealLift);
+    const s = await slot(e, eLift);
     if ((await put(e, s.path)).error) throw new Error("upload failed");
     await rpc(e.client, "complete_proof_upload", { p_upload_id: s.upload_id });
-    const res = await rpc(mod.client, "mod_review_proof", { p_lift_id: appealLift, p_decision: "rejected", p_notes: "Not to depth." });
-    await mod.client.storage.from(BUCKET).remove(res.remove_paths);
-    gb = await board(a, bench, "group", group);
-    assert(!gb.rows.some((r) => r.user_id === e.id) && gb.champion?.user_id !== e.id, "invalid lift still ranked or champion");
-
-    await rejects(b.client.rpc("appeal_proof", { p_lift_id: appealLift, p_note: "Not mine to appeal" }), "not_found");
-    await rejects(e.client.rpc("appeal_proof", { p_lift_id: appealLift, p_note: "x" }), "appeal_note_invalid");
-    await rpc(e.client, "appeal_proof", { p_lift_id: appealLift, p_note: "Side angle shows depth." });
-    await rejects(e.client.rpc("appeal_proof", { p_lift_id: appealLift, p_note: "Again please" }), "already_appealed");
-    await rejects(e.client.rpc("appeal_proof", { p_lift_id: (await lift(e, deadlift, 315, 1)).lift_id, p_note: "Not invalid" }), "cannot_appeal");
-    const st = await rpc(e.client, "get_proof_state", { p_lift_id: appealLift });
-    assert(st.can_upload && st.appeal?.status === "open" && !st.can_appeal, "appeal state wrong");
-
-    s = await slot(e, appealLift);
-    if ((await put(e, s.path)).error) throw new Error("appeal upload failed");
-    await rpc(e.client, "complete_proof_upload", { p_upload_id: s.upload_id });
-    gb = await board(a, bench, "group", group);
-    assert(!gb.rows.some((r) => r.user_id === e.id), "a lift under appeal is back on the board before the decision");
-    assert(!(await rpc(mod.client, "mod_proof_queue")).some((q) => q.lift_id === appealLift), "appeal shown to the moderator who rejected it");
-    await rejects(mod.client.rpc("mod_review_proof", { p_lift_id: appealLift, p_decision: "verified" }), "appeal_needs_other_reviewer");
-    const item = (await rpc(mod2.client, "mod_proof_queue")).find((q) => q.lift_id === appealLift);
-    assert(item?.appeal?.note === "Side angle shows depth.", "appeal note missing from the queue");
-    await rpc(mod2.client, "mod_review_proof", { p_lift_id: appealLift, p_decision: "verified" });
-    gb = await board(a, bench, "group", group);
-    assert(gb.champion?.user_id === e.id && gb.rows[0].user_id === e.id, "an overturned appeal didn't restore the lift and title");
-    assert((await rpc(e.client, "get_proof_state", { p_lift_id: appealLift })).appeal.status === "overturned", "appeal not closed");
+    await rpc(c.client, "request_proof_view", { p_lift_id: eLift });
+    await rpc(c.client, "verify_proof", { p_lift_id: eLift, p_decision: "verified" });
+    assert((await rpc(a.client, "get_proof_state", { p_lift_id: eLift })).status === "verified", "groupmate couldn't verify");
   });
 
   console.log("Achievements and titles (Phase 6)");
@@ -611,14 +581,14 @@ try {
     assert(["group_champion", "verified_lifter"].every((id) => eIds.includes(id)), `e has ${eIds}`);
     const { count } = await admin.from("user_achievements").select("*", { count: "exact", head: true })
       .eq("user_id", e.id).eq("achievement_id", "group_champion");
-    assert(count === 1, `group_champion awarded ${count} times`); // e became champion twice
+    assert(count === 1, `group_champion awarded ${count} times`);
     const notes = await notesOf(e, "achievement");
     assert(notes.some((n) => n.achievement?.id === "group_champion") && !notes.some((n) => n.achievement?.id === "first_lift"), "achievement notifications wrong");
     await rejects(e.client.from("user_achievements").insert({ user_id: e.id, achievement_id: "five_records" }), "permission denied");
   });
   await check("titles show to fellow group members only, and only the holder gets a champion card", async () => {
     const seenByMember = (await rpc(a.client, "get_profile", { p_username: e.username })).titles;
-    assert(seenByMember.some((t) => t.board_key === groupBoardKey() && t.lift?.id === appealLift), "member can't see the title");
+    assert(seenByMember.some((t) => t.board_key === groupBoardKey() && t.lift?.id === eLift), "member can't see the title");
     const seenByOutsider = (await rpc(mod2.client, "get_profile", { p_username: e.username })).titles;
     assert(!seenByOutsider.some((t) => t.kind === "group"), "a group title leaked to a non-member");
     assert((await rpc(e.client, "get_champion_card", { p_board_key: groupBoardKey() }))?.exercise?.name, "holder has no card");

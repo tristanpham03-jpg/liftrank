@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { hostedAdmin, makeModerator, RUN, signUp, submitLift, username } from "./helpers";
+import { createAccount, hostedAdmin, makeModerator, RUN, signUp, submitLift, username } from "./helpers";
 
 async function optIn(page: Page) {
   const toggle = page.getByRole("switch", { name: "Compete on gym and nearby boards" });
@@ -15,10 +15,7 @@ test("Flow E: add a gym → review → gym and nearby boards → machine lifts",
 
   // Onboarding: add a gym, which stays pending, and opt in.
   const a = await (await browser.newContext()).newPage();
-  await a.goto("/signup");
-  await a.getByLabel("Email").fill(`${owner}@example.com`);
-  await a.getByLabel("Password").fill("correct-horse-42");
-  await a.getByRole("button", { name: "Create account" }).click();
+  await createAccount(a, owner);
   await a.getByLabel("Username").fill(owner);
   await a.getByRole("button", { name: "Continue" }).click();
   await expect(a).toHaveURL(/\/onboarding\/gym/);
@@ -50,8 +47,10 @@ test("Flow E: add a gym → review → gym and nearby boards → machine lifts",
   // A moderator approves it with coordinates.
   await makeModerator(owner);
   await a.goto("/moderation");
-  await a.getByLabel("Coordinates").fill("-48.8767, -123.3933");
-  await a.getByRole("button", { name: "Approve" }).click();
+  // Other gyms may be waiting too (real submissions): act on this test's gym only.
+  const review = a.getByRole("listitem").filter({ hasText: gymName });
+  await review.getByLabel("Coordinates").fill("-48.8767, -123.3933");
+  await review.getByRole("button", { name: "Approve" }).click();
   await expect(a.getByText(`${gymName}: approved.`)).toBeVisible();
 
   // Now the second lifter can pick it and opt in.

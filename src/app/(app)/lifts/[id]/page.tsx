@@ -69,17 +69,16 @@ export default async function LiftPage({ params }: { params: Promise<{ id: strin
         </Link>
       ) : null}
 
-      <ProofPanel liftId={lift.id} state={proof} ownerName={owner?.display_name || (owner ? `@${owner.username}` : "The lifter")} />
-
       {isOwner ? (
         <SharePrButton liftId={lift.id} exerciseName={exercise.name} label="Share as image" variant="secondary" className="mt-4" />
       ) : null}
-
-      <p className="mt-4">
+      <p className="mt-4 px-1">
         <Link href={`/leaderboards?exercise=${exercise.slug}`} className="tap text-fg-2 underline underline-offset-4 hover:text-fg">
           See the {exercise.name} leaderboard
         </Link>
       </p>
+
+      <ProofPanel liftId={lift.id} state={proof} ownerName={owner?.display_name || (owner ? `@${owner.username}` : "The lifter")} />
 
       {isOwner && defaults ? (
         <LiftOwnerControls

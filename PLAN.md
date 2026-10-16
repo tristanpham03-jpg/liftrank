@@ -77,3 +77,12 @@ Source of truth: `LIFTRANK_BUILD_PROMPT.md`. This file records the build order a
 | Lift rate limit | Trigger: 60 inserts per hour per user | Stops scripts and loops without touching `submit_lift`. |
 | CSP | Not added | Needs nonces and dynamic rendering for every page; the other headers are in place. |
 | Deploy | Guide and config only; no deploy without the owner's approval | As instructed. |
+
+## Friend verification (Oct 15, 2026; owner's decision)
+
+| Topic | Decision | Why |
+|---|---|---|
+| Who verifies | Any friend or groupmate who can see the lift; one confirmation | The owner wants verification to be social. This departs from the brief's moderator-only verification (§9 Phase 5). |
+| Rejecting | Nobody can mark a lift invalid; friends can only verify or say "not enough to tell" (Disputed, still counts) | So friends can't knock a rival off a board. |
+| Moderators | No video review; they keep reports, gyms and machine models | Owner's choice. Appeals ended with it. |
+| Watch first | `verify_proof` requires a playback grant for that video | A confirmation should mean someone actually opened it. |

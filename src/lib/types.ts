@@ -362,6 +362,9 @@ export type ProofState = {
   review: { decision: "verified" | "rejected" | "disputed"; notes: string | null; created_at: string } | null;
   /** Confirmed invalid: off every leaderboard and title, kept in history. */
   invalidated: boolean;
+  /** A friend or groupmate may confirm this waiting video. */
+  can_verify: boolean;
+  verified_by: PersonRef | null;
   can_appeal: boolean;
   appeal: { status: "open" | "upheld" | "overturned"; note: string; created_at: string } | null;
   limits: { max_bytes: number; max_seconds: number; mime_types: string[] } | null;
@@ -402,4 +405,13 @@ export type Title = RecordEntry & {
 export type RecordHistory = {
   reigns: (RecordEntry & { since: string; until: string | null })[];
   monthly: (RecordEntry & { month: string; lifters: number })[];
+};
+
+/** A friend's or groupmate's lift with a video waiting to be checked. */
+export type ProofToCheck = LiftLoad & {
+  lift_id: string;
+  exercise_name: string;
+  ranking_method: RankingMethod;
+  score: number | null;
+  user: PersonRef;
 };

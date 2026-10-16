@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
 import { RotateCw, Upload } from "lucide-react";
-import { appealProof, declineProofRequest, finishProofUpload, requestProof, startProofUpload } from "@/app/(app)/lifts/proof-actions";
+import { declineProofRequest, finishProofUpload, requestProof, startProofUpload, verifyProof } from "@/app/(app)/lifts/proof-actions";
 import { ProofVideo } from "@/components/lifts/proof-video";
 import { Button } from "@/components/ui/button";
 import { FormMessage, Hint, Label, Textarea } from "@/components/ui/form";
@@ -16,10 +16,13 @@ import { checkProofDuration, checkProofFile, formatMegabytes, proofMime, statusE
 type Phase = { kind: "idle" } | { kind: "checking" } | { kind: "uploading"; progress: number } | { kind: "saving" } | { kind: "failed"; message: string; retry: boolean };
 
 export function ProofPanel({ liftId, state, ownerName }: { liftId: string; state: ProofState; ownerName: string }) {
+  const by = state.verified_by ? state.verified_by.display_name || `@${state.verified_by.username}` : null;
   return (
-    <section className="mt-6 space-y-4" aria-label="Proof">
+    <section className="mt-8 space-y-3" aria-label="Proof video">
+      <h2 className="px-1 text-[17px] font-semibold tracking-[-0.01em]">Proof video</h2>
       <p className="px-1 text-sm text-fg-3">
-        {statusExplainer(state.status, state.is_owner, { appealing: state.appeal?.status === "open" })}
+        {statusExplainer(state.status, state.is_owner)}
+        {by && state.status === "verified" ? ` Verified by ${by}.` : ""}
       </p>
       {state.is_owner ? <OwnerProof liftId={liftId} state={state} /> : <ViewerProof liftId={liftId} state={state} ownerName={ownerName} />}
     </section>
@@ -43,19 +46,7 @@ function OwnerProof({ liftId, state }: { liftId: string; state: ProofState }) {
         </div>
       ) : null}
       {state.review?.notes && (state.status === "disputed" || state.status === "rejected") ? (
-        <p className="glass-flat rounded-[var(--radius-panel)] px-4 py-3 text-sm text-fg-2">Reviewer’s note: {state.review.notes}</p>
-      ) : null}
-      {state.can_appeal ? <AppealForm liftId={liftId} /> : null}
-      {state.appeal ? (
-        <p className="glass-flat rounded-[var(--radius-panel)] px-4 py-3 text-sm text-fg-2" data-testid="appeal-status">
-          {state.appeal.status === "open"
-            ? state.can_upload
-              ? "Appeal sent. Add a new video so a different reviewer can look again."
-              : "Appeal sent. A different reviewer will look at your new video."
-            : state.appeal.status === "overturned"
-              ? "Your appeal was accepted."
-              : "Your appeal was reviewed and the decision stands."}
-        </p>
+        <p className="glass-flat rounded-[var(--radius-panel)] px-4 py-3 text-sm text-fg-2">Note: {state.review.notes}</p>
       ) : null}
       {!challenge && state.can_upload && state.limits ? (
         <div className="glass-flat rounded-[var(--radius-panel)] p-4">
@@ -64,50 +55,6 @@ function OwnerProof({ liftId, state }: { liftId: string; state: ProofState }) {
       ) : null}
       {state.has_video ? <ProofVideo liftId={liftId} label="Watch your video" /> : null}
     </>
-  );
-}
-
-function AppealForm({ liftId }: { liftId: string }) {
-  const router = useRouter();
-  const [open, setOpen] = useState(false);
-  const [note, setNote] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [pending, start] = useTransition();
-  if (!open) {
-    return (
-      <div>
-        <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>
-          Appeal
-        </Button>
-        <Hint>You can appeal once, with a new video. A different reviewer decides.</Hint>
-      </div>
-    );
-  }
-  return (
-    <div className="glass-flat space-y-2 rounded-[var(--radius-panel)] p-4">
-      <Label htmlFor="appeal-note">Why should a reviewer look again?</Label>
-      <Textarea id="appeal-note" value={note} maxLength={500} onChange={(e) => setNote(e.target.value)} placeholder="Full lockout is visible from the side angle." />
-      <Hint>Next you’ll add a new video. This is your one appeal for this lift.</Hint>
-      <FormMessage>{error}</FormMessage>
-      <div className="flex gap-2">
-        <Button
-          size="sm"
-          disabled={pending || note.trim().length < 3}
-          onClick={() =>
-            start(async () => {
-              const res = await appealProof(liftId, note);
-              if (!res.ok) return setError(res.error);
-              router.refresh();
-            })
-          }
-        >
-          Send appeal
-        </Button>
-        <Button size="sm" variant="ghost" disabled={pending} onClick={() => setOpen(false)}>
-          Cancel
-        </Button>
-      </div>
-    </div>
   );
 }
 
@@ -176,7 +123,7 @@ function ProofUploader({ liftId, limits, primary }: { liftId: string; limits: No
       </Button>
       {phase.kind === "idle" || phase.kind === "failed" ? (
         <Hint>
-          Optional. Up to {limits.max_seconds} seconds and {formatMegabytes(limits.max_bytes)}. Film the whole rep with the weight in view. A reviewer checks it; only you and reviewers can watch it.
+          Optional. Up to {limits.max_seconds} seconds and {formatMegabytes(limits.max_bytes)}. Film the whole rep with the weight in view. Your friends and groupmates can watch it and confirm the lift.
         </Hint>
       ) : null}
       {phase.kind === "checking" ? <p className="text-sm text-fg-2">Checking the video…</p> : null}
@@ -300,7 +247,44 @@ function ViewerProof({ liftId, state, ownerName }: { liftId: string; state: Proo
           </Button>
         )
       ) : null}
-      {state.has_video ? <ProofVideo liftId={liftId} /> : null}
+      {state.can_verify ? (
+        <VerifyBox liftId={liftId} ownerName={ownerName} />
+      ) : state.has_video ? (
+        <ProofVideo liftId={liftId} />
+      ) : null}
     </>
+  );
+}
+
+/** Watch first, then confirm it or say you can't tell. The first friend to decide settles it. */
+function VerifyBox({ liftId, ownerName }: { liftId: string; ownerName: string }) {
+  const router = useRouter();
+  const [watched, setWatched] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+  const decide = (decision: "verified" | "insufficient") =>
+    start(async () => {
+      setError(null);
+      const res = await verifyProof(liftId, decision);
+      if (!res.ok) return setError(res.error);
+      router.refresh();
+    });
+  return (
+    <div className="glass space-y-3 rounded-[var(--radius-panel)] p-4" data-testid="verify-box">
+      <div>
+        <p className="font-semibold">Check {ownerName}’s lift</p>
+        <p className="mt-1 text-sm text-fg-3">Watch the video. Confirm it if it shows this lift: the full rep and the weight.</p>
+      </div>
+      <ProofVideo liftId={liftId} onLoaded={() => setWatched(true)} />
+      <FormMessage>{error}</FormMessage>
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" disabled={!watched || pending} onClick={() => decide("verified")}>
+          Looks legit: verify
+        </Button>
+        <Button size="sm" variant="secondary" disabled={!watched || pending} onClick={() => decide("insufficient")}>
+          Not enough to tell
+        </Button>
+      </div>
+    </div>
   );
 }
