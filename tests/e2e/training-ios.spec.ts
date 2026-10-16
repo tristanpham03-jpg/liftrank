@@ -18,7 +18,8 @@ test("My Training fits a 320 px iPhone", async ({ page }) => {
   await page.goto("/training");
   await page.getByRole("button", { name: /Push \/ Pull \/ Legs/ }).click();
   await page.getByRole("button", { name: "Use PPL" }).click();
-  await expect(page.getByRole("heading", { name: "My Training" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Training days" })).toBeVisible();
+  await expect(page.getByLabel("Set 1 reps").first()).toBeVisible();
   await page.screenshot({ path: "test-results/training/se-day.png", fullPage: false });
 
   const r = await page.evaluate(() => ({
@@ -28,6 +29,7 @@ test("My Training fits a 320 px iPhone", async ({ page }) => {
   }));
   expect(r.overflow).toBeLessThanOrEqual(1);
   expect(r.small).toBe(0);
+  expect(r.checks.length).toBeGreaterThan(5);
   expect(Math.min(...r.checks)).toBeGreaterThanOrEqual(44);
 
   // The last set row on the page: focus it like a tap (keyboard up).

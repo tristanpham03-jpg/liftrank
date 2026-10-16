@@ -2,9 +2,22 @@
 
 _Last updated: 2026-10-15 (Claude Code) · Done: Phases 1–7 + friend verification · **Deployed (unlisted) at https://liftrank-roan.vercel.app** · Finishing launch setup (see "Deployment status")_
 
-## 2026-10-16 My Training: personal tracker (committed locally, NOT pushed; needs migration `…1500`)
+## 2026-10-16 My Training: personal tracker (applied and deployed)
 
-**Waiting for approval:** `supabase/migrations/20261011001500_training_tracker.sql` is written and tested in a rolled-back transaction, but **not applied**. The new pages need it, so don't push this commit until it's applied.
+**Migration `…1500` was applied on 2026-10-16 with the owner's approval.**
+- **Before applying:**
+  - Top-level statements: the only change to an existing table is the nullable `lifts.training_set_id`.
+  - A full permission diff (function execute, table and column grants, RLS policies) showed nothing removed and only the expected additions.
+  - All 10 callable functions are SECURITY DEFINER with `search_path ''` and use `auth.uid()`. The internal `_` helpers (two of which take a user id) aren't callable by `authenticated` or `anon`.
+  - The rolled-back functional test passed, and the dry run listed only `…1500`.
+- **After applying:**
+  - A baseline of every lift's scoring fields, records, achievements, notifications and files was identical, and live permissions matched the review exactly.
+  - Live checks 64/64. New: training sets never reach a board, the feed, notifications or the profile, and a friend can't read or change them; a submitted set's numbers match, are submitted once and survive a race; editing a linked set is refused, and deleting it leaves the board result unchanged.
+  - Playwright 13/13 hosted, including Flow J. iPhone checks 7/7, including the 320 px Training test.
+- **Bugs found by Flow J and fixed:**
+  - Returning mid-workout opened the next day instead of the one in progress.
+  - The result screen vanished after submitting from Training, because the refresh re-rendered the page into its "already on board" state.
+- **Cleanup:** no test data remains. The one friend invite in production belongs to the real `babana` account.
 
 **What the migration changes** (additive only: no existing row or function is modified):
 - **New tables, private to the owner:** `training_splits`, `training_days`, `training_day_exercises` and `training_sets`.

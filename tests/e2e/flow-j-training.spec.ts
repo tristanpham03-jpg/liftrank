@@ -114,18 +114,19 @@ test("Flow J: import splits → log sets privately → edit, delete → submit o
   await a.getByRole("button", { name: "Edit" }).click();
   await a.getByLabel("Reps").fill("12");
   await a.getByRole("button", { name: "Save" }).click();
-  await expect(a.getByText("140 × 12")).toBeVisible();
+  await expect(a.getByRole("listitem").filter({ hasText: "140 × 12" })).toBeVisible();
   a.once("dialog", (d) => d.accept());
   await a.getByRole("button", { name: "Edit" }).click();
   await a.getByRole("button", { name: "Delete" }).click();
   await expect(a.getByText("No Lat Pulldown sets logged yet.")).toBeVisible();
-  expect(await countSets(uid)).toBe(2);
+  expect(await countSets(uid)).toBe(3); // bench 185 × 8 (yesterday), 225 × 5, 245 × 3
 
   // 12-14. + → From My Training → pick the 245 × 3 set → it lands on the board once, with its numbers.
   await a.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Add to leaderboard" }).click();
   await a.getByRole("link", { name: "From Training" }).click();
   await a.getByRole("link", { name: /Barbell Bench Press.*245 × 3/ }).first().click();
-  await expect(a.getByText("245 × 3")).toBeVisible();
+  await expect(a).toHaveURL(/\/lift\/new\?from=/);
+  await expect(a.getByRole("region", { name: "Lift to submit" })).toContainText("245 × 3");
   await a.getByRole("radio", { name: /^Friends/ }).click();
   await a.getByRole("button", { name: "Submit to leaderboard" }).click();
   await expect(a.getByText(/First lift logged|personal record|Lift saved/)).toBeVisible();
@@ -160,8 +161,16 @@ test("Flow J: import splits → log sets privately → edit, delete → submit o
   await a.getByRole("button", { name: /Anterior \/ Posterior/ }).click();
   await a.getByRole("button", { name: "Use A/P" }).click();
   await expect(a.getByRole("navigation", { name: "Training days" }).getByRole("link")).toHaveCount(2);
-  expect(await countSets(uid)).toBe(2);
+  expect(await countSets(uid)).toBe(3);
   await a.goto("/training/exercise/barbell-bench-press");
-  await expect(a.getByText("245 × 3")).toBeVisible();
-  await expect(a.getByRole("link", { name: "On board" })).toBeVisible();
+  const submitted = a.getByRole("listitem").filter({ hasText: "245 × 3" });
+  await expect(submitted).toBeVisible();
+  await expect(submitted.getByRole("link", { name: "On board" })).toBeVisible();
+  // Its numbers are locked; the board entry is unchanged.
+  await submitted.getByRole("button", { name: "Edit" }).click();
+  await a.getByLabel("Reps").fill("8");
+  await a.getByRole("button", { name: "Save" }).click();
+  await expect(a.getByText("This set is on the leaderboard, so its numbers are locked.", { exact: false }).first()).toBeVisible();
+  const after = (await hostedAdmin()!.from("lifts").select("entered_weight, reps").eq("user_id", uid).is("deleted_at", null).single()).data!;
+  expect([Number(after.entered_weight), after.reps]).toEqual([245, 3]);
 });

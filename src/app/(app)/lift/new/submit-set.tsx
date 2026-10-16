@@ -7,6 +7,8 @@ import { LiftResult } from "@/components/lifts/lift-result";
 import { Button } from "@/components/ui/button";
 import { FormMessage } from "@/components/ui/form";
 import { GlassCard } from "@/components/ui/glass";
+import { EmptyState } from "@/components/ui/misc";
+import Link from "next/link";
 import { cn } from "@/lib/cn";
 import { formatEstimatedMax } from "@/lib/scoring";
 import type { TrainingSet } from "@/lib/training";
@@ -21,6 +23,7 @@ export function SubmitSet({
   unit,
   label,
   date,
+  boardLiftId,
 }: {
   set: TrainingSet;
   exercise: Exercise;
@@ -28,6 +31,8 @@ export function SubmitSet({
   unit: WeightUnit;
   label: string;
   date: string;
+  /** Already on a board (before this visit): say so instead of offering to submit. */
+  boardLiftId: string | null;
 }) {
   const router = useRouter();
   const [visibility, setVisibility] = useState<LiftVisibility>(defaults.default_visibility ?? "public");
@@ -49,6 +54,19 @@ export function SubmitSet({
           router.push("/lift/new?mode=training");
           router.refresh();
         }}
+      />
+    );
+  }
+
+  if (boardLiftId) {
+    return (
+      <EmptyState
+        title="This set is already on the leaderboard."
+        action={
+          <Button asChild variant="secondary">
+            <Link href={`/lifts/${boardLiftId}`}>Open it</Link>
+          </Button>
+        }
       />
     );
   }

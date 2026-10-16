@@ -51,16 +51,18 @@ export default async function TrainingPage({ searchParams }: { searchParams: Pro
   const days = dayRows ?? [];
   const dayIds = days.map((d) => d.id);
 
-  // Suggested day: the one after the day you last logged from.
+  // Suggested day: the one after the day you last logged from. If you logged
+  // from a day today, that day opens (you're mid-workout); "Next" still points on.
   const { data: last } = await supabase
     .from("training_sets")
-    .select("day_id")
+    .select("day_id, local_date")
     .eq("user_id", profile.id)
     .in("day_id", dayIds.length ? dayIds : ["00000000-0000-0000-0000-000000000000"])
     .order("performed_at", { ascending: false })
     .limit(1);
   const nextIndex = nextDayIndex(dayIds, last?.[0]?.day_id ?? null);
-  const selected = days.find((d) => d.id === dayParam) ?? days[nextIndex] ?? days[0];
+  const trainingToday = last?.[0]?.local_date === today ? days.find((d) => d.id === last[0].day_id) : undefined;
+  const selected = days.find((d) => d.id === dayParam) ?? trainingToday ?? days[nextIndex] ?? days[0];
 
   const [{ data: planned }, defaults] = await Promise.all([
     supabase.from("training_day_exercises").select("id, exercise_id, set_count, position").eq("day_id", selected?.id ?? "").order("position"),

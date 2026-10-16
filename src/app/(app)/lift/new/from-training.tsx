@@ -35,19 +35,18 @@ export async function FromTraining({
     const exercise = set ? byId.get(set.exercise_id) : null;
     if (!set || !exercise) return <EmptyState title="That set isn’t in your training history." action={<Button asChild variant="secondary"><Link href="/lift/new?mode=training">Pick another</Link></Button>} />;
     const { data: onBoard } = await supabase.from("lifts").select("id").eq("training_set_id", set.id).is("deleted_at", null).maybeSingle();
-    if (onBoard) {
-      return (
-        <EmptyState
-          title="This set is already on the leaderboard."
-          action={
-            <Button asChild variant="secondary">
-              <Link href={`/lifts/${onBoard.id}`}>Open it</Link>
-            </Button>
-          }
-        />
-      );
-    }
-    return <SubmitSet set={set} exercise={exercise} defaults={defaults} unit={unit} label={formatSet(set, exercise.ranking_method, unit)} date={dayLabel(set.local_date)} />;
+    // One component for both states, so the result screen survives the refresh after submitting.
+    return (
+      <SubmitSet
+        set={set}
+        exercise={exercise}
+        defaults={defaults}
+        unit={unit}
+        label={formatSet(set, exercise.ranking_method, unit)}
+        date={dayLabel(set.local_date)}
+        boardLiftId={onBoard?.id ?? null}
+      />
+    );
   }
 
   const [{ data: recentRows }, { data: bestRows }, { data: linked }] = await Promise.all([

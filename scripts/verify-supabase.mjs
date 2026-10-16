@@ -799,6 +799,61 @@ try {
     assert(!(await rpc(fr1.client, "get_friends")).friends.some((f) => f.user_id === fr3.id), "blocked user became a friend");
   });
 
+  console.log("My Training (private) and submitting to boards");
+  const tr1 = await makeUser("tr1");
+  const tr2 = await makeUser("tr2");
+  for (const u of [tr1, tr2]) await rpc(u.client, "complete_username", { p_username: u.username });
+  await rpc(tr1.client, "send_friend_request", { p_user_id: tr2.id });
+  await rpc(tr2.client, "respond_friend_request", { p_friendship_id: (await rpc(tr2.client, "get_friends")).incoming[0].friendship_id, p_accept: true });
+  const day = (offset = 0) => new Date(Date.now() - offset * 864e5).toISOString().slice(0, 10);
+  const logT = (u, weight, reps, set, date = day(), at = new Date().toISOString()) =>
+    rpc(u.client, "log_training_set", {
+      p_exercise_id: bench, p_day_id: null, p_set_number: set, p_weight: weight, p_unit: "lb", p_reps: reps,
+      p_local_date: date, p_performed_at: at, p_client_key: randomUUID(),
+    });
+  let tSet, tLift, tScore;
+  await check("training sets stay private: no board, feed, notification or profile entry", async () => {
+    const notifsBefore = (await admin.from("notifications").select("id").eq("recipient_id", tr2.id)).data.length;
+    await logT(tr1, 405, 3, 1);
+    tSet = (await logT(tr1, 315, 5, 2)).id;
+    assert(!(await board(tr2, bench)).rows.some((r) => r.user_id === tr1.id), "training set on the friend's board");
+    assert(!(await board(tr1, bench)).rows.length, "training set on the owner's board");
+    assert((await tr2.client.from("training_sets").select("id")).data.length === 0, "friend can read training sets");
+    assert((await tr2.client.from("training_splits").select("id")).data.length === 0, "friend can read splits");
+    await rejects(tr2.client.from("training_sets").update({ reps: 1 }).eq("id", tSet), "permission denied");
+    await rejects(tr1.client.from("training_sets").insert({ user_id: tr1.id, exercise_id: bench, set_number: 9, reps: 1, is_ranked: true, local_date: day(), performed_at: new Date().toISOString(), client_key: randomUUID() }), "permission denied");
+    const feed = await rpc(tr2.client, "get_feed", { p_limit: 50, p_before: null, p_group_id: null, p_actor_id: null });
+    assert(!feed.some((f) => f.actor?.id === tr1.id), "training set in the friend's feed");
+    assert((await admin.from("notifications").select("id").eq("recipient_id", tr2.id)).data.length === notifsBefore, "friend was notified");
+    assert((await admin.from("lifts").select("id").eq("user_id", tr1.id)).data.length === 0, "a lift was created");
+    const prs = await rpc(tr2.client, "get_prs", { p_user_id: tr1.id });
+    assert(!prs.length, "training set on the profile");
+    await rejects(tr2.client.rpc("submit_training_set", { p_set_id: tSet, p_visibility: "public", p_group_ids: [] }), "not_found");
+    await rejects(tr2.client.rpc("delete_training_set", { p_set_id: tSet }), "not_found");
+  });
+  await check("submitting a saved set puts exactly those numbers on the board, once", async () => {
+    const r = await rpc(tr1.client, "submit_training_set", { p_set_id: tSet, p_visibility: "friends", p_group_ids: [] });
+    tLift = r.lift_id;
+    const l = (await admin.from("lifts").select("entered_weight, entered_unit, reps, score, visibility, training_set_id, exercise_id").eq("id", tLift).single()).data;
+    assert(Number(l.entered_weight) === 315 && l.reps === 5 && l.entered_unit === "lb" && l.visibility === "friends" && l.training_set_id === tSet, JSON.stringify(l));
+    tScore = Number(l.score);
+    assert((await board(tr2, bench)).rows.some((x) => x.user_id === tr1.id && Number(x.score) === tScore), "not on the friend's board");
+    await rejects(tr1.client.rpc("submit_training_set", { p_set_id: tSet, p_visibility: "public", p_group_ids: [] }), "already_submitted");
+    const twice = await Promise.all([1, 2].map(() => tr1.client.rpc("submit_training_set", { p_set_id: tSet, p_visibility: "public", p_group_ids: [] })));
+    assert(twice.every((x) => x.error?.message.includes("already_submitted")), "a racing resubmission went through");
+    assert((await admin.from("lifts").select("id").eq("user_id", tr1.id).is("deleted_at", null)).data.length === 1, "duplicate lift");
+    // The 405 × 3 set was never submitted: still nowhere public.
+    assert(!(await board(tr2, bench)).rows.some((x) => Number(x.score) > tScore), "the other training set leaked");
+  });
+  await check("editing or deleting a linked set never changes the board result", async () => {
+    await rejects(tr1.client.rpc("update_training_set", { p_set_id: tSet, p_weight: 405, p_unit: "lb", p_reps: 5, p_local_date: null, p_performed_at: null }), "training_set_submitted");
+    await rejects(tr1.client.rpc("update_training_set", { p_set_id: tSet, p_weight: 315, p_unit: "lb", p_reps: 5, p_local_date: day(1), p_performed_at: new Date(Date.now() - 864e5).toISOString() }), "training_set_submitted");
+    await rpc(tr1.client, "delete_training_set", { p_set_id: tSet });
+    const l = (await admin.from("lifts").select("entered_weight, reps, score, deleted_at, training_set_id").eq("id", tLift).single()).data;
+    assert(Number(l.entered_weight) === 315 && l.reps === 5 && Number(l.score) === tScore && !l.deleted_at && l.training_set_id === null, JSON.stringify(l));
+    assert((await board(tr2, bench)).rows.some((x) => x.user_id === tr1.id && Number(x.score) === tScore), "board changed after deleting the set");
+  });
+
   await check("reports and lift submissions are rate limited", async () => {
     // Lifts b can see (RLS) and may report: other people's, not deleted.
     // Only lifts of this run's own test users: never report anything real.
