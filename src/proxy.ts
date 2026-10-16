@@ -4,7 +4,7 @@ import { supabaseConfig } from "@/lib/env";
 
 const PROTECTED = [
   "/home", "/leaderboards", "/lift", "/lifts", "/profile", "/u", "/groups",
-  "/friends", "/notifications", "/settings", "/onboarding", "/activity", "/moderation",
+  "/friends", "/notifications", "/settings", "/onboarding", "/activity", "/moderation", "/training",
 ];
 const AUTH_PAGES = ["/login", "/signup"];
 
