@@ -84,6 +84,6 @@ export const CONVENTION_HINT: Record<WeightConvention, string> = {
   per_dumbbell: "Weight of one dumbbell",
   stack: "The number on the weight stack",
   plates_total: "Plates on both sides, not counting the sled",
-  added: "Added weight only (belt or vest), not bodyweight",
+  added: "Added weight only (belt, vest or a held plate), not bodyweight",
   bodyweight: "Bodyweight only, ranked by reps",
 };

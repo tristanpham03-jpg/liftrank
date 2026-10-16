@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import type { Exercise } from "./types";
 import { normalize, scoreExercise, searchExercises, similarity } from "./exercise-search";
 import { gapInUnit, relativeGap, rivalComparison } from "./rival";
 import { standingText, topPercent } from "./standing";
@@ -313,5 +314,83 @@ describe("training templates", () => {
     expect(formatSet({ entered_weight: 100, entered_unit: "kg", weight_kg: 100, reps: 5 }, "e1rm", "lb")).toBe("220.5 × 5");
     expect(formatSet({ entered_weight: 25, entered_unit: "lb", weight_kg: 11.34, reps: 6 }, "added_load_e1rm", "lb")).toBe("+25 × 6");
     expect(formatSet({ entered_weight: null, entered_unit: null, weight_kg: null, reps: 12 }, "max_reps", "lb")).toBe("12 reps");
+  });
+});
+
+describe("63-exercise catalog and muscle search", () => {
+  // The real catalog, straight from the migrations (0006 + 0016).
+  const sql = ["20261011000600_catalog.sql", "20261011001600_more_exercises.sql"]
+    .map((f) => readFileSync(path.join(process.cwd(), "supabase/migrations", f), "utf8"))
+    .join("\n");
+  const rows = [...sql.matchAll(/\('([^']+)', '([a-z0-9-]+)', '(\w+)', '([^']+)', '(\w+)', '(\w+)', '(\w+)', (?:true|false), (?:null|[\d.]+), (?:null|[\d.]+), (\d+)[,)]/g)];
+  const aliasRows = [...sql.matchAll(/\('([a-z0-9-]+)', '([a-z0-9 ]+)'\)/g)];
+  const moved = new Set(["sldl", "stiff leg deadlift"]); // 0016 moves these from RDL to SLDL
+  const catalog = rows.map((m) => ({
+    name: m[1],
+    slug: m[2],
+    category: m[3] as Exercise["category"],
+    muscle_group: m[4],
+    equipment_type: m[5] as Exercise["equipment_type"],
+    popular_rank: Number(m[8]),
+    aliases: aliasRows
+      .filter((a) => a[1] === m[2] && !(m[2] === "romanian-deadlift" && moved.has(a[2])))
+      .map((a) => a[2]),
+  }));
+  const names = (q: string, n = 30) => searchExercises(catalog, q, n).map((e) => e.name);
+  const slugs = (q: string, n = 30) => searchExercises(catalog, q, n).map((e) => e.slug);
+
+  it("has 63 distinct exercises, five of them Abs/Core, all tagged for search", async () => {
+    const { EXERCISE_MUSCLES, CATEGORY_LABEL } = await import("./exercise-muscles");
+    expect(catalog).toHaveLength(63);
+    expect(new Set(catalog.map((e) => e.slug)).size).toBe(63);
+    expect(catalog.filter((e) => e.category === "core").map((e) => e.slug).sort()).toEqual(
+      ["cable-crunch", "hanging-knee-raise", "hanging-leg-raise", "machine-ab-crunch", "weighted-decline-sit-up"],
+    );
+    for (const e of catalog) expect(EXERCISE_MUSCLES[e.slug], e.slug).toBeDefined();
+    expect(CATEGORY_LABEL.core).toBe("Abs/Core");
+  });
+
+  it("finds triceps work by any spelling, name matches first", () => {
+    for (const q of ["tricep", "triceps", "tris", "TRICEPS"]) {
+      const r = names(q);
+      expect(r[0], q).toBe("Triceps Pushdown");
+      for (const n of ["Overhead Triceps Extension", "Skull Crusher", "Smith Machine JM Press"]) expect(r, `${q}: ${n}`).toContain(n);
+      // Primary-muscle matches rank above secondary ones.
+      expect(r.indexOf("Skull Crusher"), q).toBeLessThan(r.indexOf("Barbell Bench Press"));
+    }
+  });
+
+  it("finds biceps, hamstrings, quads and lats", () => {
+    for (const q of ["bicep", "biceps"]) expect(names(q)).toEqual(expect.arrayContaining(["Dumbbell Curl", "Incline Dumbbell Curl", "Preacher Curl", "Machine Preacher Curl"]));
+    for (const q of ["hamstring", "hamstrings", "hams"]) expect(names(q)).toEqual(expect.arrayContaining(["Romanian Deadlift", "Stiff-Leg Deadlift", "Seated Leg Curl", "Lying Leg Curl"]));
+    for (const q of ["quad", "quads"]) expect(names(q)).toEqual(expect.arrayContaining(["Leg Extension", "Front Squat", "Hack Squat"]));
+    const lat = names("lat");
+    expect(lat.slice(0, 2).sort()).toEqual(["Close-Grip Lat Pulldown", "Lat Pulldown"]);
+    expect(lat).toContain("Pull-Up");
+    expect(names("lats")).toEqual(expect.arrayContaining(["Lat Pulldown", "Close-Grip Lat Pulldown", "Pull-Up"]));
+  });
+
+  it("'abs' and 'core' list the five abdominal exercises first", () => {
+    const core = ["cable-crunch", "hanging-knee-raise", "hanging-leg-raise", "machine-ab-crunch", "weighted-decline-sit-up"];
+    for (const q of ["abs", "core", "Abs"]) expect(slugs(q).slice(0, 5).sort(), q).toEqual(core);
+  });
+
+  it("filters by equipment and combines words", () => {
+    const cable = searchExercises(catalog, "cable", 40);
+    expect(cable.length).toBe(catalog.filter((e) => e.equipment_type === "cable").length);
+    expect(cable.every((e) => e.equipment_type === "cable")).toBe(true);
+    expect(names("cable bicep")[0]).toBe("Cable Curl");
+    expect(names("db bicep")).toEqual(expect.arrayContaining(["Dumbbell Curl", "Incline Dumbbell Curl", "Hammer Curl"]));
+  });
+
+  it("keeps abbreviations apart: SLDL and RDL are different exercises", () => {
+    expect(names("sldl")[0]).toBe("Stiff-Leg Deadlift");
+    expect(names("stiff-leg deadlift")[0]).toBe("Stiff-Leg Deadlift");
+    expect(names("rdl")[0]).toBe("Romanian Deadlift");
+    expect(names("romanian deadlift")[0]).toBe("Romanian Deadlift");
+    expect(names("jm press")[0]).toBe("Smith Machine JM Press");
+    expect(names("abductors")[0]).toBe("Hip Abduction");
+    expect(names("adductor")[0]).toBe("Hip Adduction");
+    expect(names("wrist curl")[0]).toBe("Cable Wrist Curl");
   });
 });

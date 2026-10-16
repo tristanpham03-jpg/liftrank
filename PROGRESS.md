@@ -2,6 +2,56 @@
 
 _Last updated: 2026-10-15 (Claude Code) · Done: Phases 1–7 + friend verification · **Deployed (unlisted) at https://liftrank-roan.vercel.app** · Finishing launch setup (see "Deployment status")_
 
+## 2026-10-16 13 new exercises, muscle search, unsaved-set warnings (committed locally; migration `…1600` awaits approval)
+
+**Migration `20261011001600_more_exercises.sql` (NOT applied).** It inserts 13 exercises (50 → 63) and their aliases, and moves the aliases `sldl` and `stiff leg deadlift` from Romanian Deadlift to the new Stiff-Leg Deadlift. It's additive otherwise: no existing exercise row, lift, score, ranking, function or permission changes.
+- **Rolled-back test** (`tests/sql/1600_more_exercises.test.sql`, run after a snapshot) passes. It checks:
+  - 63 active exercises; the 50 existing rows unchanged byte for byte; all lifts unchanged;
+  - each new exercise's category, equipment and scoring; `sldl` pointing only to SLDL;
+  - bodyweight raises scored by reps with weight refused; the sit-up scored on the held weight only; the 12-rep ranking rule;
+  - SLDL and RDL on separate boards;
+  - new exercises added to an existing customized day without changing its set counts; training sets kept off boards; submitting from training.
+  A deliberate canary failure was reported correctly.
+
+**New exercises** (all scored with existing conventions):
+- **Abs/Core:**
+  - Cable Crunch and Machine Ab Crunch: stack, est. 1RM, machine selectable.
+  - Hanging Leg Raise and Hanging Knee Raise: bodyweight, ranked by reps.
+  - Weighted Decline Sit-Up: the held weight only, est. 1RM on that added load, like Weighted Pull-Up.
+- **Legs:** Stiff-Leg Deadlift (barbell); Hip Abduction and Hip Adduction (stack).
+- **Arms:** Smith Machine JM Press (`jm-smith-press`, a Smith machine as the slug and pending illustration show), Incline Dumbbell Curl, Machine Preacher Curl, Cable Wrist Curl.
+- **Back:** Close-Grip Lat Pulldown.
+
+The "added weight" hint now mentions a held plate.
+
+**Search** (`src/lib/exercise-search.ts`, one function behind every picker):
+- **What it searches:** name, aliases, primary and secondary muscle (`src/lib/exercise-muscles.ts` tags all 63, kept in code so catalog rows don't change), equipment, category and muscle group. It handles plurals and slang (tris, quads, hams, lats, abs/core, db, bb…).
+- **Ranking:** exact, then name prefix or whole word, then primary muscle (a name that names the muscle first), then secondary, then equipment/category/group, then typos.
+- **Filters:** the picker has category chips: All, Chest, Back, Shoulders, Arms, Legs, Abs/Core. Each chip appears only when that category has exercises, so Abs/Core shows once the migration is applied.
+
+**Unsaved sets** (`src/app/(app)/training/unsaved.tsx`):
+- **What counts:** a row is unsaved when its numbers differ from what's saved, or from blank. Focusing an input never counts; copying previous values that change the inputs does.
+- **Indicator:** an amber dot on the row and "N unsaved sets" by the day title.
+- **When it warns,** only while something is unsaved:
+  - refresh or close: the browser's beforeunload prompt;
+  - in-app links (day chips, Change split, tab bar, header): a capture-phase click check on `window`, because Next mounts React on `document` and a listener there ran after `<Link>`;
+  - browser Back: one extra same-URL history entry;
+  - Edit day: the same dialog.
+- **The dialog:** "Unsaved changes" with "Stay and save" (keeps everything as typed, saves nothing, scrolls to the first unsaved row) or "Discard changes".
+
+**Tests:**
+- Typecheck and lint pass. Unit tests 38/38 (new: the 63-exercise catalog parsed from the migrations, muscle and alias search, SLDL vs RDL, Abs/Core).
+- Hosted Playwright 15/15, including new Flow K1 (unsaved: day switch, tab bar, Back, refresh, Edit day, editing a saved set, copying previous values, several unsaved rows, keyboard Enter) and K2 (search in the + and Training pickers, category chips). iPhone 7/7.
+- Production data unchanged. The two training splits in production are the owner's own.
+
+**Images:** all 13 illustrations exist in the Codex output folder `liftrank-additions`, but its README marks them pending approval, so they aren't integrated. The new exercises show the dumbbell icon for now.
+- **To integrate:** run `scripts/optimize-exercise-images.py` on the folder. Rename `smith-machine-jm-press.png` to `jm-smith-press.png` first, and include the original 50 so `exercise-images.ts` keeps them.
+
+**Scoring limitations:**
+- Crunches, abduction, adduction and wrist curls rank by est. 1RM on the stack number, as every cable or machine exercise does. They're often done for more than 12 reps, and those sets save but don't rank.
+- Weighted decline sit-ups depend on bench angle, and est. 1RM of a held plate isn't a tested max. The board is comparable only within the same setup.
+- Hanging raises rank by reps, like pull-ups, with no tempo or range standard.
+
 ## 2026-10-16 My Training: personal tracker (applied and deployed)
 
 **Migration `…1500` was applied on 2026-10-16 with the owner's approval.**

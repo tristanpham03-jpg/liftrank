@@ -5,6 +5,7 @@ import { Check, ChevronDown, Search, Star, X } from "lucide-react";
 import { useMemo, useState, useTransition } from "react";
 import { cn } from "@/lib/cn";
 import { searchExercises } from "@/lib/exercise-search";
+import { CATEGORY_LABEL } from "@/lib/exercise-muscles";
 import type { Exercise } from "@/lib/types";
 import { ExerciseThumb } from "./exercise-art";
 
@@ -51,13 +52,18 @@ export function ExercisePicker({
 }: Props) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [category, setCategory] = useState<string | null>(null);
   const [favorites, setFavorites] = useState(() => new Set(favoriteIds));
   const [, startTransition] = useTransition();
 
   const byId = useMemo(() => new Map(catalog.map((e) => [e.id, e])), [catalog]);
 
+  const categories = useMemo(() => Object.keys(CATEGORY_LABEL).filter((c) => catalog.some((e) => e.category === c)), [catalog]);
+
   const sections = useMemo(() => {
-    if (query.trim()) return [{ title: "Results", items: searchExercises(catalog, query, 30) }];
+    const inCategory = (e: Exercise) => !category || e.category === category;
+    if (query.trim()) return [{ title: "Results", items: searchExercises(catalog.filter(inCategory), query, 30) }];
+    if (category) return [{ title: CATEGORY_LABEL[category] ?? category, items: catalog.filter(inCategory) }];
     const recent = recentIds.map((id) => byId.get(id)).filter((e): e is Exercise => Boolean(e));
     const favs = catalog.filter((e) => favorites.has(e.id));
     const shown = new Set([...recent, ...favs].map((e) => e.id));
@@ -67,12 +73,13 @@ export function ExercisePicker({
       { title: "Favorites", items: favs },
       { title: recent.length || favs.length ? "More exercises" : "Popular", items: popular },
     ].filter((s) => s.items.length);
-  }, [query, catalog, recentIds, favorites, byId]);
+  }, [query, category, catalog, recentIds, favorites, byId]);
 
   function choose(e: Exercise) {
     onSelect(e);
     setOpen(false);
     setQuery("");
+    setCategory(null);
   }
 
   function toggleFavorite(id: string) {
@@ -120,7 +127,7 @@ export function ExercisePicker({
                 autoComplete="off"
                 autoCorrect="off"
                 spellCheck={false}
-                placeholder="Search: bench, rdl, incl smith…"
+                placeholder="Search: bench, triceps, cable…"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={(e) => {
@@ -137,6 +144,27 @@ export function ExercisePicker({
               <X size={20} />
             </Dialog.Close>
           </div>
+          {categories.length > 1 ? (
+            <div role="group" aria-label="Filter by category" className="flex gap-1.5 overflow-x-auto border-b border-white/[0.07] px-3 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {[null, ...categories].map((c) => {
+                const on = category === c;
+                return (
+                  <button
+                    key={c ?? "all"}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => setCategory(c)}
+                    className={cn(
+                      "h-9 shrink-0 whitespace-nowrap rounded-full border px-3.5 text-sm font-medium",
+                      on ? "pearl border-transparent" : "border-white/10 text-fg-2 hover:text-fg",
+                    )}
+                  >
+                    {c ? CATEGORY_LABEL[c] : "All"}
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
           <div className="flex-1 overflow-y-auto overscroll-contain px-2 pb-[calc(16px+var(--safe-bottom))]">
             {sections.length === 0 ? (
               <p className="px-3 py-10 text-center text-fg-2">No exercise matches “{query}”.</p>

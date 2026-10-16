@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { ArrowDown, ArrowUp, Check, Minus, Pencil, Plus, Repeat, Trash2, X } from "lucide-react";
 import { toggleFavorite } from "@/app/(app)/lift/actions";
 import { ExercisePicker } from "@/components/lifts/exercise-picker";
@@ -14,6 +14,7 @@ import { formatNumber } from "@/lib/scoring";
 import { FEATURED_SLUGS, ROTATION_LABEL, formatSet, rotationText, setWeight, type Rotation, type TemplateId, type TrainingSet } from "@/lib/training";
 import type { Exercise, WeightUnit } from "@/lib/types";
 import { addDay, deleteDay, dismissPr, logSet, saveDay, updateSet } from "./actions";
+import { UnsavedContext, UnsavedGuard, createUnsavedStore, useUnsavedCount, useUnsavedStore } from "./unsaved";
 
 export type DayExercise = {
   key: string;
@@ -40,9 +41,14 @@ export function TrainingDay(props: Props) {
   const { split, days, selectedDayId, nextDayId, exercises } = props;
   const [editing, setEditing] = useState(false);
   const day = days.find((d) => d.id === selectedDayId);
+  const [store] = useState(createUnsavedStore);
+  const unsaved = useUnsavedCount(store);
+  const confirmLeave = useRef<(run: () => void) => void>((run) => run());
+  const register = useCallback((fn: (run: () => void) => void) => void (confirmLeave.current = fn), []);
 
   return (
-    <>
+    <UnsavedContext.Provider value={store}>
+      <UnsavedGuard store={store} onRegister={register} />
       <header className="mb-4 flex items-start justify-between gap-3 pt-2">
         <div className="min-w-0">
           <h1 className="text-[28px] font-bold leading-tight tracking-[-0.03em]">My Training</h1>
@@ -84,8 +90,15 @@ export function TrainingDay(props: Props) {
         ) : (
           <>
             <div className="mb-2 flex items-center justify-between px-1">
-              <h2 className="text-[17px] font-semibold tracking-[-0.01em]">{day.name}</h2>
-              <button type="button" onClick={() => setEditing(true)} className="tap inline-flex items-center gap-1.5 text-sm text-fg-2 hover:text-fg">
+              <h2 className="flex min-w-0 items-baseline gap-2 text-[17px] font-semibold tracking-[-0.01em]">
+                <span className="truncate">{day.name}</span>
+                {unsaved ? (
+                  <span className="shrink-0 text-[13px] font-medium text-warning" role="status" data-testid="unsaved-count">
+                    {unsaved} unsaved {unsaved === 1 ? "set" : "sets"}
+                  </span>
+                ) : null}
+              </h2>
+              <button type="button" onClick={() => confirmLeave.current(() => setEditing(true))} className="tap inline-flex shrink-0 items-center gap-1.5 text-sm text-fg-2 hover:text-fg">
                 <Pencil size={14} aria-hidden /> Edit day
               </button>
             </div>
@@ -109,7 +122,7 @@ export function TrainingDay(props: Props) {
           </>
         )
       ) : null}
-    </>
+    </UnsavedContext.Provider>
   );
 }
 
@@ -224,6 +237,11 @@ function SetRow({
 
   const current = `${weight ? Number(weight) : ""}|${reps ? Number(reps) : ""}`;
   const isSaved = savedId != null && savedAs === current;
+  // Unsaved = the numbers differ from what's saved (or from blank). Focusing an input changes nothing.
+  const dirty = current !== (savedAs ?? "|");
+  const unsavedStore = useUnsavedStore();
+  useEffect(() => unsavedStore?.set(focusKey, dirty), [unsavedStore, focusKey, dirty]);
+  useEffect(() => () => unsavedStore?.set(focusKey, false), [unsavedStore, focusKey]);
   const prevWeight = previous ? setWeight(previous, unit) : null;
 
   async function save() {
@@ -280,9 +298,16 @@ function SetRow({
   };
 
   return (
-    <li className={cn("px-2.5 py-1", isSaved && "bg-success/[0.06]")}>
+    <li className={cn("px-2.5 py-1", isSaved && "bg-success/[0.06]")} data-unsaved={dirty}>
       <div className="grid grid-cols-[20px_minmax(0,1fr)_68px_56px_44px] items-center gap-x-1.5">
-        <span className="text-center text-sm font-semibold tabular text-fg-2">{setNumber}</span>
+        <span className="relative text-center text-sm font-semibold tabular text-fg-2">
+          {setNumber}
+          {dirty ? (
+            <span className="absolute -left-1.5 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-warning" title="Not saved yet">
+              <span className="sr-only">, not saved yet</span>
+            </span>
+          ) : null}
+        </span>
         {previous ? (
           <button
             type="button"

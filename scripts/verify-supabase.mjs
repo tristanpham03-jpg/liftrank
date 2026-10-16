@@ -90,10 +90,16 @@ let a, b, c, bench, deadlift, group;
 
 try {
   console.log("Schema");
-  await check("exercise catalog is installed (50 exercises, aliases)", async () => {
+  await check("exercise catalog is installed (63 exercises, aliases; 50 before migration 0016)", async () => {
     const { count, error } = await anon.from("exercises").select("id", { count: "exact", head: true });
     if (error) throw new Error(error.message);
-    assert(count === 50, `expected 50 exercises, found ${count}`);
+    assert(count === 63 || count === 50, `expected 63 exercises (50 before 0016), found ${count}`);
+    if (count === 63) {
+      const { data: core } = await anon.from("exercises").select("slug, ranking_method").eq("category", "core");
+      assert(core.length === 5, "Abs/Core exercises missing");
+      const { data: sldl } = await anon.from("exercise_aliases").select("exercise_id, exercises(slug)").eq("alias", "sldl");
+      assert(sldl.length === 1 && sldl[0].exercises.slug === "stiff-leg-deadlift", "sldl should point only to Stiff-Leg Deadlift");
+    }
     const aliases = await anon.from("exercise_aliases").select("id", { count: "exact", head: true });
     assert((aliases.count ?? 0) > 100, "aliases missing");
     const { data } = await anon.from("exercises").select("id, slug").in("slug", ["barbell-bench-press", "deadlift"]);
