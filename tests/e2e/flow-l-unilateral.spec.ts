@@ -105,7 +105,7 @@ test("Flow L: left/right sets in My Training, kept apart from both-sides sets an
   await expect(page.getByRole("region", { name: "Both sides best" })).toContainText("50 × 8");
   const leftRow = page.getByRole("listitem").filter({ hasText: "30 × 10" });
   await leftRow.getByRole("button", { name: "Edit" }).click();
-  await expect(page.getByLabel("Side")).toHaveValue("left");
+  await expect(page.getByLabel("Side", { exact: true })).toHaveValue("left");
   await page.getByLabel("Reps").fill("11");
   await page.getByRole("button", { name: "Save" }).click();
   await expect(page.getByRole("listitem").filter({ hasText: "30 × 11" })).toBeVisible();

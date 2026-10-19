@@ -2,7 +2,16 @@
 
 _Last updated: 2026-10-15 (Claude Code) · Done: Phases 1–7 + friend verification · **Deployed (unlisted) at https://liftrank-roan.vercel.app** · Finishing launch setup (see "Deployment status")_
 
-## 2026-10-18 Unilateral (left/right) sets in My Training (committed locally; migration `…1700` awaits approval)
+## 2026-10-18 Unilateral (left/right) sets in My Training (applied and deployed)
+
+**Migration `…1700` was applied on 2026-10-18 with the owner's approval.**
+- **Before applying:**
+  - Final review: the only destructive statements are the two replaced function signatures (same grants) and a dropped-and-recreated index.
+  - The permission diff matched exactly. Dry run listed only `…1700`.
+- **After applying:**
+  - Baseline identical: lifts, exercises apart from the new flag, aliases, records, training sets apart from the new side, routines, notifications, files. The existing real training set stays unassigned. 28 exercises flagged.
+  - Live checks 64/64. Hosted Playwright 17/17 including Flow L. Flow L's first run failed on a test selector ("Side" also matched "Both sides best"), was fixed, and passed. iPhone 7/7, 0 stalls, no test accounts left.
+- **Unilateral competitive scoring:** still only the proposal below. Not built.
 
 **Migration `20261011001700_unilateral_sets.sql` (NOT applied).** Additive for data: no row is changed or deleted. Leaderboards, lifts, scoring and `submit_lift` are untouched.
 - **`exercises.supports_unilateral`:** a new column (default false), set true for 28 exercises:
@@ -47,7 +56,6 @@ _Last updated: 2026-10-15 (Claude Code) · Done: Phases 1–7 + friend verificat
 
 **Tests:** typecheck and lint pass; unit tests 39/39 (new: the 28-exercise list is real slugs and never barbell, Smith or bodyweight). Against production, before the migration: hosted Playwright 16/16 and iPhone 7/7, 0 stalls; no test accounts left.
 - New Flow L covers the L/R switch and its persistence, Enter order, left/right saves, both-sides bench unchanged, previous per side, unsaved warnings (leaving and switching mode), history groups, editing that keeps the side, one-side sets kept off boards, and privacy.
-- Flow L skips until `…1700` is applied.
 
 ## 2026-10-16 13 new exercises with illustrations, muscle search, unsaved-set warnings (applied and deployed)
 
