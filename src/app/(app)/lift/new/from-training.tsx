@@ -9,7 +9,8 @@ import { FEATURED_SLUGS, formatSet, type TrainingSet } from "@/lib/training";
 import type { Exercise, LiftDefaults, WeightUnit } from "@/lib/types";
 import { SubmitSet } from "./submit-set";
 
-const COLUMNS = "id, exercise_id, day_id, set_number, entered_weight, entered_unit, weight_kg, reps, score, is_ranked, local_date, performed_at, pr_dismissed";
+// "*" so `side` (0017) is available to filter out one-side sets, without breaking before it exists.
+const COLUMNS = "*";
 const dayLabel = (d: string) => formatDate(`${d}T12:00:00Z`, "UTC", { month: "short", day: "numeric", year: "numeric" });
 
 /** Choose a saved training set to submit: best sets first (featured lifts on top), then recent ones. */
@@ -33,6 +34,15 @@ export async function FromTraining({
     const { data } = await supabase.from("training_sets").select(COLUMNS).eq("id", setId).eq("user_id", userId).maybeSingle();
     const set = data as TrainingSet | null;
     const exercise = set ? byId.get(set.exercise_id) : null;
+    if (set?.side) {
+      return (
+        <EmptyState
+          title="One-side sets stay in your training log."
+          body="Left and right sets can't go on a leaderboard yet. Log a both-sides set to submit it."
+          action={<Button asChild variant="secondary"><Link href="/lift/new?mode=training">Pick another</Link></Button>}
+        />
+      );
+    }
     if (!set || !exercise) return <EmptyState title="That set isn’t in your training history." action={<Button asChild variant="secondary"><Link href="/lift/new?mode=training">Pick another</Link></Button>} />;
     const { data: onBoard } = await supabase.from("lifts").select("id").eq("training_set_id", set.id).is("deleted_at", null).maybeSingle();
     // One component for both states, so the result screen survives the refresh after submitting.
@@ -55,12 +65,14 @@ export async function FromTraining({
     supabase.from("lifts").select("training_set_id").eq("user_id", userId).is("deleted_at", null).not("training_set_id", "is", null),
   ]);
   const submitted = new Set((linked ?? []).map((l) => l.training_set_id as string));
-  const recent = (recentRows ?? []) as TrainingSet[];
+  // One-side sets aren't eligible for boards (no approved unilateral scoring yet).
+  const bilateral = (rows: unknown[] | null) => ((rows ?? []) as TrainingSet[]).filter((s) => !s.side);
+  const recent = bilateral(recentRows);
   // Best set per exercise; featured competitive lifts first, then by how often you train them.
   const counts = new Map<string, number>();
-  for (const s of (bestRows ?? []) as TrainingSet[]) counts.set(s.exercise_id, (counts.get(s.exercise_id) ?? 0) + 1);
+  for (const s of bilateral(bestRows)) counts.set(s.exercise_id, (counts.get(s.exercise_id) ?? 0) + 1);
   const bests = new Map<string, TrainingSet>();
-  for (const s of (bestRows ?? []) as TrainingSet[]) if (!bests.has(s.exercise_id)) bests.set(s.exercise_id, s);
+  for (const s of bilateral(bestRows)) if (!bests.has(s.exercise_id)) bests.set(s.exercise_id, s);
   const bestList = [...bests.values()].sort((a, b) => {
     const fa = FEATURED_SLUGS.has(byId.get(a.exercise_id)?.slug ?? "") ? 0 : 1;
     const fb = FEATURED_SLUGS.has(byId.get(b.exercise_id)?.slug ?? "") ? 0 : 1;

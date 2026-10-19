@@ -2,6 +2,53 @@
 
 _Last updated: 2026-10-15 (Claude Code) · Done: Phases 1–7 + friend verification · **Deployed (unlisted) at https://liftrank-roan.vercel.app** · Finishing launch setup (see "Deployment status")_
 
+## 2026-10-18 Unilateral (left/right) sets in My Training (committed locally; migration `…1700` awaits approval)
+
+**Migration `20261011001700_unilateral_sets.sql` (NOT applied).** Additive for data: no row is changed or deleted. Leaderboards, lifts, scoring and `submit_lift` are untouched.
+- **`exercises.supports_unilateral`:** a new column (default false), set true for 28 exercises:
+  - Arms: dumbbell, hammer, incline, cable and machine preacher curls; cable wrist curl; triceps pushdown; overhead triceps extension.
+  - Shoulders: lateral and cable lateral raises, rear delt fly, dumbbell and machine shoulder presses.
+  - Chest: dumbbell and incline dumbbell presses, machine and incline machine chest presses, cable fly.
+  - Back: lat pulldown, seated cable row, machine row, chest-supported row.
+  - Legs: Bulgarian split squat, leg press, leg extension, both leg curls, calf raise.
+  - Barbell, Smith, bodyweight and fixed-path movements stay bilateral. No other exercise column changes.
+- **`training_sets.side`:** `left` / `right` / null. Null means both sides or unspecified, so every existing row stays valid and is never assigned a side.
+  - The slot index is now `(user, exercise, date, set number, side) NULLS NOT DISTINCT`, so Left 1 and Right 1 coexist and a both-sides set 1 still can't be saved twice.
+- **`exercise_preferences`:** owner-only (RLS select own, no direct writes), set through `set_unilateral_preference`, which refuses exercises that can't be done one side at a time.
+- **Function changes:**
+  - `log_training_set` and `update_training_set` are replaced by versions with an optional side; old-style calls behave exactly as before.
+  - An edit keeps its side unless `p_side` is `left` / `right` / `none`.
+  - One-side sets never trigger PR prompts (`_personal_best` counts both-sides sets only).
+  - `submit_training_set` refuses them (`unilateral_not_on_boards`).
+- **Rolled-back test (`tests/sql/1700_unilateral_sets.test.sql`)** passes. It covers:
+  - existing sets untouched and lifts unchanged;
+  - the 28 flags; preferences only where allowed;
+  - left and right as separate slots, double taps, and old-style calls;
+  - sides refused on barbell bench; edits keeping the side, the slot-taken check and clearing a side;
+  - no PRs for one-side sets, and no submissions;
+  - privacy: no reads or writes by another user.
+  A deliberate canary failure was reported correctly.
+
+**App:**
+- **Training day:** exercises that support it get an "L/R" switch. The choice is remembered per exercise.
+  - In L/R mode each set has a Left and a Right row, each with its own previous value, inputs and ✓. Enter moves Left → Right → next set.
+  - Both-sides sets never stand in as a left or right "previous".
+  - The unsaved-sets warning tracks each side row, and switching modes with unsaved numbers asks first.
+- **History:** best set and trend per group (Both sides / Left / Right). Rows show L/R, and editing shows a Side picker that keeps the saved side unless changed.
+- **From Training:** leaves out one-side sets; opening one directly says it stays in the training log.
+- **Before the migration:** the code works either way. Catalog and set queries select `*`; the side is sent only when chosen; missing preferences mean "both sides".
+
+**Proposed unilateral competitive scoring (not built; needs approval):**
+- **Separate boards:** "single-arm/leg" boards per exercise, never mixed with both-sides boards.
+- **A pair, not a side:** an entry is a left and a right set with the same set number on the same day, submitted together. One side alone can't be submitted.
+- **Score:** the weaker side's estimated 1RM (existing Epley, both sides at 12 reps or fewer); ties go to the stronger side. Display both sides, e.g. "30×10 · 27.5×10".
+  - Using the weaker side stops strong-side-only entries and rewards balance. An average would let one side carry the other.
+- **Rules unchanged:** same weight conventions (per dumbbell, stack), verification and privacy. A proof video must show both sides.
+
+**Tests:** typecheck and lint pass; unit tests 39/39 (new: the 28-exercise list is real slugs and never barbell, Smith or bodyweight). Against production, before the migration: hosted Playwright 16/16 and iPhone 7/7, 0 stalls; no test accounts left.
+- New Flow L covers the L/R switch and its persistence, Enter order, left/right saves, both-sides bench unchanged, previous per side, unsaved warnings (leaving and switching mode), history groups, editing that keeps the side, one-side sets kept off boards, and privacy.
+- Flow L skips until `…1700` is applied.
+
 ## 2026-10-16 13 new exercises with illustrations, muscle search, unsaved-set warnings (applied and deployed)
 
 **Migration `…1600` was applied on 2026-10-16 with the owner's approval.**

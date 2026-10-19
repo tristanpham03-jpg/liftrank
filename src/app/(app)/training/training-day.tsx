@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, useTransition } from "react";
 import { ArrowDown, ArrowUp, Check, Minus, Pencil, Plus, Repeat, Trash2, X } from "lucide-react";
 import { toggleFavorite } from "@/app/(app)/lift/actions";
 import { ExercisePicker } from "@/components/lifts/exercise-picker";
@@ -11,9 +11,9 @@ import { FormMessage } from "@/components/ui/form";
 import { cn } from "@/lib/cn";
 import { formatDate, todayLocal } from "@/lib/dates";
 import { formatNumber } from "@/lib/scoring";
-import { FEATURED_SLUGS, ROTATION_LABEL, formatSet, rotationText, setWeight, type Rotation, type TemplateId, type TrainingSet } from "@/lib/training";
+import { FEATURED_SLUGS, ROTATION_LABEL, formatSet, rotationText, setWeight, type Rotation, type Side, type TemplateId, type TrainingSet } from "@/lib/training";
 import type { Exercise, WeightUnit } from "@/lib/types";
-import { addDay, deleteDay, dismissPr, logSet, saveDay, updateSet } from "./actions";
+import { addDay, deleteDay, dismissPr, logSet, saveDay, setUnilateral, updateSet } from "./actions";
 import { UnsavedContext, UnsavedGuard, createUnsavedStore, useUnsavedCount, useUnsavedStore } from "./unsaved";
 
 export type DayExercise = {
@@ -21,9 +21,15 @@ export type DayExercise = {
   exercise: Exercise;
   setCount: number;
   today: TrainingSet[];
-  previous: TrainingSet[];
+  /** The latest earlier day's sets, per side ("both" = bilateral or logged before sides existed). */
+  previous: { both: TrainingSet[]; left: TrainingSet[]; right: TrainingSet[] };
   previousDate: string | null;
+  /** Logged left/right (remembered per exercise). */
+  unilateral: boolean;
 };
+
+/** Runs an action, first asking "Unsaved changes" if anything is unsaved. */
+const ConfirmLeaveContext = createContext<(run: () => void) => void>((run) => run());
 
 type Props = {
   split: { id: string; name: string; rotation: Rotation; template: TemplateId };
@@ -46,8 +52,11 @@ export function TrainingDay(props: Props) {
   const confirmLeave = useRef<(run: () => void) => void>((run) => run());
   const register = useCallback((fn: (run: () => void) => void) => void (confirmLeave.current = fn), []);
 
+  const confirmFn = useCallback((run: () => void) => confirmLeave.current(run), []);
+
   return (
     <UnsavedContext.Provider value={store}>
+      <ConfirmLeaveContext.Provider value={confirmFn}>
       <UnsavedGuard store={store} onRegister={register} />
       <header className="mb-4 flex items-start justify-between gap-3 pt-2">
         <div className="min-w-0">
@@ -122,6 +131,7 @@ export function TrainingDay(props: Props) {
           </>
         )
       ) : null}
+      </ConfirmLeaveContext.Provider>
     </UnsavedContext.Provider>
   );
 }
@@ -129,12 +139,57 @@ export function TrainingDay(props: Props) {
 /** One exercise as a few spreadsheet rows: set, previous, weight, reps, ✓. */
 function ExerciseBlock({ item, dayId, unit }: { item: DayExercise; dayId: string; unit: WeightUnit }) {
   const { exercise } = item;
-  const highest = Math.max(item.setCount, ...item.today.map((s) => s.set_number));
+  const [uni, setUni] = useState(item.unilateral);
+  const sided = (s: TrainingSet) => (s.side ?? null) !== null;
+  const highest = Math.max(item.setCount, ...item.today.filter((s) => sided(s) === uni).map((s) => s.set_number));
   const [rows, setRows] = useState(highest);
   const [pr, setPr] = useState<string | null>(null);
+  const [modeError, setModeError] = useState<string | null>(null);
   const [, start] = useTransition();
+  const store = useUnsavedStore();
+  const confirm = useContext(ConfirmLeaveContext);
   const bodyweight = exercise.ranking_method === "max_reps";
   const added = exercise.ranking_method === "added_load_e1rm";
+  const grid = uni ? "grid-cols-[28px_minmax(0,1fr)_68px_56px_44px]" : "grid-cols-[20px_minmax(0,1fr)_68px_56px_44px]";
+
+  // Switching modes hides the other mode's rows, so unsaved numbers there go through "Unsaved changes" first.
+  const toggle = () => {
+    const next = !uni;
+    const apply = () => {
+      setUni(next);
+      setModeError(null);
+      start(async () => {
+        const res = await setUnilateral(exercise.id, next);
+        if (!res.ok) {
+          setUni(!next);
+          setModeError(res.error);
+        }
+      });
+    };
+    if (store && store.countPrefix(`${item.key}-`) > 0) confirm(apply);
+    else apply();
+  };
+
+  const row = (n: number, side: Side | null) => {
+    const tag = side ? side[0].toUpperCase() : "";
+    const nextTag = side === "left" ? `${n}R` : uni ? `${n + 1}L` : `${n + 1}`;
+    return (
+      <SetRow
+        key={`${n}${tag}`}
+        exercise={exercise}
+        dayId={dayId}
+        setNumber={n}
+        side={side}
+        grid={grid}
+        unit={unit}
+        saved={item.today.find((s) => s.set_number === n && (s.side ?? null) === side) ?? null}
+        previous={item.previous[side ?? "both"].find((s) => s.set_number === n) ?? null}
+        focusKey={`${item.key}-${n}${tag}`}
+        nextFocusKey={`${item.key}-${nextTag}`}
+        onPr={(id) => (FEATURED_SLUGS.has(exercise.slug) ? setPr(id) : null)}
+      />
+    );
+  };
 
   return (
     <section className="glass-flat overflow-hidden rounded-[18px]" aria-labelledby={`ex-${item.key}`}>
@@ -142,9 +197,26 @@ function ExerciseBlock({ item, dayId, unit }: { item: DayExercise; dayId: string
         <Link id={`ex-${item.key}`} href={`/training/exercise/${exercise.slug}`} className="min-w-0 truncate font-semibold hover:underline underline-offset-4">
           {exercise.name}
         </Link>
-        <span className="shrink-0 text-xs text-fg-3">{item.previousDate ? `Last ${formatDate(`${item.previousDate}T12:00:00Z`, "UTC", { month: "short", day: "numeric" })}` : "First time"}</span>
+        <span className="flex shrink-0 items-baseline gap-2">
+          <span className="text-xs text-fg-3">{item.previousDate ? `Last ${formatDate(`${item.previousDate}T12:00:00Z`, "UTC", { month: "short", day: "numeric" })}` : "First time"}</span>
+          {exercise.supports_unilateral ? (
+            <button
+              type="button"
+              onClick={toggle}
+              aria-pressed={uni}
+              aria-label={`Log ${exercise.name} left and right separately`}
+              className={cn(
+                "tap h-7 rounded-full border px-2.5 text-xs font-semibold",
+                uni ? "pearl border-transparent" : "border-white/15 text-fg-2 hover:text-fg",
+              )}
+            >
+              L/R
+            </button>
+          ) : null}
+        </span>
       </div>
-      <div className="grid grid-cols-[20px_minmax(0,1fr)_68px_56px_44px] items-center gap-x-1.5 px-2.5 pb-1 text-[11px] font-medium uppercase tracking-wide text-fg-3" aria-hidden>
+      {modeError ? <p className="px-3.5 pb-1 text-[13px] text-danger">{modeError}</p> : null}
+      <div className={cn("grid items-center gap-x-1.5 px-2.5 pb-1 text-[11px] font-medium uppercase tracking-wide text-fg-3", grid)} aria-hidden>
         <span className="text-center">Set</span>
         <span className="pl-1">Previous</span>
         <span className="text-center">{bodyweight ? "" : added ? `+${unit}` : unit}</span>
@@ -152,20 +224,7 @@ function ExerciseBlock({ item, dayId, unit }: { item: DayExercise; dayId: string
         <span />
       </div>
       <ol>
-        {Array.from({ length: rows }, (_, i) => i + 1).map((n) => (
-          <SetRow
-            key={n}
-            exercise={exercise}
-            dayId={dayId}
-            setNumber={n}
-            unit={unit}
-            saved={item.today.find((s) => s.set_number === n) ?? null}
-            previous={item.previous.find((s) => s.set_number === n) ?? null}
-            focusKey={`${item.key}-${n}`}
-            nextFocusKey={`${item.key}-${n + 1}`}
-            onPr={(id) => (FEATURED_SLUGS.has(exercise.slug) ? setPr(id) : null)}
-          />
-        ))}
+        {Array.from({ length: rows }, (_, i) => i + 1).flatMap((n) => (uni ? [row(n, "left"), row(n, "right")] : [row(n, null)]))}
       </ol>
       <div className="flex items-center justify-between px-2 pb-1.5">
         <button type="button" onClick={() => setRows((r) => Math.min(30, r + 1))} className="tap inline-flex h-9 items-center gap-1 px-1.5 text-sm text-fg-2 hover:text-fg">
@@ -205,6 +264,8 @@ function SetRow({
   exercise,
   dayId,
   setNumber,
+  side,
+  grid,
   unit,
   saved,
   previous,
@@ -215,6 +276,9 @@ function SetRow({
   exercise: Exercise;
   dayId: string;
   setNumber: number;
+  /** "left" / "right" for one-side rows; null for a normal (both sides) row. */
+  side: Side | null;
+  grid: string;
   unit: WeightUnit;
   saved: TrainingSet | null;
   previous: TrainingSet | null;
@@ -266,7 +330,7 @@ function SetRow({
     let id = savedId;
     let failure: string | null = null;
     if (!id) {
-      const res = await logSet({ ...input, exerciseId: exercise.id, dayId, setNumber, clientKey });
+      const res = await logSet({ ...input, exerciseId: exercise.id, dayId, setNumber, clientKey, side });
       if (res.ok) {
         id = res.data.id;
         if (res.data.duplicate) {
@@ -298,10 +362,11 @@ function SetRow({
   };
 
   return (
-    <li className={cn("px-2.5 py-1", isSaved && "bg-success/[0.06]")} data-unsaved={dirty}>
-      <div className="grid grid-cols-[20px_minmax(0,1fr)_68px_56px_44px] items-center gap-x-1.5">
+    <li className={cn("px-2.5 py-1", isSaved && "bg-success/[0.06]", side === "left" && "pb-0")} data-unsaved={dirty} data-side={side ?? undefined}>
+      <div className={cn("grid items-center gap-x-1.5", grid)}>
         <span className="relative text-center text-sm font-semibold tabular text-fg-2">
-          {setNumber}
+          {side === "right" ? "" : setNumber}
+          {side ? <span className="ml-0.5 text-[11px] font-medium text-fg-3">{side === "left" ? "L" : "R"}</span> : null}
           {dirty ? (
             <span className="absolute -left-1.5 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-warning" title="Not saved yet">
               <span className="sr-only">, not saved yet</span>
@@ -329,7 +394,7 @@ function SetRow({
             inputMode="decimal"
             enterKeyHint="next"
             autoComplete="off"
-            aria-label={`Set ${setNumber} weight (${unit})`}
+            aria-label={`Set ${setNumber}${side ? ` ${side}` : ""} weight (${unit})`}
             placeholder={prevWeight != null ? formatNumber(prevWeight) : ""}
             value={weight}
             onChange={(e) => setWeightText(e.target.value.replace(",", ".").replace(/[^0-9.]/g, "").slice(0, 7))}
@@ -349,7 +414,7 @@ function SetRow({
           inputMode="numeric"
           enterKeyHint="done"
           autoComplete="off"
-          aria-label={`Set ${setNumber} reps`}
+          aria-label={`Set ${setNumber}${side ? ` ${side}` : ""} reps`}
           placeholder={previous ? String(previous.reps) : ""}
           value={reps}
           onChange={(e) => setReps(e.target.value.replace(/[^0-9]/g, "").slice(0, 3))}
@@ -366,7 +431,7 @@ function SetRow({
           type="button"
           onClick={() => void save()}
           disabled={status === "saving"}
-          aria-label={isSaved ? `Set ${setNumber} saved` : savedId ? `Update set ${setNumber}` : `Save set ${setNumber}`}
+          aria-label={`${isSaved ? "" : savedId ? "Update " : "Save "}${isSaved ? "Set" : "set"} ${setNumber}${side ? ` ${side}` : ""}${isSaved ? " saved" : ""}`}
           aria-pressed={isSaved}
           className={cn(
             "flex h-11 w-11 items-center justify-center rounded-[12px] border transition-colors",

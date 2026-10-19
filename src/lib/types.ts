@@ -20,6 +20,8 @@ export type Exercise = {
   popular_rank: number;
   /** Machine exercises: lifts can record the manufacturer and model. */
   supports_machine_selection: boolean;
+  /** Can be logged one arm / one leg at a time in My Training (migration 0017; absent before it). */
+  supports_unilateral?: boolean;
   aliases: string[];
   /** public/exercises/<illustration>.svg (+ -thumb.svg); null → a plain icon. */
   illustration?: string | null;

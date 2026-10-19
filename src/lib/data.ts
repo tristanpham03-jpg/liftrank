@@ -42,7 +42,8 @@ export const getCatalog = cache(async (): Promise<Exercise[]> => {
   const [exercises, aliases] = await Promise.all([
     supabase
       .from("exercises")
-      .select("id, name, slug, category, muscle_group, equipment_type, ranking_method, weight_convention, max_weight_kg, popular_rank, supports_machine_selection, illustration, primary_muscles, secondary_muscles")
+      // "*" so newer optional columns (supports_unilateral, 0017) are picked up without breaking before they exist.
+      .select("*")
       .order("popular_rank"),
     supabase.from("exercise_aliases").select("exercise_id, alias"),
   ]);

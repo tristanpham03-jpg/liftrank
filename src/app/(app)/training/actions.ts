@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getCatalog, getUserId, rpc, track } from "@/lib/data";
 import { AppError, GENERIC_ERROR } from "@/lib/errors";
 import { createClient } from "@/lib/supabase/server";
-import { TEMPLATES, defaultSetCount, type Rotation, type TemplateId } from "@/lib/training";
+import { TEMPLATES, defaultSetCount, type Rotation, type Side, type TemplateId } from "@/lib/training";
 import type { ActionResult, LiftVisibility, SubmitResult, WeightUnit } from "@/lib/types";
 
 const fail = (e: unknown): { ok: false; error: string } => ({ ok: false, error: e instanceof AppError ? e.message : GENERIC_ERROR });
@@ -80,12 +80,15 @@ function badSet(v: SetInput): string | null {
 
 /** Saves one confirmed working set. Private: never touches boards, the feed or notifications. */
 export async function logSet(
-  input: SetInput & { exerciseId: string; dayId: string | null; setNumber: number; clientKey: string },
+  input: SetInput & { exerciseId: string; dayId: string | null; setNumber: number; clientKey: string; side?: Side | null },
 ): Promise<ActionResult<{ id: string; duplicate: boolean; is_pr: boolean }>> {
   const bad = badSet(input);
   if (bad) return { ok: false, error: bad };
   if (!UUID.test(input.clientKey)) return { ok: false, error: GENERIC_ERROR };
+  if (input.side != null && input.side !== "left" && input.side !== "right") return { ok: false, error: GENERIC_ERROR };
   return call("log_training_set", {
+    // Only sent for one-side sets, so bilateral saves match the pre-0017 signature exactly.
+    ...(input.side ? { p_side: input.side } : {}),
     p_exercise_id: input.exerciseId,
     p_day_id: input.dayId,
     p_set_number: input.setNumber,
@@ -98,11 +101,16 @@ export async function logSet(
   });
 }
 
-/** Corrects a saved set (numbers or date). It stays the same performance. */
-export async function updateSet(setId: string, input: SetInput & { dateChanged: boolean }): Promise<ActionResult> {
+/**
+ * Corrects a saved set (numbers or date). It stays the same performance and
+ * keeps its side unless `side` is given ("none" makes it bilateral).
+ */
+export async function updateSet(setId: string, input: SetInput & { dateChanged: boolean; side?: Side | "none" }): Promise<ActionResult> {
   const bad = badSet(input);
   if (bad) return { ok: false, error: bad };
+  if (input.side && !["left", "right", "none"].includes(input.side)) return { ok: false, error: GENERIC_ERROR };
   const res = await call<null>("update_training_set", {
+    ...(input.side ? { p_side: input.side } : {}),
     p_set_id: setId,
     p_weight: input.weight,
     p_unit: input.weight == null ? null : input.unit,
@@ -117,6 +125,12 @@ export async function updateSet(setId: string, input: SetInput & { dateChanged: 
 export async function deleteSet(setId: string): Promise<ActionResult> {
   const res = await call<null>("delete_training_set", { p_set_id: setId });
   if (res.ok) revalidatePath("/training", "layout");
+  return res.ok ? { ok: true, data: undefined } : res;
+}
+
+/** Remember whether this exercise is logged left/right (only where the exercise allows it). */
+export async function setUnilateral(exerciseId: string, unilateral: boolean): Promise<ActionResult> {
+  const res = await call<null>("set_unilateral_preference", { p_exercise_id: exerciseId, p_unilateral: unilateral });
   return res.ok ? { ok: true, data: undefined } : res;
 }
 

@@ -11,8 +11,8 @@ import { TrainingDay, type DayExercise } from "./training-day";
 
 export const metadata: Metadata = { title: "My Training" };
 
-const SET_COLUMNS =
-  "id, exercise_id, day_id, set_number, entered_weight, entered_unit, weight_kg, reps, score, is_ranked, local_date, performed_at, pr_dismissed";
+// "*": includes `side` once migration 0017 exists, and still works before it.
+const SET_COLUMNS = "*";
 
 /**
  * My Training: your routine as a spreadsheet. Opening it (or any day) only
@@ -84,15 +84,34 @@ export default async function TrainingPage({ searchParams }: { searchParams: Pro
     : { data: [] };
   const sets = (setRows ?? []) as TrainingSet[];
 
+  // Left/right preferences (migration 0017). Before it exists the query errors: treat as none.
+  const { data: prefRows } = exerciseIds.length
+    ? await supabase.from("exercise_preferences").select("exercise_id, unilateral").eq("user_id", profile.id).in("exercise_id", exerciseIds)
+    : { data: [] };
+  const unilateral = new Set((prefRows ?? []).filter((r) => r.unilateral).map((r) => r.exercise_id as string));
+
   const byId = new Map(catalog.map((e) => [e.id, e]));
   const exercises: DayExercise[] = (planned ?? []).flatMap((p) => {
     const exercise = byId.get(p.exercise_id);
     if (!exercise) return [];
     const mine = sets.filter((s) => s.exercise_id === p.exercise_id);
     const todays = mine.filter((s) => s.local_date === today);
+    // "Previous" is the latest earlier day for each side on its own: both-sides sets never stand in for left or right.
+    const latest = (side: TrainingSet["side"]) => {
+      const group = mine.filter((s) => (s.side ?? null) === side && s.local_date < today);
+      const date = group[0]?.local_date;
+      return date ? group.filter((s) => s.local_date === date) : [];
+    };
     const lastDate = mine.find((s) => s.local_date < today)?.local_date;
-    const previous = lastDate ? mine.filter((s) => s.local_date === lastDate) : [];
-    return [{ key: p.id, exercise, setCount: p.set_count, today: todays, previous, previousDate: lastDate ?? null }];
+    return [{
+      key: p.id,
+      exercise,
+      setCount: p.set_count,
+      today: todays,
+      previous: { both: latest(null), left: latest("left"), right: latest("right") },
+      previousDate: lastDate ?? null,
+      unilateral: Boolean(exercise.supports_unilateral) && unilateral.has(exercise.id),
+    }];
   });
 
   return (

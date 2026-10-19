@@ -104,7 +104,12 @@ export type TrainingSet = {
   local_date: string;
   performed_at: string;
   pr_dismissed: boolean;
+  /** "left" / "right" for one-side sets; null or absent = bilateral (or logged before sides existed). */
+  side?: Side | null;
 };
+
+export type Side = "left" | "right";
+export const SIDE_LABEL: Record<Side, string> = { left: "Left", right: "Right" };
 
 /** A set's weight in the viewer's unit: exactly as typed when units match. */
 export function setWeight(s: Pick<TrainingSet, "entered_weight" | "entered_unit" | "weight_kg">, unit: WeightUnit): number | null {

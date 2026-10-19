@@ -389,6 +389,21 @@ describe("63-exercise catalog and muscle search", () => {
     expect(names("db bicep")).toEqual(expect.arrayContaining(["Dumbbell Curl", "Incline Dumbbell Curl", "Hammer Curl"]));
   });
 
+  it("allows left/right only where it makes sense (migration 0017)", () => {
+    const m = readFileSync(path.join(process.cwd(), "supabase/migrations/20261011001700_unilateral_sets.sql"), "utf8");
+    const list = m.slice(m.indexOf("supports_unilateral = true where slug in ("), m.indexOf(");", m.indexOf("supports_unilateral = true")));
+    const slugs = [...list.matchAll(/'([a-z0-9-]+)'/g)].map((x) => x[1]);
+    expect(slugs).toHaveLength(28);
+    const bySlug = new Map(catalog.map((e) => [e.slug, e]));
+    for (const slug of slugs) {
+      const e = bySlug.get(slug);
+      expect(e, slug).toBeDefined();
+      expect(["barbell", "smith_machine", "bodyweight", "assisted_bodyweight"], slug).not.toContain(e!.equipment_type);
+    }
+    for (const slug of ["dumbbell-curl", "hammer-curl", "cable-lateral-raise", "bulgarian-split-squat", "leg-extension"]) expect(slugs).toContain(slug);
+    for (const slug of ["barbell-bench-press", "deadlift", "pull-up", "barbell-back-squat", "hip-abduction"]) expect(slugs).not.toContain(slug);
+  });
+
   it("keeps abbreviations apart: SLDL and RDL are different exercises", () => {
     expect(names("sldl")[0]).toBe("Stiff-Leg Deadlift");
     expect(names("stiff-leg deadlift")[0]).toBe("Stiff-Leg Deadlift");
