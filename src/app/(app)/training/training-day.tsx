@@ -145,6 +145,10 @@ function ExerciseBlock({ item, dayId, unit }: { item: DayExercise; dayId: string
   const [rows, setRows] = useState(highest);
   const [pr, setPr] = useState<string | null>(null);
   const [modeError, setModeError] = useState<string | null>(null);
+  const [rowHint, setRowHint] = useState<string | null>(null);
+  // Rows saved this visit or earlier today (key = set number + side), so "− Set" never hides a saved set.
+  const [saved, setSaved] = useState(() => new Set(item.today.map((s) => `${s.set_number}${s.side ? s.side[0].toUpperCase() : ""}`)));
+  const markSaved = useCallback((k: string) => setSaved((prev) => (prev.has(k) ? prev : new Set(prev).add(k))), []);
   const [, start] = useTransition();
   const store = useUnsavedStore();
   const confirm = useContext(ConfirmLeaveContext);
@@ -187,8 +191,26 @@ function ExerciseBlock({ item, dayId, unit }: { item: DayExercise; dayId: string
         focusKey={`${item.key}-${n}${tag}`}
         nextFocusKey={`${item.key}-${nextTag}`}
         onPr={(id) => (FEATURED_SLUGS.has(exercise.slug) ? setPr(id) : null)}
+        onSaved={() => markSaved(`${n}${tag}`)}
       />
     );
+  };
+
+  // "− Set": drops the last row for today only (the routine's set count is changed in Edit day).
+  // Empty rows go at once; typed-but-unsaved ones ask first; saved sets stay (delete them in history).
+  const removeRow = () => {
+    if (rows <= 1) return;
+    const tags = uni ? [`${rows}L`, `${rows}R`] : [`${rows}`];
+    if (tags.some((t) => saved.has(t))) {
+      setRowHint(`Set ${rows} is saved. To delete it, open ${exercise.name} history.`);
+      return;
+    }
+    const apply = () => {
+      setRowHint(null);
+      setRows((r) => Math.max(1, r - 1));
+    };
+    if (store && tags.some((t) => store.has(`${item.key}-${t}`))) confirm(apply);
+    else apply();
   };
 
   return (
@@ -227,10 +249,37 @@ function ExerciseBlock({ item, dayId, unit }: { item: DayExercise; dayId: string
         {Array.from({ length: rows }, (_, i) => i + 1).flatMap((n) => (uni ? [row(n, "left"), row(n, "right")] : [row(n, null)]))}
       </ol>
       <div className="flex items-center justify-between px-2 pb-1.5">
-        <button type="button" onClick={() => setRows((r) => Math.min(30, r + 1))} className="tap inline-flex h-9 items-center gap-1 px-1.5 text-sm text-fg-2 hover:text-fg">
-          <Plus size={15} aria-hidden /> Set
-        </button>
+        <span className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={removeRow}
+            disabled={rows <= 1}
+            aria-label="Remove last set"
+            className="tap inline-flex h-9 items-center gap-1 px-1.5 text-sm text-fg-2 hover:text-fg disabled:opacity-30"
+          >
+            <Minus size={15} aria-hidden /> Set
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setRowHint(null);
+              setRows((r) => Math.min(30, r + 1));
+            }}
+            aria-label="Add a set"
+            className="tap inline-flex h-9 items-center gap-1 px-1.5 text-sm text-fg-2 hover:text-fg"
+          >
+            <Plus size={15} aria-hidden /> Set
+          </button>
+        </span>
       </div>
+      {rowHint ? (
+        <p className="px-3.5 pb-2 text-[13px] text-fg-2" role="status">
+          {rowHint}{" "}
+          <Link href={`/training/exercise/${exercise.slug}`} className="underline underline-offset-4">
+            Open history
+          </Link>
+        </p>
+      ) : null}
       {pr ? (
         <div className="border-t border-white/[0.07] px-3.5 py-3" role="status" data-testid="pr-prompt">
           <p className="text-sm font-semibold">New {exercise.name} PR!</p>
@@ -272,6 +321,7 @@ function SetRow({
   focusKey,
   nextFocusKey,
   onPr,
+  onSaved,
 }: {
   exercise: Exercise;
   dayId: string;
@@ -285,6 +335,7 @@ function SetRow({
   focusKey: string;
   nextFocusKey: string;
   onPr: (setId: string) => void;
+  onSaved: () => void;
 }) {
   const bodyweight = exercise.ranking_method === "max_reps";
   const savedWeight = saved ? setWeight(saved, unit) : null;
@@ -350,6 +401,7 @@ function SetRow({
       setSavedId(id);
       setSavedAs(current);
       setStatus("idle");
+      onSaved();
       document.querySelector<HTMLInputElement>(`[data-focus="${nextFocusKey}"]`)?.focus();
     } else setStatus("error");
   }

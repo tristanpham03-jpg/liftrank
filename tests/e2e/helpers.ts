@@ -98,8 +98,32 @@ export function hostedAdmin(): SupabaseClient | null {
   }
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const secret = process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (url && secret) admin = createClient(url, secret, { auth: { persistSession: false, autoRefreshToken: false } });
+  if (url && secret) admin = createClient(url, secret, { auth: { persistSession: false, autoRefreshToken: false }, global: { fetch: patientFetch } });
   return admin;
+}
+
+/**
+ * The test runner's own Supabase calls (admin lookups, seeding, cleanup). On
+ * some networks a kept-alive connection is dropped silently and a request
+ * hangs for minutes; a 15 s timeout with one retry turns that into a short,
+ * logged delay instead of a hung test. App code is unaffected.
+ */
+async function patientFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await fetch(input, { ...init, signal: AbortSignal.timeout(15_000) });
+    } catch (e) {
+      const path = (() => {
+        try {
+          return new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url).pathname;
+        } catch {
+          return "?";
+        }
+      })();
+      if (attempt >= 2 || !(e instanceof Error) || (e.name !== "TimeoutError" && e.name !== "AbortError")) throw e;
+      console.warn(`[test-net] admin request to ${path} timed out after 15 s; retrying once`);
+    }
+  }
 }
 
 /** Promotes a user to moderator: directly in the local throwaway database, or with the secret key. */

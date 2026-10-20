@@ -17,6 +17,7 @@ export function createUnsavedStore() {
       listeners.forEach((l) => l());
     },
     count: () => dirty.size,
+    has: (key: string) => dirty.has(key),
     /** Unsaved rows whose key starts with `prefix` (one exercise block). */
     countPrefix: (prefix: string) => [...dirty].filter((k) => k.startsWith(prefix)).length,
     subscribe(l: () => void) {

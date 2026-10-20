@@ -196,3 +196,60 @@ test("Flow K2: search by muscle, equipment and alias in every exercise picker; c
   await page.getByRole("button", { name: "Save day" }).click();
   await expect(page.getByRole("link", { name: all63 ? "Smith Machine JM Press" : "Skull Crusher", exact: true })).toBeVisible();
 });
+
+test("Flow K3: '− Set' removes today's extra rows, asks before dropping typed numbers, never hides saved sets", async ({ page }) => {
+  test.skip(!(await ready()), "Needs hosted Supabase with the training tables.");
+  test.setTimeout(120_000);
+  const name = username("remi");
+  await signUp(page, name);
+  const uid = await uidOf(name);
+  await page.goto("/training");
+  await page.getByRole("button", { name: /Upper \/ Lower/ }).click();
+  await page.getByRole("button", { name: "Use U/L" }).click();
+  const b = bench(page);
+  const rows = () => b.getByLabel(/^Set \d+ reps$/).count();
+  await expect(b).toBeVisible();
+  expect(await rows()).toBe(3); // planned working sets
+
+  // + adds a row; − takes an empty one straight back off.
+  await b.getByRole("button", { name: "Add a set" }).click();
+  expect(await rows()).toBe(4);
+  await b.getByRole("button", { name: "Remove last set" }).click();
+  expect(await rows()).toBe(3);
+  await expect(dialog(page)).toHaveCount(0);
+
+  // Typed but not saved: asks first. Stay keeps it; Discard removes it.
+  await b.getByLabel("Set 3 weight (lb)").fill("185");
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  await b.getByRole("button", { name: "Remove last set" }).click();
+  await expect(dialog(page)).toBeVisible();
+  await dialog(page).getByRole("button", { name: "Stay and save" }).click();
+  expect(await rows()).toBe(3);
+  await expect(b.getByLabel("Set 3 weight (lb)")).toHaveValue("185");
+  await b.getByRole("button", { name: "Remove last set" }).click();
+  await dialog(page).getByRole("button", { name: "Discard changes" }).click();
+  expect(await rows()).toBe(2);
+  await expect(page.getByTestId("unsaved-count")).toHaveCount(0);
+
+  // A saved set is never removed by −: it points to history instead.
+  await b.getByLabel("Set 2 weight (lb)").fill("205");
+  await b.getByLabel("Set 2 reps").fill("5");
+  await b.getByRole("button", { name: "Save set 2" }).click();
+  await expect(b.getByRole("button", { name: "Set 2 saved" })).toBeVisible();
+  await b.getByRole("button", { name: "Remove last set" }).click();
+  expect(await rows()).toBe(2);
+  await expect(b.getByRole("status").filter({ hasText: "Set 2 is saved" })).toBeVisible();
+  await expect(b.getByRole("link", { name: "Open history" })).toHaveAttribute("href", "/training/exercise/barbell-bench-press");
+  expect((await hostedAdmin()!.from("training_sets").select("id").eq("user_id", uid)).data).toHaveLength(1);
+
+  // Never below one row (on another exercise with nothing saved).
+  const lat = page.locator("section").filter({ has: page.getByRole("link", { name: "Lat Pulldown", exact: true }) });
+  await lat.getByRole("button", { name: "Remove last set" }).click();
+  await expect(lat.getByRole("button", { name: "Remove last set" })).toBeDisabled();
+  expect(await lat.getByLabel(/^Set \d+ reps$/).count()).toBe(1);
+
+  // Today-only: a reload shows the planned sets again (and the saved one).
+  await page.reload();
+  expect(await bench(page).getByLabel(/^Set \d+ reps$/).count()).toBe(3);
+  await expect(bench(page).getByRole("button", { name: "Set 2 saved" })).toBeVisible();
+});

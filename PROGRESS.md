@@ -2,6 +2,18 @@
 
 _Last updated: 2026-10-15 (Claude Code) · Done: Phases 1–7 + friend verification · **Deployed (unlisted) at https://liftrank-roan.vercel.app** · Finishing launch setup (see "Deployment status")_
 
+## 2026-10-20 "− Set" on the training day (no migration)
+
+- **Problem:** the training day had only "+ Set", so an extra row (or fewer sets than planned today) couldn't be removed. The − in Edit day, which changes the routine's set count, worked.
+- **Fix:** "− Set" next to "+ Set" removes the last row for today only.
+  - An empty row goes at once. Typed-but-unsaved numbers go through the "Unsaved changes" dialog.
+  - A saved set is never removed. A note links to the exercise's history, where saved sets are deleted.
+  - In L/R mode the Left and Right rows go together. It can't go below one row, and a reload shows the planned count again.
+- **Tests:**
+  - Flow K3 (add and remove, the unsaved dialog, saved sets kept, the minimum, today-only) and Flow L2 (L/R pair).
+  - The test runner's admin client now has a 15 s timeout with one logged retry, after a K3 run hung 9 minutes on a silently dropped connection. The trace showed the browser idle after sign-up while the runner's lookup waited; the app server showed 0 stalls.
+  - Results: hosted 19/19, iPhone 7/7, unit tests 39/39, 0 stalls.
+
 ## 2026-10-18 Unilateral (left/right) sets in My Training (applied and deployed)
 
 **Migration `…1700` was applied on 2026-10-18 with the owner's approval.**

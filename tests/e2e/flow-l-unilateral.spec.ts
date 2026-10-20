@@ -127,3 +127,24 @@ test("Flow L: left/right sets in My Training, kept apart from both-sides sets an
   await other.goto("/training/exercise/dumbbell-curl");
   await expect(other.getByText("No Dumbbell Curl sets logged yet.")).toBeVisible();
 });
+
+test("Flow L2: in L/R mode '− Set' removes the left and right rows together", async ({ page }) => {
+  test.skip(!(await ready()), "Needs hosted Supabase with migration 0017 applied.");
+  await signUp(page, username("rory"));
+  await page.goto("/training");
+  await page.getByRole("button", { name: /Custom Split/ }).click();
+  await page.getByRole("button", { name: "Use Custom" }).click();
+  await page.getByRole("button", { name: "Add exercises" }).click();
+  await page.getByRole("button", { name: "Add exercise" }).click();
+  await page.getByRole("dialog").getByLabel("Search exercises").fill("hammer curl");
+  await page.getByRole("dialog").getByRole("button", { name: /^Hammer Curl/ }).first().click();
+  await page.getByRole("button", { name: "Save day" }).click();
+  const curl = block(page, "Hammer Curl");
+  await curl.getByRole("button", { name: /left and right separately/ }).click();
+  // Exercises added in Edit day start with 2 working sets.
+  await expect(curl.getByLabel("Set 2 left reps")).toBeVisible();
+  await curl.getByRole("button", { name: "Remove last set" }).click();
+  await expect(curl.getByLabel("Set 2 left reps")).toHaveCount(0);
+  await expect(curl.getByLabel("Set 2 right reps")).toHaveCount(0);
+  await expect(curl.getByLabel("Set 1 right reps")).toBeVisible();
+});
