@@ -588,3 +588,4 @@ Done by Claude, verified:
 - **Security headers** in `next.config.ts`. Test port moved to 3210.
 - **Test-data incident:** a live-check run filed a test report against the owner's real public lift. Found in the leftover check and deleted, along with 21 other test reports. The live check now reports only its own test users' lifts and deletes its reports, and the cleanup script removes test reports.
 - **Git:** initialized on `main`; `.gitignore` covers `.env*` (except `.env.example`), builds, test output, logs and `supabase/.temp`.
+- **README:** added the live link, beta status and a feature summary at the top, ahead of making the repository public.
