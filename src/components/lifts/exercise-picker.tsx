@@ -35,8 +35,11 @@ type Props = {
   onToggleFavorite?: (exerciseId: string, favorite: boolean) => Promise<void>;
   triggerClassName?: string;
   label?: string;
-  /** A custom trigger (e.g. a small "Replace" button) instead of the exercise field. */
-  trigger?: React.ReactElement;
+  /** A custom trigger (e.g. a small "Replace" button) instead of the exercise field; null = no trigger (open it with `open`). */
+  trigger?: React.ReactElement | null;
+  /** Controlled open state (e.g. opened from a menu). */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 };
 
 export function ExercisePicker({
@@ -49,8 +52,15 @@ export function ExercisePicker({
   triggerClassName,
   label = "Exercise",
   trigger,
+  open: openProp,
+  onOpenChange,
 }: Props) {
-  const [open, setOpen] = useState(false);
+  const [openState, setOpenState] = useState(false);
+  const open = openProp ?? openState;
+  const setOpen = (o: boolean) => {
+    if (openProp === undefined) setOpenState(o);
+    onOpenChange?.(o);
+  };
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<string | null>(null);
   const [favorites, setFavorites] = useState(() => new Set(favoriteIds));
@@ -93,7 +103,7 @@ export function ExercisePicker({
 
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
-      {trigger ? (
+      {trigger === null ? null : trigger ? (
         <Dialog.Trigger asChild>{trigger}</Dialog.Trigger>
       ) : (
         <Dialog.Trigger

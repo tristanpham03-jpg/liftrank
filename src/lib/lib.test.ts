@@ -317,9 +317,9 @@ describe("training templates", () => {
   });
 });
 
-describe("63-exercise catalog and muscle search", () => {
-  // The real catalog, straight from the migrations (0006 + 0016).
-  const sql = ["20261011000600_catalog.sql", "20261011001600_more_exercises.sql"]
+describe("exercise catalog and muscle search", () => {
+  // The real catalog, straight from every migration that adds exercises (0006, 0016, 0018).
+  const sql = ["20261011000600_catalog.sql", "20261011001600_more_exercises.sql", "20261011001800_training_sessions.sql"]
     .map((f) => readFileSync(path.join(process.cwd(), "supabase/migrations", f), "utf8"))
     .join("\n");
   const rows = [...sql.matchAll(/\('([^']+)', '([a-z0-9-]+)', '(\w+)', '([^']+)', '(\w+)', '(\w+)', '(\w+)', (?:true|false), (?:null|[\d.]+), (?:null|[\d.]+), (\d+)[,)]/g)];
@@ -339,18 +339,19 @@ describe("63-exercise catalog and muscle search", () => {
   const names = (q: string, n = 30) => searchExercises(catalog, q, n).map((e) => e.name);
   const slugs = (q: string, n = 30) => searchExercises(catalog, q, n).map((e) => e.slug);
 
-  it("has 63 distinct exercises, five of them Abs/Core, all tagged for search", async () => {
+  it("has 68 distinct exercises, five of them Abs/Core, all tagged for search", async () => {
     const { EXERCISE_MUSCLES, CATEGORY_LABEL } = await import("./exercise-muscles");
-    expect(catalog).toHaveLength(63);
-    expect(new Set(catalog.map((e) => e.slug)).size).toBe(63);
+    expect(catalog).toHaveLength(68);
+    expect(new Set(catalog.map((e) => e.slug)).size).toBe(68);
     expect(catalog.filter((e) => e.category === "core").map((e) => e.slug).sort()).toEqual(
       ["cable-crunch", "hanging-knee-raise", "hanging-leg-raise", "machine-ab-crunch", "weighted-decline-sit-up"],
     );
     for (const e of catalog) expect(EXERCISE_MUSCLES[e.slug], e.slug).toBeDefined();
     expect(CATEGORY_LABEL.core).toBe("Abs/Core");
-    // Every exercise has an approved illustration (panel + thumbnail) on disk.
+    // Every exercise has an approved illustration on disk, except these, which use the fallback until approved art exists.
+    const pending = ["bicep-supination", "face-pull", "keenan-flaps", "kelso-shrug", "recline-curl"];
     const { EXERCISE_IMAGES } = await import("./exercise-images");
-    expect([...EXERCISE_IMAGES].sort()).toEqual(catalog.map((e) => e.slug).sort());
+    expect([...EXERCISE_IMAGES].sort()).toEqual(catalog.map((e) => e.slug).filter((s) => !pending.includes(s)).sort());
     for (const slug of EXERCISE_IMAGES) {
       for (const f of [`${slug}.webp`, `${slug}-thumb.webp`]) expect(readFileSync(path.join(process.cwd(), "public/exercises/img", f)).byteLength, f).toBeGreaterThan(1000);
     }
@@ -413,5 +414,14 @@ describe("63-exercise catalog and muscle search", () => {
     expect(names("abductors")[0]).toBe("Hip Abduction");
     expect(names("adductor")[0]).toBe("Hip Adduction");
     expect(names("wrist curl")[0]).toBe("Cable Wrist Curl");
+  });
+});
+
+describe("new SBL exercises in search", () => {
+  it("finds them by alias and muscle", async () => {
+    const { EXERCISE_MUSCLES } = await import("./exercise-muscles");
+    for (const slug of ["keenan-flaps", "recline-curl", "kelso-shrug", "bicep-supination", "face-pull"]) expect(EXERCISE_MUSCLES[slug], slug).toBeDefined();
+    expect(EXERCISE_MUSCLES["face-pull"].primary).toContain("rear_delts");
+    expect(EXERCISE_MUSCLES["kelso-shrug"].primary).toContain("upper_back");
   });
 });

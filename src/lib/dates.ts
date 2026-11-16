@@ -40,3 +40,8 @@ export function localNoon(date: string): string {
   const [y, m, d] = date.split("-").map(Number);
   return new Date(y, m - 1, d, 12, 0, 0).toISOString();
 }
+
+/** Adds whole days to a "YYYY-MM-DD" calendar day. */
+export function shiftDay(day: string, days: number): string {
+  return new Date(Date.parse(`${day}T12:00:00Z`) + days * 864e5).toISOString().slice(0, 10);
+}

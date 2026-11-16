@@ -106,6 +106,10 @@ export type TrainingSet = {
   pr_dismissed: boolean;
   /** "left" / "right" for one-side sets; null or absent = bilateral (or logged before sides existed). */
   side?: Side | null;
+  /** Reps in reserve (0-10); null/absent = not recorded (never assumed 0). Migration 0018. */
+  rir?: number | null;
+  /** The session it was saved in; null for sets logged before sessions. Migration 0018. */
+  session_id?: string | null;
 };
 
 export type Side = "left" | "right";
@@ -124,3 +128,6 @@ export function formatSet(s: Pick<TrainingSet, "entered_weight" | "entered_unit"
   if (method === "max_reps" || w == null) return `${s.reps} ${s.reps === 1 ? "rep" : "reps"}`;
   return `${method === "added_load_e1rm" ? "+" : ""}${formatNumber(w)} × ${s.reps}`;
 }
+
+/** Exercises that can be ranked on boards (training-only ones, like Bicep Supination, can't). */
+export const isRankable = (e: { ranking_method: string }) => e.ranking_method !== "none";

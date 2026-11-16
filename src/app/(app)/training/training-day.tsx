@@ -2,34 +2,33 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createContext, useCallback, useContext, useEffect, useRef, useState, useTransition } from "react";
-import { ArrowDown, ArrowUp, Check, Minus, Pencil, Plus, Repeat, Trash2, X } from "lucide-react";
+import { useState, useTransition } from "react";
+import { ArrowDown, ArrowUp, History, Minus, Pencil, Play, Plus, Repeat, StickyNote, Trash2, X } from "lucide-react";
 import { toggleFavorite } from "@/app/(app)/lift/actions";
 import { ExercisePicker } from "@/components/lifts/exercise-picker";
 import { Button } from "@/components/ui/button";
 import { FormMessage } from "@/components/ui/form";
 import { cn } from "@/lib/cn";
 import { formatDate, todayLocal } from "@/lib/dates";
-import { formatNumber } from "@/lib/scoring";
-import { FEATURED_SLUGS, ROTATION_LABEL, formatSet, rotationText, setWeight, type Rotation, type Side, type TemplateId, type TrainingSet } from "@/lib/training";
+import { newBlock, newDraft } from "@/lib/session";
+import { ROTATION_LABEL, formatSet, rotationText, type Rotation, type TemplateId } from "@/lib/training";
+import type { Previous } from "@/lib/training-previous";
+import type { Tip } from "@/lib/training-tips";
 import type { Exercise, WeightUnit } from "@/lib/types";
-import { addDay, deleteDay, dismissPr, logSet, saveDay, setUnilateral, updateSet } from "./actions";
-import { UnsavedContext, UnsavedGuard, createUnsavedStore, useUnsavedCount, useUnsavedStore } from "./unsaved";
+import { addDay, deleteDay, saveDay, startSession } from "./actions";
+import { BuddyTip } from "./buddy";
+import { SessionSaved, type SavedSummary } from "./session-saved";
 
 export type DayExercise = {
   key: string;
   exercise: Exercise;
   setCount: number;
-  today: TrainingSet[];
-  /** The latest earlier day's sets, per side ("both" = bilateral or logged before sides existed). */
-  previous: { both: TrainingSet[]; left: TrainingSet[]; right: TrainingSet[] };
-  previousDate: string | null;
+  previous: Previous;
   /** Logged left/right (remembered per exercise). */
   unilateral: boolean;
+  /** Your private routine note for this exercise. */
+  note: string;
 };
-
-/** Runs an action, first asking "Unsaved changes" if anything is unsaved. */
-const ConfirmLeaveContext = createContext<(run: () => void) => void>((run) => run());
 
 type Props = {
   split: { id: string; name: string; rotation: Rotation; template: TemplateId };
@@ -41,23 +40,35 @@ type Props = {
   catalog: Exercise[];
   recentIds: string[];
   favoriteIds: string[];
+  tip: Tip | null;
+  saved: SavedSummary | null;
 };
 
+/**
+ * My Training, between sessions: pick a day, see what's on it and what you did
+ * last time, then Start. Starting saves nothing and doesn't move the rotation;
+ * only End does.
+ */
 export function TrainingDay(props: Props) {
   const { split, days, selectedDayId, nextDayId, exercises } = props;
+  const router = useRouter();
   const [editing, setEditing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, start] = useTransition();
   const day = days.find((d) => d.id === selectedDayId);
-  const [store] = useState(createUnsavedStore);
-  const unsaved = useUnsavedCount(store);
-  const confirmLeave = useRef<(run: () => void) => void>((run) => run());
-  const register = useCallback((fn: (run: () => void) => void) => void (confirmLeave.current = fn), []);
 
-  const confirmFn = useCallback((run: () => void) => confirmLeave.current(run), []);
+  const begin = () =>
+    start(async () => {
+      if (!day) return;
+      setError(null);
+      const draft = newDraft(exercises.map((e) => newBlock(e.key, e.exercise.id, e.setCount, e.unilateral)));
+      const res = await startSession(day.id, todayLocal(), draft);
+      if (!res.ok) return setError(res.error);
+      router.refresh();
+    });
 
   return (
-    <UnsavedContext.Provider value={store}>
-      <ConfirmLeaveContext.Provider value={confirmFn}>
-      <UnsavedGuard store={store} onRegister={register} />
+    <>
       <header className="mb-4 flex items-start justify-between gap-3 pt-2">
         <div className="min-w-0">
           <h1 className="text-[28px] font-bold leading-tight tracking-[-0.03em]">My Training</h1>
@@ -66,10 +77,18 @@ export function TrainingDay(props: Props) {
             <span className="sr-only">: {rotationText(days.map((d) => d.name), split.rotation, split.template)}</span>
           </p>
         </div>
-        <Link href="/training?change=1" className="tap shrink-0 pt-2 text-sm text-fg-2 underline-offset-4 hover:text-fg hover:underline">
-          Change split
-        </Link>
+        <div className="flex shrink-0 items-center gap-3 pt-2 text-sm">
+          <Link href="/training/sessions" className="tap inline-flex items-center gap-1 text-fg-2 hover:text-fg">
+            <History size={15} aria-hidden /> Sessions
+          </Link>
+          <Link href="/training?change=1" className="tap text-fg-2 underline-offset-4 hover:text-fg hover:underline">
+            Change split
+          </Link>
+        </div>
       </header>
+
+      {props.saved ? <SessionSaved summary={props.saved} /> : null}
+      {props.tip && !props.saved ? <BuddyTip tip={props.tip} /> : null}
 
       <nav aria-label="Training days" className="-mx-4 mb-4 flex gap-2 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {days.map((d) => {
@@ -99,403 +118,53 @@ export function TrainingDay(props: Props) {
         ) : (
           <>
             <div className="mb-2 flex items-center justify-between px-1">
-              <h2 className="flex min-w-0 items-baseline gap-2 text-[17px] font-semibold tracking-[-0.01em]">
-                <span className="truncate">{day.name}</span>
-                {unsaved ? (
-                  <span className="shrink-0 text-[13px] font-medium text-warning" role="status" data-testid="unsaved-count">
-                    {unsaved} unsaved {unsaved === 1 ? "set" : "sets"}
-                  </span>
-                ) : null}
-              </h2>
-              <button type="button" onClick={() => confirmLeave.current(() => setEditing(true))} className="tap inline-flex shrink-0 items-center gap-1.5 text-sm text-fg-2 hover:text-fg">
+              <h2 className="text-[17px] font-semibold tracking-[-0.01em]">{day.name}</h2>
+              <button type="button" onClick={() => setEditing(true)} className="tap inline-flex items-center gap-1.5 text-sm text-fg-2 hover:text-fg">
                 <Pencil size={14} aria-hidden /> Edit day
               </button>
             </div>
             {exercises.length ? (
-              <div className="space-y-3">
-                {exercises.map((e) => (
-                  <ExerciseBlock key={e.key} item={e} dayId={day.id} unit={props.unit} />
-                ))}
-              </div>
+              <ul className="glass-flat divide-y divide-white/[0.06] overflow-hidden rounded-[18px]" aria-label={`${day.name} exercises`}>
+                {exercises.map((e) => {
+                  const prev = e.unilateral ? [...e.previous.left, ...e.previous.right] : e.previous.both;
+                  const top = prev[0];
+                  return (
+                    <li key={e.key} className="flex items-center gap-3 px-3.5 py-2.5">
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-center gap-1.5">
+                          <Link href={`/training/exercise/${e.exercise.slug}`} className="truncate font-medium hover:underline underline-offset-4">
+                            {e.exercise.name}
+                          </Link>
+                          {e.note ? <StickyNote size={13} className="shrink-0 text-fg-3" aria-label="Has a routine note" /> : null}
+                        </span>
+                        <span className="block truncate text-[13px] text-fg-2">
+                          {e.setCount} {e.setCount === 1 ? "set" : "sets"}
+                          {e.unilateral ? " · left/right" : ""}
+                          {top && e.previous.date
+                            ? ` · last ${formatSet(top, e.exercise.ranking_method, props.unit)} on ${formatDate(`${e.previous.date}T12:00:00Z`, "UTC", { month: "short", day: "numeric" })}`
+                            : " · first time"}
+                        </span>
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
             ) : (
               <div className="glass-flat rounded-[18px] px-4 py-6 text-center">
-                <p className="text-fg-2">No exercises on this day yet.</p>
-                <Button size="sm" className="mt-3" onClick={() => setEditing(true)}>
-                  Add exercises
-                </Button>
+                <p className="text-fg-2">No exercises on this day yet. You can still start and add them as you go.</p>
               </div>
             )}
-            <p className="mt-5 px-1 text-[13px] text-fg-3">
-              Sets save privately when you tap ✓. Nothing here reaches a leaderboard unless you submit it with +.
+            <FormMessage>{error}</FormMessage>
+            <Button size="lg" block className="mt-4" disabled={pending} onClick={begin}>
+              <Play size={17} aria-hidden /> {pending ? "Starting…" : `Start ${day.name}`}
+            </Button>
+            <p className="mt-3 px-1 text-[13px] text-fg-3">
+              Your numbers save as you type and stay private. End saves the session to your history. Nothing reaches a leaderboard unless you submit it.
             </p>
           </>
         )
       ) : null}
-      </ConfirmLeaveContext.Provider>
-    </UnsavedContext.Provider>
-  );
-}
-
-/** One exercise as a few spreadsheet rows: set, previous, weight, reps, ✓. */
-function ExerciseBlock({ item, dayId, unit }: { item: DayExercise; dayId: string; unit: WeightUnit }) {
-  const { exercise } = item;
-  const [uni, setUni] = useState(item.unilateral);
-  const sided = (s: TrainingSet) => (s.side ?? null) !== null;
-  const highest = Math.max(item.setCount, ...item.today.filter((s) => sided(s) === uni).map((s) => s.set_number));
-  const [rows, setRows] = useState(highest);
-  const [pr, setPr] = useState<string | null>(null);
-  const [modeError, setModeError] = useState<string | null>(null);
-  const [rowHint, setRowHint] = useState<string | null>(null);
-  // Rows saved this visit or earlier today (key = set number + side), so "− Set" never hides a saved set.
-  const [saved, setSaved] = useState(() => new Set(item.today.map((s) => `${s.set_number}${s.side ? s.side[0].toUpperCase() : ""}`)));
-  const markSaved = useCallback((k: string) => setSaved((prev) => (prev.has(k) ? prev : new Set(prev).add(k))), []);
-  const [, start] = useTransition();
-  const store = useUnsavedStore();
-  const confirm = useContext(ConfirmLeaveContext);
-  const bodyweight = exercise.ranking_method === "max_reps";
-  const added = exercise.ranking_method === "added_load_e1rm";
-  const grid = uni ? "grid-cols-[28px_minmax(0,1fr)_68px_56px_44px]" : "grid-cols-[20px_minmax(0,1fr)_68px_56px_44px]";
-
-  // Switching modes hides the other mode's rows, so unsaved numbers there go through "Unsaved changes" first.
-  const toggle = () => {
-    const next = !uni;
-    const apply = () => {
-      setUni(next);
-      setModeError(null);
-      start(async () => {
-        const res = await setUnilateral(exercise.id, next);
-        if (!res.ok) {
-          setUni(!next);
-          setModeError(res.error);
-        }
-      });
-    };
-    if (store && store.countPrefix(`${item.key}-`) > 0) confirm(apply);
-    else apply();
-  };
-
-  const row = (n: number, side: Side | null) => {
-    const tag = side ? side[0].toUpperCase() : "";
-    const nextTag = side === "left" ? `${n}R` : uni ? `${n + 1}L` : `${n + 1}`;
-    return (
-      <SetRow
-        key={`${n}${tag}`}
-        exercise={exercise}
-        dayId={dayId}
-        setNumber={n}
-        side={side}
-        grid={grid}
-        unit={unit}
-        saved={item.today.find((s) => s.set_number === n && (s.side ?? null) === side) ?? null}
-        previous={item.previous[side ?? "both"].find((s) => s.set_number === n) ?? null}
-        focusKey={`${item.key}-${n}${tag}`}
-        nextFocusKey={`${item.key}-${nextTag}`}
-        onPr={(id) => (FEATURED_SLUGS.has(exercise.slug) ? setPr(id) : null)}
-        onSaved={() => markSaved(`${n}${tag}`)}
-      />
-    );
-  };
-
-  // "− Set": drops the last row for today only (the routine's set count is changed in Edit day).
-  // Empty rows go at once; typed-but-unsaved ones ask first; saved sets stay (delete them in history).
-  const removeRow = () => {
-    if (rows <= 1) return;
-    const tags = uni ? [`${rows}L`, `${rows}R`] : [`${rows}`];
-    if (tags.some((t) => saved.has(t))) {
-      setRowHint(`Set ${rows} is saved. To delete it, open ${exercise.name} history.`);
-      return;
-    }
-    const apply = () => {
-      setRowHint(null);
-      setRows((r) => Math.max(1, r - 1));
-    };
-    if (store && tags.some((t) => store.has(`${item.key}-${t}`))) confirm(apply);
-    else apply();
-  };
-
-  return (
-    <section className="glass-flat overflow-hidden rounded-[18px]" aria-labelledby={`ex-${item.key}`}>
-      <div className="flex items-baseline justify-between gap-2 px-3.5 pt-3 pb-1.5">
-        <Link id={`ex-${item.key}`} href={`/training/exercise/${exercise.slug}`} className="min-w-0 truncate font-semibold hover:underline underline-offset-4">
-          {exercise.name}
-        </Link>
-        <span className="flex shrink-0 items-baseline gap-2">
-          <span className="text-xs text-fg-3">{item.previousDate ? `Last ${formatDate(`${item.previousDate}T12:00:00Z`, "UTC", { month: "short", day: "numeric" })}` : "First time"}</span>
-          {exercise.supports_unilateral ? (
-            <button
-              type="button"
-              onClick={toggle}
-              aria-pressed={uni}
-              aria-label={`Log ${exercise.name} left and right separately`}
-              className={cn(
-                "tap h-7 rounded-full border px-2.5 text-xs font-semibold",
-                uni ? "pearl border-transparent" : "border-white/15 text-fg-2 hover:text-fg",
-              )}
-            >
-              L/R
-            </button>
-          ) : null}
-        </span>
-      </div>
-      {modeError ? <p className="px-3.5 pb-1 text-[13px] text-danger">{modeError}</p> : null}
-      <div className={cn("grid items-center gap-x-1.5 px-2.5 pb-1 text-[11px] font-medium uppercase tracking-wide text-fg-3", grid)} aria-hidden>
-        <span className="text-center">Set</span>
-        <span className="pl-1">Previous</span>
-        <span className="text-center">{bodyweight ? "" : added ? `+${unit}` : unit}</span>
-        <span className="text-center">Reps</span>
-        <span />
-      </div>
-      <ol>
-        {Array.from({ length: rows }, (_, i) => i + 1).flatMap((n) => (uni ? [row(n, "left"), row(n, "right")] : [row(n, null)]))}
-      </ol>
-      <div className="flex items-center justify-between px-2 pb-1.5">
-        <span className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={removeRow}
-            disabled={rows <= 1}
-            aria-label="Remove last set"
-            className="tap inline-flex h-9 items-center gap-1 px-1.5 text-sm text-fg-2 hover:text-fg disabled:opacity-30"
-          >
-            <Minus size={15} aria-hidden /> Set
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setRowHint(null);
-              setRows((r) => Math.min(30, r + 1));
-            }}
-            aria-label="Add a set"
-            className="tap inline-flex h-9 items-center gap-1 px-1.5 text-sm text-fg-2 hover:text-fg"
-          >
-            <Plus size={15} aria-hidden /> Set
-          </button>
-        </span>
-      </div>
-      {rowHint ? (
-        <p className="px-3.5 pb-2 text-[13px] text-fg-2" role="status">
-          {rowHint}{" "}
-          <Link href={`/training/exercise/${exercise.slug}`} className="underline underline-offset-4">
-            Open history
-          </Link>
-        </p>
-      ) : null}
-      {pr ? (
-        <div className="border-t border-white/[0.07] px-3.5 py-3" role="status" data-testid="pr-prompt">
-          <p className="text-sm font-semibold">New {exercise.name} PR!</p>
-          <p className="text-sm text-fg-2">Add this lift to your leaderboard?</p>
-          <div className="mt-2 flex gap-2">
-            <Button asChild size="sm">
-              <Link href={`/lift/new?from=${pr}`}>Add to board</Link>
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => {
-                const id = pr;
-                setPr(null);
-                start(async () => void (await dismissPr(id)));
-              }}
-            >
-              Not now
-            </Button>
-          </div>
-        </div>
-      ) : null}
-    </section>
-  );
-}
-
-const input =
-  "h-11 w-full min-w-0 rounded-[10px] border border-white/10 bg-white/[0.05] px-1 text-center text-[17px] font-semibold tabular outline-none placeholder:font-normal placeholder:text-fg-3/70 focus:border-white/40 focus:bg-white/[0.08] aria-[invalid=true]:border-danger/70";
-
-function SetRow({
-  exercise,
-  dayId,
-  setNumber,
-  side,
-  grid,
-  unit,
-  saved,
-  previous,
-  focusKey,
-  nextFocusKey,
-  onPr,
-  onSaved,
-}: {
-  exercise: Exercise;
-  dayId: string;
-  setNumber: number;
-  /** "left" / "right" for one-side rows; null for a normal (both sides) row. */
-  side: Side | null;
-  grid: string;
-  unit: WeightUnit;
-  saved: TrainingSet | null;
-  previous: TrainingSet | null;
-  focusKey: string;
-  nextFocusKey: string;
-  onPr: (setId: string) => void;
-  onSaved: () => void;
-}) {
-  const bodyweight = exercise.ranking_method === "max_reps";
-  const savedWeight = saved ? setWeight(saved, unit) : null;
-  const [weight, setWeightText] = useState(savedWeight != null ? formatNumber(savedWeight) : "");
-  const [reps, setReps] = useState(saved ? String(saved.reps) : "");
-  const [savedId, setSavedId] = useState(saved?.id ?? null);
-  const [savedAs, setSavedAs] = useState(saved ? `${savedWeight ?? ""}|${saved.reps}` : null);
-  const [status, setStatus] = useState<"idle" | "saving" | "error">("idle");
-  const [error, setError] = useState<string | null>(null);
-  const [clientKey] = useState(() => crypto.randomUUID());
-  const busy = useRef(false);
-  const weightRef = useRef<HTMLInputElement>(null);
-  const repsRef = useRef<HTMLInputElement>(null);
-
-  const current = `${weight ? Number(weight) : ""}|${reps ? Number(reps) : ""}`;
-  const isSaved = savedId != null && savedAs === current;
-  // Unsaved = the numbers differ from what's saved (or from blank). Focusing an input changes nothing.
-  const dirty = current !== (savedAs ?? "|");
-  const unsavedStore = useUnsavedStore();
-  useEffect(() => unsavedStore?.set(focusKey, dirty), [unsavedStore, focusKey, dirty]);
-  useEffect(() => () => unsavedStore?.set(focusKey, false), [unsavedStore, focusKey]);
-  const prevWeight = previous ? setWeight(previous, unit) : null;
-
-  async function save() {
-    if (busy.current || isSaved) return;
-    const w = bodyweight ? null : Number(weight);
-    const r = Number(reps);
-    if (!bodyweight && !(w! > 0)) {
-      setError("Enter the weight.");
-      weightRef.current?.focus();
-      return;
-    }
-    if (!(r >= 1)) {
-      setError("Enter the reps.");
-      repsRef.current?.focus();
-      return;
-    }
-    busy.current = true;
-    setStatus("saving");
-    setError(null);
-    const localDate = savedId && saved ? saved.local_date : todayLocal();
-    const input = { weight: w, unit, reps: r, localDate, performedAt: new Date().toISOString() };
-    let id = savedId;
-    let failure: string | null = null;
-    if (!id) {
-      const res = await logSet({ ...input, exerciseId: exercise.id, dayId, setNumber, clientKey, side });
-      if (res.ok) {
-        id = res.data.id;
-        if (res.data.duplicate) {
-          // Already saved for this slot (a double tap, or another device): correct it to these numbers.
-          const fix = await updateSet(id, { ...input, dateChanged: false });
-          if (!fix.ok) failure = fix.error;
-        } else if (res.data.is_pr) onPr(id);
-      } else failure = res.error;
-    } else {
-      const res = await updateSet(id, { ...input, dateChanged: false });
-      if (!res.ok) failure = res.error;
-    }
-    const ok = failure == null;
-    if (failure) setError(failure);
-    busy.current = false;
-    if (ok && id) {
-      setSavedId(id);
-      setSavedAs(current);
-      setStatus("idle");
-      onSaved();
-      document.querySelector<HTMLInputElement>(`[data-focus="${nextFocusKey}"]`)?.focus();
-    } else setStatus("error");
-  }
-
-  const copyPrevious = () => {
-    if (!previous) return;
-    if (!bodyweight && prevWeight != null) setWeightText(formatNumber(prevWeight));
-    setReps(String(previous.reps));
-    setError(null);
-  };
-
-  return (
-    <li className={cn("px-2.5 py-1", isSaved && "bg-success/[0.06]", side === "left" && "pb-0")} data-unsaved={dirty} data-side={side ?? undefined}>
-      <div className={cn("grid items-center gap-x-1.5", grid)}>
-        <span className="relative text-center text-sm font-semibold tabular text-fg-2">
-          {side === "right" ? "" : setNumber}
-          {side ? <span className="ml-0.5 text-[11px] font-medium text-fg-3">{side === "left" ? "L" : "R"}</span> : null}
-          {dirty ? (
-            <span className="absolute -left-1.5 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-warning" title="Not saved yet">
-              <span className="sr-only">, not saved yet</span>
-            </span>
-          ) : null}
-        </span>
-        {previous ? (
-          <button
-            type="button"
-            onClick={copyPrevious}
-            className="tap h-11 min-w-0 truncate rounded-[10px] px-1 text-left text-[15px] tabular text-fg-2 hover:bg-white/[0.05] hover:text-fg"
-            aria-label={`Copy previous: ${formatSet(previous, exercise.ranking_method, unit)}`}
-          >
-            {formatSet(previous, exercise.ranking_method, unit)}
-          </button>
-        ) : (
-          <span className="pl-1 text-[15px] text-fg-3">–</span>
-        )}
-        {bodyweight ? (
-          <span className="text-center text-sm text-fg-3">BW</span>
-        ) : (
-          <input
-            ref={weightRef}
-            data-focus={focusKey}
-            inputMode="decimal"
-            enterKeyHint="next"
-            autoComplete="off"
-            aria-label={`Set ${setNumber}${side ? ` ${side}` : ""} weight (${unit})`}
-            placeholder={prevWeight != null ? formatNumber(prevWeight) : ""}
-            value={weight}
-            onChange={(e) => setWeightText(e.target.value.replace(",", ".").replace(/[^0-9.]/g, "").slice(0, 7))}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                repsRef.current?.focus();
-              }
-            }}
-            aria-invalid={error === "Enter the weight."}
-            className={input}
-          />
-        )}
-        <input
-          ref={repsRef}
-          data-focus={bodyweight ? focusKey : undefined}
-          inputMode="numeric"
-          enterKeyHint="done"
-          autoComplete="off"
-          aria-label={`Set ${setNumber}${side ? ` ${side}` : ""} reps`}
-          placeholder={previous ? String(previous.reps) : ""}
-          value={reps}
-          onChange={(e) => setReps(e.target.value.replace(/[^0-9]/g, "").slice(0, 3))}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              void save();
-            }
-          }}
-          aria-invalid={error === "Enter the reps."}
-          className={input}
-        />
-        <button
-          type="button"
-          onClick={() => void save()}
-          disabled={status === "saving"}
-          aria-label={`${isSaved ? "" : savedId ? "Update " : "Save "}${isSaved ? "Set" : "set"} ${setNumber}${side ? ` ${side}` : ""}${isSaved ? " saved" : ""}`}
-          aria-pressed={isSaved}
-          className={cn(
-            "flex h-11 w-11 items-center justify-center rounded-[12px] border transition-colors",
-            isSaved ? "border-transparent bg-success/90 text-[#0b1a12]" : "border-white/15 text-fg-2 hover:border-white/40 hover:text-fg",
-            status === "saving" && "opacity-60",
-          )}
-        >
-          <Check size={20} strokeWidth={isSaved ? 3 : 2.2} aria-hidden />
-        </button>
-      </div>
-      {error ? <p className="pb-1 pl-7 text-[13px] text-danger">{error}</p> : null}
-    </li>
+    </>
   );
 }
 

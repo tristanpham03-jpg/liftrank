@@ -29,6 +29,7 @@ import { ExercisePicker } from "./exercise-picker";
 import { MachineField, type MachineValue } from "./machine-field";
 import { LiftResult } from "./lift-result";
 import { localNoon, todayLocal } from "@/lib/dates";
+import { isRankable } from "@/lib/training";
 
 const noSubscribe = () => () => {};
 
@@ -70,12 +71,14 @@ type Props = {
 };
 
 export function AddLiftForm({
-  catalog,
+  catalog: fullCatalog,
   defaults,
   initialExerciseId,
   resultActions,
   editing,
 }: Props) {
+  // Boards only: training-only exercises (ranking "none") aren't offered here.
+  const catalog = useMemo(() => fullCatalog.filter(isRankable), [fullCatalog]);
   const online = useOnline();
   const router = useRouter();
   const byId = useMemo(() => new Map(catalog.map((e) => [e.id, e])), [catalog]);

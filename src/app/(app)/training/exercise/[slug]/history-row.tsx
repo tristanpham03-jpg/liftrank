@@ -22,6 +22,9 @@ export function HistoryRow({ set, exercise, unit, isBest, boardLiftId }: { set: 
   const [weight, setWeightText] = useState(w != null ? formatNumber(w) : "");
   const [reps, setReps] = useState(String(set.reps));
   const [date, setDate] = useState(set.local_date);
+  // RIR: blank = not recorded (distinct from 0).
+  const savedRir = set.rir == null ? "" : String(set.rir);
+  const [rir, setRir] = useState(savedRir);
   // Side stays as saved unless deliberately changed here.
   const [side, setSide] = useState<Side | "none">(set.side ?? "none");
   const canSide = Boolean(exercise.supports_unilateral) || Boolean(set.side);
@@ -38,7 +41,9 @@ export function HistoryRow({ set, exercise, unit, isBest, boardLiftId }: { set: 
         </span>
         <span className="min-w-0 flex-1">
           <span className="num block text-lg leading-tight">{formatSet(set, exercise.ranking_method, unit)}</span>
-          {e1rm && set.is_ranked ? <span className="text-[13px] text-fg-2">est. 1RM {e1rm}</span> : null}
+          <span className="text-[13px] text-fg-2">
+            {[e1rm && set.is_ranked ? `est. 1RM ${e1rm}` : null, set.rir != null ? `${set.rir} RIR` : null].filter(Boolean).join(" · ")}
+          </span>
         </span>
         {isBest ? <Badge>Best</Badge> : null}
         {set.side ? null : boardLiftId ? (
@@ -60,13 +65,14 @@ export function HistoryRow({ set, exercise, unit, isBest, boardLiftId }: { set: 
 
   return (
     <li className="space-y-2 px-4 py-3">
-      <div className="grid grid-cols-[1fr_1fr_1.4fr] gap-2">
+      <div className="grid grid-cols-[1fr_1fr_0.8fr_1.6fr] gap-2">
         {bodyweight ? (
           <span className="flex items-center justify-center text-sm text-fg-3">Bodyweight</span>
         ) : (
           <input aria-label={`Weight (${unit})`} inputMode="decimal" value={weight} onChange={(e) => setWeightText(e.target.value.replace(",", ".").replace(/[^0-9.]/g, ""))} className={field} />
         )}
         <input aria-label="Reps" inputMode="numeric" value={reps} onChange={(e) => setReps(e.target.value.replace(/[^0-9]/g, "").slice(0, 3))} className={field} />
+        <input aria-label="RIR (optional)" inputMode="numeric" placeholder="–" value={rir} onChange={(e) => setRir(e.target.value.replace(/[^0-9]/g, "").slice(0, 2))} className={field} />
         <input aria-label="Date" type="date" value={date} max={todayLocal()} onChange={(e) => setDate(e.target.value)} className={`${field} [color-scheme:dark]`} />
       </div>
       {canSide ? (
@@ -101,6 +107,7 @@ export function HistoryRow({ set, exercise, unit, isBest, boardLiftId }: { set: 
                 performedAt: dateChanged ? (date === todayLocal() ? new Date().toISOString() : localNoon(date)) : set.performed_at,
                 dateChanged,
                 ...(side !== (set.side ?? "none") ? { side } : {}),
+                ...(rir !== savedRir ? { rir: rir === "" ? null : Number(rir) } : {}),
               });
               if (!res.ok) return setError(res.error);
               setEditing(false);

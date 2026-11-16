@@ -81,6 +81,11 @@ export const EXERCISE_MUSCLES: Record<string, Tags> = {
   "hanging-leg-raise": t(["abs", "hip_flexors"], ["obliques", "forearms"]),
   "hanging-knee-raise": t(["abs", "hip_flexors"], ["obliques", "forearms"]),
   "weighted-decline-sit-up": t(["abs", "hip_flexors"], ["obliques"]),
+  "keenan-flaps": t(["lats"], ["rear_delts", "upper_back"]),
+  "recline-curl": t(["biceps"], ["forearms"]),
+  "kelso-shrug": t(["upper_back"], ["rear_delts", "traps"]),
+  "bicep-supination": t(["biceps", "forearms"]),
+  "face-pull": t(["rear_delts", "upper_back"], ["traps"]),
 };
 
 const DELTS: Muscle[] = ["shoulders", "front_delts", "side_delts", "rear_delts"];
@@ -95,7 +100,8 @@ export const MUSCLE_WORDS: Record<string, Muscle[]> = {
   bicep: ["biceps"], biceps: ["biceps"], bi: ["biceps"], bis: ["biceps"],
   forearm: ["forearms"], forearms: ["forearms"], grip: ["forearms"], wrist: ["forearms"], wrists: ["forearms"],
   lat: ["lats"], lats: ["lats"], latissimus: ["lats"],
-  rhomboid: ["upper_back"], rhomboids: ["upper_back"],
+  rhomboid: ["upper_back"], rhomboids: ["upper_back"], scapular: ["upper_back"], retractor: ["upper_back"], retractors: ["upper_back"],
+  teres: ["lats"], supinator: ["forearms", "biceps"], supinators: ["forearms", "biceps"],
   trap: ["traps"], traps: ["traps"], trapezius: ["traps"],
   erector: ["lower_back"], erectors: ["lower_back"], lowerback: ["lower_back"],
   quad: ["quads"], quads: ["quads"], quadricep: ["quads"], quadriceps: ["quads"],
