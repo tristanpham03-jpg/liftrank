@@ -55,3 +55,8 @@ next-env.d.ts
 /.connect-supabase.log
 /.e2e-server.log
 /.e2e-supabase.log
+
+# local agent instructions and planning notes
+CLAUDE.md
+AGENTS.md
+LIFTRANK_BUILD_PROMPT.md
