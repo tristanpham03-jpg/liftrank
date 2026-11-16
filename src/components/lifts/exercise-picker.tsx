@@ -5,7 +5,7 @@ import { Check, ChevronDown, Search, Star, X } from "lucide-react";
 import { useMemo, useState, useTransition } from "react";
 import { cn } from "@/lib/cn";
 import { searchExercises } from "@/lib/exercise-search";
-import { CATEGORY_LABEL } from "@/lib/exercise-muscles";
+import { CATEGORY_LABEL, EXERCISE_MUSCLES } from "@/lib/exercise-muscles";
 import type { Exercise } from "@/lib/types";
 import { ExerciseThumb } from "./exercise-art";
 
@@ -40,6 +40,14 @@ type Props = {
   /** Controlled open state (e.g. opened from a menu). */
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  /** Shown at the top of the sheet, e.g. "Replace Lat Pulldown". */
+  title?: string;
+  /** Marked "Current" (the exercise being replaced). */
+  currentId?: string;
+  /** Marked "In this day". */
+  inDayIds?: string[];
+  /** When replacing: list similar movements (same primary muscles, then category/equipment) first. */
+  similarTo?: Exercise;
 };
 
 export function ExercisePicker({
@@ -54,6 +62,10 @@ export function ExercisePicker({
   trigger,
   open: openProp,
   onOpenChange,
+  title,
+  currentId,
+  inDayIds = [],
+  similarTo,
 }: Props) {
   const [openState, setOpenState] = useState(false);
   const open = openProp ?? openState;
@@ -78,12 +90,27 @@ export function ExercisePicker({
     const favs = catalog.filter((e) => favorites.has(e.id));
     const shown = new Set([...recent, ...favs].map((e) => e.id));
     const popular = catalog.filter((e) => !shown.has(e.id)).slice(0, 40);
+    if (similarTo) {
+      const mine = new Set(EXERCISE_MUSCLES[similarTo.slug]?.primary ?? []);
+      const similar = catalog
+        .filter((e) => e.id !== similarTo.id)
+        .map((e) => {
+          const shared = (EXERCISE_MUSCLES[e.slug]?.primary ?? []).filter((m) => mine.has(m)).length;
+          const score = shared * 4 + (e.category === similarTo.category ? 2 : 0) + (e.equipment_type === similarTo.equipment_type ? 1 : 0);
+          return { e, score, shared };
+        })
+        .filter((x) => x.shared > 0)
+        .sort((a, b) => b.score - a.score || a.e.popular_rank - b.e.popular_rank)
+        .slice(0, 10)
+        .map((x) => x.e);
+      return [{ title: "Similar", items: similar }, { title: "All exercises", items: catalog.filter((e) => e.id !== similarTo.id).slice(0, 60) }].filter((s) => s.items.length);
+    }
     return [
       { title: "Recent", items: recent.slice(0, 6) },
       { title: "Favorites", items: favs },
       { title: recent.length || favs.length ? "More exercises" : "Popular", items: popular },
     ].filter((s) => s.items.length);
-  }, [query, category, catalog, recentIds, favorites, byId]);
+  }, [query, category, catalog, recentIds, favorites, byId, similarTo]);
 
   function choose(e: Exercise) {
     onSelect(e);
@@ -126,8 +153,9 @@ export function ExercisePicker({
           className="fixed z-50 inset-x-0 bottom-0 top-[6dvh] md:top-[10vh] md:bottom-auto md:left-1/2 md:-translate-x-1/2 md:w-[520px] md:max-h-[75vh] flex flex-col rounded-t-[26px] md:rounded-[26px] bg-[#161b28]/90 backdrop-blur-2xl border border-white/10 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.8)] outline-none"
           aria-describedby={undefined}
         >
+          {title ? <p className="px-4 pt-3 text-[15px] font-semibold">{title}</p> : null}
           <div className="flex items-center gap-2 p-3 border-b border-white/[0.07]">
-            <Dialog.Title className="sr-only">Choose an exercise</Dialog.Title>
+            <Dialog.Title className="sr-only">{title ?? "Choose an exercise"}</Dialog.Title>
             <div className="relative flex-1">
               <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-fg-3" aria-hidden />
               <input
@@ -199,6 +227,11 @@ export function ExercisePicker({
                             <ExerciseThumb exercise={e} />
                             <span className="min-w-0 flex-1">
                               <span className="block font-medium truncate">{e.name}</span>
+                              {e.id === currentId ? (
+                                <span className="mr-1.5 inline-block rounded-full bg-white/[0.08] px-1.5 text-[11px] font-medium text-fg-2">Current</span>
+                              ) : inDayIds.includes(e.id) ? (
+                                <span className="mr-1.5 inline-block rounded-full bg-white/[0.08] px-1.5 text-[11px] font-medium text-fg-2">In this day</span>
+                              ) : null}
                               <span className="block text-sm text-fg-3">{equipmentLabel(e)}</span>
                             </span>
                             {selected ? <Check size={18} className="text-pearl" aria-label="Selected" /> : null}

@@ -35,7 +35,7 @@ test("Returning user logs a PR in five taps or fewer", async ({ page }) => {
   await expect(page).toHaveURL(/\/home/);
 
   // Tap 1: + (Add to leaderboard). Exercise, weight, reps and unit are remembered.
-  await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Add to leaderboard" }).click();
+  await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Submit lift" }).click();
   await expect(page.getByLabel("Weight")).toHaveValue("200");
   await expect(page.getByLabel("Reps")).toHaveValue("5");
   // Taps 2–3: change the weight. Tap 4: submit.

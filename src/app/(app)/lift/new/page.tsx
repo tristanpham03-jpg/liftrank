@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { LiftDefaults } from "@/lib/types";
 import { FromTraining } from "./from-training";
 
-export const metadata: Metadata = { title: "Add to leaderboard" };
+export const metadata: Metadata = { title: "Submit lift" };
 
 /**
  * The + button: put a lift on the leaderboards. Either pick a set you already
@@ -20,7 +20,7 @@ export default async function AddLiftPage({ searchParams }: { searchParams: Prom
   const initial = exercise ? catalog.find((e) => e.slug === exercise || e.id === exercise)?.id : null;
   return (
     <>
-      <PageHeader title="Add to leaderboard" />
+      <PageHeader title="Submit lift" subtitle="Put a lift on the leaderboards. Training stays private." />
       <TabLinks
         className="mb-4"
         items={[

@@ -40,7 +40,7 @@ export function HistoryRow({ set, exercise, unit, isBest, boardLiftId }: { set: 
           {set.side ? <span className="ml-0.5 text-[11px] font-medium">{set.side === "left" ? "L" : "R"}</span> : null}
         </span>
         <span className="min-w-0 flex-1">
-          <span className="num block text-lg leading-tight">{formatSet(set, exercise.ranking_method, unit)}</span>
+          <span className="num block text-lg leading-tight">{formatSet(set, exercise.ranking_method, unit, { withUnit: true, convention: exercise.weight_convention })}</span>
           <span className="text-[13px] text-fg-2">
             {[e1rm && set.is_ranked ? `est. 1RM ${e1rm}` : null, set.rir != null ? `${set.rir} RIR` : null].filter(Boolean).join(" · ")}
           </span>
@@ -65,16 +65,34 @@ export function HistoryRow({ set, exercise, unit, isBest, boardLiftId }: { set: 
 
   return (
     <li className="space-y-2 px-4 py-3">
-      <div className="grid grid-cols-[1fr_1fr_0.8fr_1.6fr] gap-2">
+      <div className="grid grid-cols-3 gap-2">
         {bodyweight ? (
-          <span className="flex items-center justify-center text-sm text-fg-3">Bodyweight</span>
+          <span className="flex flex-col justify-end text-sm text-fg-3">
+            <span className="mb-1 text-[12px] font-medium text-fg-2">Weight</span>
+            <span className="flex h-11 items-center justify-center">Bodyweight</span>
+          </span>
         ) : (
-          <input aria-label={`Weight (${unit})`} inputMode="decimal" value={weight} onChange={(e) => setWeightText(e.target.value.replace(",", ".").replace(/[^0-9.]/g, ""))} className={field} />
+          <label className="block">
+            <span className="mb-1 block text-[12px] font-medium text-fg-2">
+              Weight ({unit}){exercise.weight_convention === "per_dumbbell" ? " each" : ""}
+            </span>
+            <input inputMode="decimal" value={weight} onChange={(e) => setWeightText(e.target.value.replace(",", ".").replace(/[^0-9.]/g, ""))} className={field} />
+          </label>
         )}
-        <input aria-label="Reps" inputMode="numeric" value={reps} onChange={(e) => setReps(e.target.value.replace(/[^0-9]/g, "").slice(0, 3))} className={field} />
-        <input aria-label="RIR (optional)" inputMode="numeric" placeholder="–" value={rir} onChange={(e) => setRir(e.target.value.replace(/[^0-9]/g, "").slice(0, 2))} className={field} />
-        <input aria-label="Date" type="date" value={date} max={todayLocal()} onChange={(e) => setDate(e.target.value)} className={`${field} [color-scheme:dark]`} />
+        <label className="block">
+          <span className="mb-1 block text-[12px] font-medium text-fg-2">Reps</span>
+          <input inputMode="numeric" value={reps} onChange={(e) => setReps(e.target.value.replace(/[^0-9]/g, "").slice(0, 3))} className={field} />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-[12px] font-medium text-fg-2">RIR (optional)</span>
+          <input inputMode="numeric" placeholder="–" value={rir} onChange={(e) => setRir(e.target.value.replace(/[^0-9]/g, "").slice(0, 2))} className={field} />
+        </label>
+        <label className="col-span-3 block">
+          <span className="mb-1 block text-[12px] font-medium text-fg-2">Date</span>
+          <input type="date" value={date} max={todayLocal()} onChange={(e) => setDate(e.target.value)} className={`${field} [color-scheme:dark]`} />
+        </label>
       </div>
+      <p className="text-[12px] text-fg-3">RIR = reps left before failure. Leave it blank if you didn’t note it.</p>
       {canSide ? (
         <label className="flex items-center gap-2 text-sm text-fg-2">
           Side

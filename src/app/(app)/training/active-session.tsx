@@ -336,6 +336,8 @@ function SessionEditor({ session, routine, catalog, unit, recentIds, favoriteIds
         recentIds={recentIds}
         favoriteIds={favoriteIds}
         onToggleFavorite={toggleFavorite}
+        title="Add an exercise"
+        inDayIds={draft.blocks.map((b) => b.exerciseId)}
         trigger={
           <button type="button" className="glass-flat mt-3 flex w-full items-center justify-center gap-1.5 rounded-[14px] py-3 text-sm font-semibold text-fg-2 hover:text-fg">
             <Plus size={16} aria-hidden /> Add exercise
@@ -512,7 +514,7 @@ function SessionBlock({
             <span key={tag || "both"} className="tabular">
               {i ? " · " : ""}
               {tag ? `${tag} ` : ""}
-              <span className="font-semibold text-fg">{formatSet(b!, exercise.ranking_method, unit)}</span>
+              <span className="font-semibold text-fg">{formatSet(b!, exercise.ranking_method, unit, { withUnit: true, convention: exercise.weight_convention })}</span>
             </span>
           ))}
         </p>
@@ -528,6 +530,9 @@ function SessionBlock({
         open={swapOpen}
         onOpenChange={setSwapOpen}
         label={`Swap ${exercise.name} for`}
+        title={`Replace ${exercise.name}`}
+        currentId={exercise.id}
+        similarTo={exercise}
       />
 
       {notesOpen ? (

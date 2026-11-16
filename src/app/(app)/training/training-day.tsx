@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { ArrowDown, ArrowUp, History, Minus, Pencil, Play, Plus, Repeat, StickyNote, Trash2, X } from "lucide-react";
+import { DropdownMenu } from "radix-ui";
+import { ArrowDown, ArrowUp, History, Minus, MoreHorizontal, Pencil, Play, Plus, Repeat, StickyNote, Trash2, X } from "lucide-react";
 import { toggleFavorite } from "@/app/(app)/lift/actions";
 import { ExercisePicker } from "@/components/lifts/exercise-picker";
 import { Button } from "@/components/ui/button";
@@ -119,9 +120,14 @@ export function TrainingDay(props: Props) {
           <>
             <div className="mb-2 flex items-center justify-between px-1">
               <h2 className="text-[17px] font-semibold tracking-[-0.01em]">{day.name}</h2>
-              <button type="button" onClick={() => setEditing(true)} className="tap inline-flex items-center gap-1.5 text-sm text-fg-2 hover:text-fg">
-                <Pencil size={14} aria-hidden /> Edit day
-              </button>
+              <span className="flex items-center gap-1">
+                <button type="button" onClick={() => setEditing(true)} className="tap inline-flex h-11 items-center gap-1.5 px-2 text-sm text-fg-2 hover:text-fg">
+                  <Pencil size={14} aria-hidden /> Edit day
+                </button>
+                <Button size="sm" disabled={pending} onClick={begin} aria-label="Start session">
+                  <Play size={14} aria-hidden /> Start
+                </Button>
+              </span>
             </div>
             {exercises.length ? (
               <ul className="glass-flat divide-y divide-white/[0.06] overflow-hidden rounded-[18px]" aria-label={`${day.name} exercises`}>
@@ -141,7 +147,7 @@ export function TrainingDay(props: Props) {
                           {e.setCount} {e.setCount === 1 ? "set" : "sets"}
                           {e.unilateral ? " · left/right" : ""}
                           {top && e.previous.date
-                            ? ` · last ${formatSet(top, e.exercise.ranking_method, props.unit)} on ${formatDate(`${e.previous.date}T12:00:00Z`, "UTC", { month: "short", day: "numeric" })}`
+                            ? ` · last ${formatSet(top, e.exercise.ranking_method, props.unit, { withUnit: true, convention: e.exercise.weight_convention })} on ${formatDate(`${e.previous.date}T12:00:00Z`, "UTC", { month: "short", day: "numeric" })}`
                             : " · first time"}
                         </span>
                       </span>
@@ -155,9 +161,12 @@ export function TrainingDay(props: Props) {
               </div>
             )}
             <FormMessage>{error}</FormMessage>
-            <Button size="lg" block className="mt-4" disabled={pending} onClick={begin}>
-              <Play size={17} aria-hidden /> {pending ? "Starting…" : `Start ${day.name}`}
-            </Button>
+            {/* Always in reach on phones: floats above the tab bar while scrolling a long day. */}
+            <div className="sticky bottom-[calc(var(--nav-height)+10px+var(--safe-bottom))] z-20 -mx-4 mt-4 bg-[linear-gradient(to_bottom,transparent,var(--color-bg)_14px)] px-4 pt-3 pb-1 md:static md:mx-0 md:bg-none md:px-0 md:pt-0">
+              <Button size="lg" block disabled={pending} onClick={begin}>
+                <Play size={17} aria-hidden /> {pending ? "Starting…" : `Start ${day.name}`}
+              </Button>
+            </div>
             <p className="mt-3 px-1 text-[13px] text-fg-3">
               Your numbers save as you type and stay private. End saves the session to your history. Nothing reaches a leaderboard unless you submit it.
             </p>
@@ -195,20 +204,31 @@ function DayEditor({
       return next;
     });
   const update = (i: number, patch: Partial<EditItem>) => setItems((list) => list.map((it, j) => (j === i ? { ...it, ...patch } : it)));
-  const picker = (trigger: React.ReactElement, onSelect: (e: Exercise) => void) => (
+  const [replacing, setReplacing] = useState<number | null>(null);
+  const inDay = items.map((it) => it.exercise.id);
+  const add = (e: Exercise) => setItems((list) => [...list, { key: crypto.randomUUID(), exercise: e, sets: 2 }]);
+  const addButton = (
     <ExercisePicker
       catalog={catalog}
       value={null}
-      onSelect={onSelect}
+      onSelect={add}
       recentIds={recentIds}
       favoriteIds={favoriteIds}
       onToggleFavorite={toggleFavorite}
-      trigger={trigger}
+      inDayIds={inDay}
+      title="Add an exercise"
+      trigger={
+        <button type="button" className="glass-flat flex h-11 w-full items-center justify-center gap-2 rounded-[14px] text-sm font-semibold text-fg-2 hover:text-fg">
+          <Plus size={16} aria-hidden /> Add exercise
+        </button>
+      }
     />
   );
+  const item = "rounded-[8px] px-3 py-3 text-sm outline-none cursor-pointer data-[highlighted]:bg-white/[0.06] data-[disabled]:opacity-40";
+  const big = "tap flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-fg-2 hover:bg-white/[0.06] hover:text-fg disabled:opacity-30";
 
   return (
-    <div className="space-y-3" data-testid="day-editor">
+    <div className="space-y-3 pb-2" data-testid="day-editor">
       <label className="block px-1">
         <span className="text-sm text-fg-2">Day name</span>
         <input
@@ -218,50 +238,74 @@ function DayEditor({
           className="mt-1 h-11 w-full rounded-[12px] border border-white/10 bg-white/[0.05] px-3 text-base outline-none focus:border-white/40"
         />
       </label>
+      {addButton}
       <ol className="glass-flat divide-y divide-white/[0.06] overflow-hidden rounded-[18px]">
         {items.map((it, i) => (
-          <li key={it.key} className="flex items-center gap-1.5 px-2.5 py-2">
-            <div className="flex flex-col">
-              <button type="button" disabled={i === 0} onClick={() => move(i, -1)} aria-label={`Move ${it.exercise.name} up`} className="tap flex h-6 w-8 items-center justify-center text-fg-2 disabled:opacity-25">
-                <ArrowUp size={15} aria-hidden />
+          <li key={it.key} className="px-3.5 pt-2.5 pb-1.5">
+            <div className="flex items-start gap-2">
+              {/* Full name, up to two lines: never truncated to "Cable Lateral R…". */}
+              <span className="line-clamp-2 min-w-0 flex-1 pt-2.5 text-[15px] font-medium leading-snug">{it.exercise.name}</span>
+              <DropdownMenu.Root>
+                <DropdownMenu.Trigger aria-label={`Options for ${it.exercise.name}`} className={big}>
+                  <MoreHorizontal size={19} />
+                </DropdownMenu.Trigger>
+                <DropdownMenu.Portal>
+                  <DropdownMenu.Content align="end" sideOffset={4} className="z-50 min-w-48 rounded-[12px] border border-white/10 bg-[#1a2030]/95 p-1 shadow-xl backdrop-blur-xl">
+                    <DropdownMenu.Item className={item} disabled={i === 0} onSelect={() => move(i, -1)}>
+                      <ArrowUp size={14} className="mr-2 inline" aria-hidden /> Move up
+                    </DropdownMenu.Item>
+                    <DropdownMenu.Item className={item} disabled={i === items.length - 1} onSelect={() => move(i, 1)}>
+                      <ArrowDown size={14} className="mr-2 inline" aria-hidden /> Move down
+                    </DropdownMenu.Item>
+                    <DropdownMenu.Item className={item} onSelect={() => setReplacing(i)}>
+                      <Repeat size={14} className="mr-2 inline" aria-hidden /> Replace exercise
+                    </DropdownMenu.Item>
+                    <DropdownMenu.Separator className="my-1 h-px bg-white/10" />
+                    <DropdownMenu.Item className={`${item} text-danger`} onSelect={() => setItems((list) => list.filter((_, j) => j !== i))}>
+                      <X size={14} className="mr-2 inline" aria-hidden /> Remove from day
+                    </DropdownMenu.Item>
+                  </DropdownMenu.Content>
+                </DropdownMenu.Portal>
+              </DropdownMenu.Root>
+            </div>
+            <div className="flex items-center gap-1" role="group" aria-label={`${it.exercise.name} working sets`}>
+              <span className="mr-auto text-[13px] text-fg-2">Working sets</span>
+              <button type="button" disabled={it.sets <= 1} onClick={() => update(i, { sets: Math.max(1, it.sets - 1) })} aria-label="One set fewer" className={big}>
+                <Minus size={16} aria-hidden />
               </button>
-              <button type="button" disabled={i === items.length - 1} onClick={() => move(i, 1)} aria-label={`Move ${it.exercise.name} down`} className="tap flex h-6 w-8 items-center justify-center text-fg-2 disabled:opacity-25">
-                <ArrowDown size={15} aria-hidden />
+              <span className="w-6 text-center text-[15px] font-semibold tabular">{it.sets}</span>
+              <button type="button" disabled={it.sets >= 10} onClick={() => update(i, { sets: Math.min(10, it.sets + 1) })} aria-label="One set more" className={big}>
+                <Plus size={16} aria-hidden />
               </button>
             </div>
-            <span className="min-w-0 flex-1 truncate text-[15px] font-medium">{it.exercise.name}</span>
-            <div className="flex items-center" role="group" aria-label={`${it.exercise.name} working sets`}>
-              <button type="button" onClick={() => update(i, { sets: Math.max(1, it.sets - 1) })} aria-label="One set fewer" className="tap flex h-9 w-8 items-center justify-center text-fg-2">
-                <Minus size={15} aria-hidden />
-              </button>
-              <span className="w-5 text-center text-sm font-semibold tabular">{it.sets}</span>
-              <button type="button" onClick={() => update(i, { sets: Math.min(10, it.sets + 1) })} aria-label="One set more" className="tap flex h-9 w-8 items-center justify-center text-fg-2">
-                <Plus size={15} aria-hidden />
-              </button>
-            </div>
-            {picker(
-              <button type="button" aria-label={`Replace ${it.exercise.name}`} className="tap flex h-9 w-9 items-center justify-center text-fg-2 hover:text-fg">
-                <Repeat size={16} aria-hidden />
-              </button>,
-              (e) => update(i, { exercise: e }),
-            )}
-            <button type="button" onClick={() => setItems((list) => list.filter((_, j) => j !== i))} aria-label={`Remove ${it.exercise.name}`} className="tap flex h-9 w-9 items-center justify-center text-fg-2 hover:text-danger">
-              <X size={17} aria-hidden />
-            </button>
           </li>
         ))}
-        <li>
-          {picker(
-            <button type="button" className="flex w-full items-center gap-2 px-4 py-3 text-sm font-semibold text-fg-2 hover:text-fg">
-              <Plus size={16} aria-hidden /> Add exercise
-            </button>,
-            (e) => setItems((list) => [...list, { key: crypto.randomUUID(), exercise: e, sets: 2 }]),
-          )}
-        </li>
       </ol>
+      {items.length > 4 ? addButton : null}
+      {replacing != null && items[replacing] ? (
+        <ExercisePicker
+          catalog={catalog}
+          value={items[replacing].exercise}
+          onSelect={(e) => {
+            update(replacing, { exercise: e });
+            setReplacing(null);
+          }}
+          recentIds={recentIds}
+          favoriteIds={favoriteIds}
+          onToggleFavorite={toggleFavorite}
+          trigger={null}
+          open
+          onOpenChange={(o) => (o ? null : setReplacing(null))}
+          title={`Replace ${items[replacing].exercise.name}`}
+          currentId={items[replacing].exercise.id}
+          inDayIds={inDay}
+          similarTo={items[replacing].exercise}
+        />
+      ) : null}
       <p className="px-1 text-[13px] text-fg-3">Removing or replacing an exercise keeps all its logged sets in your history.</p>
       <FormMessage>{error}</FormMessage>
-      <div className="flex gap-2">
+      {/* Save / Cancel stay in reach while editing a long day. */}
+      <div className="sticky bottom-[calc(var(--nav-height)+10px+var(--safe-bottom))] z-20 -mx-4 flex gap-2 bg-[linear-gradient(to_bottom,transparent,var(--color-bg)_14px)] px-4 pt-3 pb-1 md:bottom-4 md:mx-0 md:px-0">
         <Button
           className="flex-1"
           disabled={pending}

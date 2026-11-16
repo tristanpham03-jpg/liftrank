@@ -2,6 +2,22 @@
 
 _Last updated: 2026-10-15 · Done: Phases 1–7 + friend verification · **Deployed (unlisted) at https://liftrank-roan.vercel.app** · Finishing launch setup (see "Deployment status")_
 
+## 2026-11-16 Training UX review fixes (no migration; committed locally, not yet pushed)
+
+- **Start:** beside the day heading, and floating above the tab bar on phones.
+- **Day editor:**
+  - Full names on up to two lines, with 44 px controls (set stepper, and one ⋯ menu for Move, Replace and Remove, with Remove separated).
+  - Add exercise at the top (and bottom for long days), and a sticky Save/Cancel footer.
+- **Picker:**
+  - When replacing: titled "Replace X", similar movements first (shared primary muscles, then category and equipment).
+  - Marks "Current" and "In this day". When adding: "Add an exercise".
+- **Units everywhere sets are summarized** ("240 lb × 6"), and per-dumbbell weights read "each".
+- **History set editor:** visible Weight / Reps / RIR (optional) / Date labels, plus "RIR = reps left before failure".
+- **"+" is now "Submit lift"** on desktop and phone (with a visible label), and the page is titled "Submit lift".
+- **Sessions page:** explains that sets logged on their own live in exercise history, with links to each exercise.
+- **Kept on purpose:** one note per exercise (owner's request, 2026-11-16).
+- **Tests:** hosted 16/16, iPhone 7/7, unit tests 44/44, 0 stalls.
+
 ## 2026-11-15 Training sessions, RIR, notes, SBL exercises, Buddy (applied and deployed)
 
 **Migration `…1800` was applied with the owner's approval.**

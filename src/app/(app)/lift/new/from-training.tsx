@@ -52,7 +52,7 @@ export async function FromTraining({
         exercise={exercise}
         defaults={defaults}
         unit={unit}
-        label={formatSet(set, exercise.ranking_method, unit)}
+        label={formatSet(set, exercise.ranking_method, unit, { withUnit: true, convention: exercise.weight_convention })}
         date={dayLabel(set.local_date)}
         boardLiftId={onBoard?.id ?? null}
       />
@@ -107,7 +107,7 @@ export async function FromTraining({
             {e1rm ? ` · est. 1RM ${e1rm}` : ""}
           </span>
         </span>
-        <span className="num shrink-0 text-lg">{formatSet(s, ex.ranking_method, unit)}</span>
+        <span className="num shrink-0 text-lg">{formatSet(s, ex.ranking_method, unit, { withUnit: true, convention: ex.weight_convention })}</span>
         {done ? <Badge>On board</Badge> : <ChevronRight size={18} className="shrink-0 text-fg-3" aria-hidden />}
       </>
     );

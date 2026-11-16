@@ -17,7 +17,7 @@ type Props = { username: string; userId: string; displayName: string | null; ava
 const TABS = [
   { href: "/home", label: "Home", icon: Home, match: ["/home", "/notifications", "/activity"] },
   { href: "/leaderboards", label: "Leaderboards", short: "Boards", icon: Trophy, match: ["/leaderboards", "/groups"] },
-  { href: "/lift/new", label: "Add to leaderboard", short: "Add", icon: Plus, match: ["/lift"] },
+  { href: "/lift/new", label: "Submit lift", short: "Submit", icon: Plus, match: ["/lift"] },
   { href: "/training", label: "Training", icon: Dumbbell, match: ["/training"] },
   { href: "/friends", label: "Friends", icon: Users, match: ["/friends"] },
 ];
@@ -57,7 +57,7 @@ export function AppShell({ username, userId, displayName, avatarPath, unread, ch
                   className="pearl my-2 flex items-center gap-3 rounded-[14px] px-3 py-2.5 font-semibold transition-[filter] hover:brightness-[1.03]"
                 >
                   <t.icon size={18} strokeWidth={2.6} />
-                  Add Lift
+                  Submit lift
                 </Link>
               );
             }
@@ -125,9 +125,12 @@ export function AppShell({ username, userId, displayName, avatarPath, unread, ch
                   )}
                 >
                   {isAdd ? (
-                    <span className="pearl flex h-11 w-11 items-center justify-center rounded-full">
-                      <t.icon size={22} strokeWidth={2.6} />
-                    </span>
+                    <>
+                      <span className="pearl flex h-9 w-9 items-center justify-center rounded-full">
+                        <t.icon size={20} strokeWidth={2.6} />
+                      </span>
+                      <span>{t.short}</span>
+                    </>
                   ) : (
                     <>
                       <t.icon size={21} strokeWidth={active ? 2.2 : 1.8} />
@@ -137,7 +140,7 @@ export function AppShell({ username, userId, displayName, avatarPath, unread, ch
                       <span aria-hidden className={cn("h-1 w-1 rounded-full", active ? "bg-pearl" : "bg-transparent")} />
                     </>
                   )}
-                  {isAdd ? <span className="sr-only">{t.label}</span> : null}
+
                 </Link>
               </li>
             );

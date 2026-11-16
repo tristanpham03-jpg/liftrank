@@ -57,7 +57,7 @@ export default async function SessionPage({ params }: { params: Promise<{ id: st
                       {s.set_number}
                       {s.side ? <span className="ml-0.5 text-[11px] font-medium">{s.side === "left" ? "L" : "R"}</span> : null}
                     </span>
-                    <span className="num flex-1 text-[17px]">{formatSet(s, ex.ranking_method, unit)}</span>
+                    <span className="num flex-1 text-[17px]">{formatSet(s, ex.ranking_method, unit, { withUnit: true, convention: ex.weight_convention })}</span>
                     {s.rir != null ? <span className="text-[13px] text-fg-2">{s.rir} RIR</span> : null}
                   </li>
                 ))}

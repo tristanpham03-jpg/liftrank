@@ -68,7 +68,7 @@ export default async function TrainingHistoryPage({ params }: { params: Promise<
               <GlassCard key={g.key} glow="ice" as="section" aria-label={sided ? `${GROUP_LABEL[g.key]} best` : "Personal best"}>
                 <div className="p-5">
                   <p className="text-sm text-fg-2">{sided ? `${GROUP_LABEL[g.key]}: best working set` : "Best working set"}</p>
-                  <p className="num mt-1 text-[40px] leading-none">{formatSet(g.best, method, unit)}</p>
+                  <p className="num mt-1 text-[40px] leading-none">{formatSet(g.best, method, unit, { withUnit: true, convention: exercise.weight_convention })}</p>
                   <p className="mt-2 text-sm text-fg-2">
                     {method === "max_reps" ? null : <>Est. 1RM {formatEstimatedMax(g.best.score, method, unit)} · </>}
                     {dayLabel(g.best.local_date)}

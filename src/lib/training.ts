@@ -123,10 +123,17 @@ export function setWeight(s: Pick<TrainingSet, "entered_weight" | "entered_unit"
 }
 
 /** "185 × 8", "+25 × 6" for added load, "12 reps" for bodyweight. */
-export function formatSet(s: Pick<TrainingSet, "entered_weight" | "entered_unit" | "weight_kg" | "reps">, method: RankingMethod, unit: WeightUnit): string {
+export function formatSet(
+  s: Pick<TrainingSet, "entered_weight" | "entered_unit" | "weight_kg" | "reps">,
+  method: RankingMethod,
+  unit: WeightUnit,
+  /** withUnit: "240 lb × 6"; per-dumbbell weights read "70 lb each × 8". */
+  opts?: { withUnit?: boolean; convention?: string },
+): string {
   const w = setWeight(s, unit);
   if (method === "max_reps" || w == null) return `${s.reps} ${s.reps === 1 ? "rep" : "reps"}`;
-  return `${method === "added_load_e1rm" ? "+" : ""}${formatNumber(w)} × ${s.reps}`;
+  const label = opts?.withUnit ? ` ${unit}${opts.convention === "per_dumbbell" ? " each" : ""}` : "";
+  return `${method === "added_load_e1rm" ? "+" : ""}${formatNumber(w)}${label} × ${s.reps}`;
 }
 
 /** Exercises that can be ranked on boards (training-only ones, like Bicep Supination, can't). */

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ChevronRight, StickyNote } from "lucide-react";
 import { EmptyState, PageHeader } from "@/components/ui/misc";
-import { requireProfile } from "@/lib/data";
+import { getCatalog, requireProfile } from "@/lib/data";
 import { formatDate } from "@/lib/dates";
 import { createClient } from "@/lib/supabase/server";
 
@@ -20,6 +20,16 @@ export default async function SessionsPage() {
     .order("ended_at", { ascending: false })
     .limit(100);
   const sessions = data ?? [];
+  // Sets logged on their own (before sessions existed) live in each exercise's history.
+  const [{ data: loose }, catalog] = await Promise.all([
+    supabase.from("training_sets").select("exercise_id").eq("user_id", profile.id).is("session_id", null).limit(5000),
+    getCatalog(),
+  ]);
+  const byId = new Map(catalog.map((e) => [e.id, e]));
+  const looseExercises = [...new Set((loose ?? []).map((r) => r.exercise_id as string))]
+    .map((id) => byId.get(id))
+    .filter((e): e is NonNullable<typeof e> => Boolean(e))
+    .sort((a, b) => a.name.localeCompare(b.name));
   return (
     <>
       <PageHeader title="Sessions" subtitle="Completed training sessions · only you can see this" />
@@ -50,6 +60,23 @@ export default async function SessionsPage() {
       ) : (
         <EmptyState title="No completed sessions yet." body="Start a training day in My Training; it shows up here when you end it." />
       )}
+      {looseExercises.length ? (
+        <section className="mt-6" aria-labelledby="loose-heading">
+          <h2 id="loose-heading" className="px-1 text-[17px] font-semibold tracking-[-0.01em]">
+            Sets logged outside a session
+          </h2>
+          <p className="mb-2 px-1 text-[13px] text-fg-2">Sets you logged one by one (before sessions) aren’t part of a session. They’re in each exercise’s history:</p>
+          <ul className="flex flex-wrap gap-2 px-1">
+            {looseExercises.map((e) => (
+              <li key={e.id}>
+                <Link href={`/training/exercise/${e.slug}`} className="inline-flex h-9 items-center rounded-full border border-white/10 px-3 text-sm text-fg-2 hover:text-fg">
+                  {e.name}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
     </>
   );
 }
