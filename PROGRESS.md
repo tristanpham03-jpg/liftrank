@@ -28,7 +28,7 @@ _Last updated: 2026-10-15 (Claude Code) · Done: Phases 1–7 + friend verificat
 **Left:**
 - Apply `…1800` (needs approval).
 - Then run the full browser and iPhone suites (the Training flows need the new tables), push, and confirm the deploy.
-- Confirm Recline Curl mechanics.
+- Recline Curl confirmed by the owner (2026-11-15): standing one-arm dumbbell curl, upper arm braced on an incline bench back.
 
 ## 2026-10-20 "− Set" on the training day (no migration)
 

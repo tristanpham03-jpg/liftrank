@@ -32,7 +32,8 @@ insert into public.exercises
 values
   ('Keenan Flaps', 'keenan-flaps', 'back', 'Lats', 'cable', 'e1rm', 'stack', true, 150, 70, 64,
     array['Lats (latissimus dorsi)'], array['Teres major', 'Rear shoulders (posterior deltoids)']),
-  ('Recline Curl', 'recline-curl', 'arms', 'Biceps', 'cable', 'e1rm', 'stack', true, 150, 70, 65,
+  -- Standing beside an incline bench, upper arm braced on the back pad, one-arm dumbbell curl.
+  ('Recline Curl', 'recline-curl', 'arms', 'Biceps', 'dumbbell', 'e1rm', 'per_dumbbell', false, 60, 35, 65,
     array['Biceps'], array['Forearms (brachialis, brachioradialis)']),
   ('Kelso Shrug', 'kelso-shrug', 'back', 'Upper back', 'dumbbell', 'e1rm', 'per_dumbbell', false, 120, 60, 66,
     array['Middle traps', 'Rhomboids'], array['Rear shoulders (posterior deltoids)']),
@@ -48,8 +49,8 @@ select e.id, a.alias
 from (values
   ('keenan-flaps', 'keenan'), ('keenan-flaps', 'keenan flap'), ('keenan-flaps', 'cuffed pulldown'),
   ('keenan-flaps', 'cuffed lat pulldown'), ('keenan-flaps', 'single arm cuffed pulldown'),
-  ('recline-curl', 'recline curls'), ('recline-curl', 'reclined curl'), ('recline-curl', 'reclined cable curl'),
-  ('recline-curl', 'lying cable curl'),
+  ('recline-curl', 'recline curls'), ('recline-curl', 'reclined curl'), ('recline-curl', 'bench braced curl'),
+  ('recline-curl', 'incline bench curl'),
   ('kelso-shrug', 'kelso'), ('kelso-shrug', 'kelso shrugs'), ('kelso-shrug', 'chest supported shrug'),
   ('kelso-shrug', 'scap retraction'), ('kelso-shrug', 'scapular retraction'),
   ('bicep-supination', 'supinations'), ('bicep-supination', 'supination'), ('bicep-supination', 'biceps supination'),
