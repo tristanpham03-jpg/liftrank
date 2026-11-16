@@ -2,6 +2,19 @@
 
 **Every lift is a leaderboard.** Log your best lifts in seconds and see where you rank against your friends and private groups.
 
+**Live:** https://liftrank-roan.vercel.app · **Status:** private beta with a small group of friends.
+
+## Features
+
+- Log a lift in a few taps and get a score that makes different lifters comparable
+- Leaderboards for friends and private groups, with group invite links
+- Automatic personal-record detection on every submitted lift
+- Proof videos that friends can verify
+- My Training: a private, spreadsheet-style tracker; you choose which sets go to the boards
+- Activity feed and notifications when a friend passes you
+
+## Tech stack
+
 Next.js 16 (App Router) · React 19 · TypeScript (strict) · Tailwind 4 · Supabase (Postgres, Auth, RLS) · Vercel.
 
 ## Quick start
