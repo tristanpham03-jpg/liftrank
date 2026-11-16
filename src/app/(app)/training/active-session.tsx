@@ -402,9 +402,15 @@ function SessionBlock({
   const [, start] = useTransition();
   const bodyweight = exercise.ranking_method === "max_reps";
   const added = exercise.ranking_method === "added_load_e1rm";
-  const grid = block.unilateral ? "grid-cols-[28px_minmax(0,1fr)_64px_52px_40px]" : "grid-cols-[20px_minmax(0,1fr)_64px_52px_40px]";
+  const grid = block.unilateral ? "grid-cols-[28px_minmax(0,1fr)_minmax(0,1fr)_52px]" : "grid-cols-[20px_minmax(0,1fr)_minmax(0,1fr)_52px]";
   const rows = blockRows(block);
-  const hasNotes = Boolean(routine.trim() || block.note.trim());
+  const hasNotes = Boolean(routine.trim());
+  // Your best counted set, shown once per exercise (per side in left/right mode).
+  const bests = block.unilateral
+    ? (["left", "right"] as const).map((sd) => [sd === "left" ? "L" : "R", previous?.best?.[sd]] as const).filter(([, b]) => b)
+    : previous?.best?.both
+      ? ([["", previous.best.both]] as const)
+      : [];
   const item = "rounded-[8px] px-3 py-2.5 text-sm outline-none cursor-pointer data-[highlighted]:bg-white/[0.06] data-[disabled]:opacity-40";
 
   const setValue = (key: string, field: keyof RowValues, value: string) =>
@@ -499,6 +505,18 @@ function SessionBlock({
           </DropdownMenu.Root>
         </span>
       </div>
+      {bests.length ? (
+        <p className="px-3.5 pb-1 text-[12px] text-fg-2" data-testid="best">
+          Best{" "}
+          {bests.map(([tag, b], i) => (
+            <span key={tag || "both"} className="tabular">
+              {i ? " · " : ""}
+              {tag ? `${tag} ` : ""}
+              <span className="font-semibold text-fg">{formatSet(b!, exercise.ranking_method, unit)}</span>
+            </span>
+          ))}
+        </p>
+      ) : null}
       <ExercisePicker
         catalog={catalog}
         value={exercise}
@@ -515,7 +533,7 @@ function SessionBlock({
       {notesOpen ? (
         <div className="space-y-2 border-y border-white/[0.06] px-3.5 py-2.5" data-testid="exercise-notes">
           <label className="block">
-            <span className="text-[12px] font-medium text-fg-2">Routine note · every session</span>
+            <span className="text-[12px] font-medium text-fg-2">Note · shown every session</span>
             <textarea
               value={routine}
               maxLength={500}
@@ -530,23 +548,11 @@ function SessionBlock({
             />
             {routineSaved ? <span className="text-[12px] text-fg-3">{routineSaved}</span> : null}
           </label>
-          <label className="block">
-            <span className="text-[12px] font-medium text-fg-2">This session only</span>
-            <textarea
-              value={block.note}
-              maxLength={500}
-              rows={2}
-              onChange={(e) => onChange((b) => ({ ...b, note: e.target.value }))}
-              placeholder="How it felt today…"
-              className="mt-1 w-full resize-none rounded-[10px] border border-white/10 bg-white/[0.05] px-2.5 py-2 text-base outline-none focus:border-white/40"
-            />
-          </label>
         </div>
       ) : null}
 
       <div className={cn("grid items-center gap-x-1.5 px-2.5 pb-1 pt-1 text-[11px] font-medium uppercase tracking-wide text-fg-3", grid)} aria-hidden>
         <span className="text-center">Set</span>
-        <span className="pl-1">Previous</span>
         <span className="text-center">{bodyweight ? "" : added ? `+${unit}` : unit}</span>
         <span className="text-center">Reps</span>
         <span className="text-center normal-case">RIR</span>
@@ -626,12 +632,6 @@ function SessionRow({
   const prevWeight = previous ? setWeight(previous, unit) : null;
   const label = `Set ${n}${side ? ` ${side}` : ""}`;
   const focus = (key: string | null) => key && document.querySelector<HTMLInputElement>(`[data-focus="${key}"]`)?.focus();
-  const copy = () => {
-    if (!previous) return;
-    if (!bodyweight && prevWeight != null) onValue("w", formatNumber(prevWeight));
-    onValue("r", String(previous.reps));
-  };
-
   return (
     <li className={cn("px-2.5 py-1", side === "left" && "pb-0")} data-side={side ?? undefined} data-row-error={error ? "true" : undefined}>
       <div className={cn("grid items-center gap-x-1.5", grid)}>
@@ -639,19 +639,6 @@ function SessionRow({
           {side === "right" ? "" : n}
           {side ? <span className="ml-0.5 text-[11px] font-medium text-fg-3">{side === "left" ? "L" : "R"}</span> : null}
         </span>
-        {previous ? (
-          <button
-            type="button"
-            onClick={copy}
-            className="tap h-11 min-w-0 truncate rounded-[10px] px-1 text-left text-[15px] tabular text-fg-2 hover:bg-white/[0.05] hover:text-fg"
-            aria-label={`Copy previous: ${formatSet(previous, exercise.ranking_method, unit)}${previous.rir != null ? `, ${previous.rir} RIR` : ""}`}
-          >
-            {formatSet(previous, exercise.ranking_method, unit)}
-            {previous.rir != null ? <span className="ml-1 text-[11px] text-fg-3">{previous.rir} RIR</span> : null}
-          </button>
-        ) : (
-          <span className="pl-1 text-[15px] text-fg-3">–</span>
-        )}
         {bodyweight ? (
           <span className="text-center text-sm text-fg-3">BW</span>
         ) : (

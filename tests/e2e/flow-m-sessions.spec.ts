@@ -64,8 +64,10 @@ test("Flow M: Start → log freely (RIR, notes, quick changes) → survive leavi
   // Notes: collapsed by default; routine note persists, session note stays with this session.
   await expect(page.getByTestId("exercise-notes")).toHaveCount(0);
   await bench.getByRole("button", { name: /Notes for Barbell Bench Press/ }).click();
-  await bench.getByLabel("Routine note · every session").fill("Seat 3");
-  await bench.getByLabel("This session only").fill("Felt good");
+  await bench.getByLabel("Note · shown every session").fill("Seat 3");
+  // Your best is shown on the exercise; last time's numbers are hints in the boxes.
+  await expect(bench.getByTestId("best")).toContainText("165 × 5");
+  await expect(bench.getByLabel("Set 1 weight (lb)")).toHaveAttribute("placeholder", "165");
   await blur(page);
   await expect(bench.getByText("Saved for future sessions")).toBeVisible();
   await saved(page);
@@ -149,7 +151,6 @@ test("Flow M: Start → log freely (RIR, notes, quick changes) → survive leavi
   await page.goto("/training/sessions");
   await page.getByRole("link", { name: /Upper/ }).first().click();
   await expect(page.getByText("1 RIR")).toBeVisible();
-  await expect(page.getByText("Felt good")).toBeVisible();
   await page.goto("/training/exercise/barbell-bench-press");
   await page.getByRole("listitem").filter({ hasText: "205 × 6" }).getByRole("button", { name: "Edit" }).click();
   await page.getByLabel("RIR (optional)").fill("2");
@@ -176,7 +177,6 @@ test("Flow M: Start → log freely (RIR, notes, quick changes) → survive leavi
   await other.goto(`/training/sessions/${sessionId}`);
   // Not found for them (streamed pages may answer 200 with the not-found screen): none of the session shows.
   await expect(other.getByRole("heading", { name: "Upper" })).toHaveCount(0);
-  await expect(other.getByText("Felt good")).toHaveCount(0);
   await expect(other.getByText("205 × 6")).toHaveCount(0);
 });
 
