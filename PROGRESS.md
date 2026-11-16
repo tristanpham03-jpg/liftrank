@@ -2,7 +2,7 @@
 
 _Last updated: 2026-10-15 (Claude Code) · Done: Phases 1–7 + friend verification · **Deployed (unlisted) at https://liftrank-roan.vercel.app** · Finishing launch setup (see "Deployment status")_
 
-## 2026-11-15 Training sessions, RIR, notes, SBL exercises, Buddy (IN PROGRESS; local only; migration `…1800` NOT applied)
+## 2026-11-15 Training sessions, RIR, notes, SBL exercises, Buddy (complete locally; migration `…1800` awaits approval)
 
 **Done:**
 - **Migration `20261011001800_training_sessions.sql`** (not applied).
@@ -19,12 +19,16 @@ _Last updated: 2026-10-15 (Claude Code) · Done: Phases 1–7 + friend verificat
   - Training-only exercises hidden from competitive pickers.
 - **Checks:** typecheck and lint clean, unit tests 40/40.
 
-**Left to do:**
-- Unit tests for `lib/session.ts` and `lib/training-tips.ts`.
-- Rewrite the Training browser tests (J, K1, K3, L, training-ios) for sessions. They still use the removed ✓ flow.
-- Docs: adding-exercises workflow and the AI assistant plan.
-- Apply `…1800` (needs approval), run all browser tests, then push.
-- Confirm Recline Curl mechanics: no source uses that name; it's modelled as a reclined (lying) cable curl.
+**Also done:**
+- Unit tests for session drafts and tips (44/44).
+- Browser tests: Flow M (sessions end to end: Start, RIR, notes, leaving and closing, quick changes, validation, failed save then Retry, PR suggestion, explicit submit, infinite rotation, history, RIR edit, Discard, privacy) and Flow M2 (left/right and ±Set in a session).
+- The old checkmark flows (J, K1, K3, L, L2) were removed; K2 (search) is kept. The iPhone Training test starts a session first.
+- Docs: `docs/adding-exercises.md`, `docs/ai-assistant-plan.md`.
+
+**Left:**
+- Apply `…1800` (needs approval).
+- Then run the full browser and iPhone suites (the Training flows need the new tables), push, and confirm the deploy.
+- Confirm Recline Curl mechanics.
 
 ## 2026-10-20 "− Set" on the training day (no migration)
 

@@ -8,8 +8,8 @@ export function username(base: string) {
   return `${base}_${RUN}`.slice(0, 20);
 }
 
-const PASSWORD = "correct-horse-42";
-const emailOf = (name: string) => `${name}@${process.env.E2E_EMAIL_DOMAIN ?? "example.com"}`;
+export const PASSWORD = "correct-horse-42";
+export const emailOf = (name: string) => `${name}@${process.env.E2E_EMAIL_DOMAIN ?? "example.com"}`;
 
 /**
  * Creates a fresh account and leaves the page on the username step (/onboarding).
@@ -185,4 +185,13 @@ export async function signedInClient(name: string): Promise<SupabaseClient> {
   });
   if (error) throw new Error(`sign in ${name}: ${error.message}`);
   return client;
+}
+
+/** Signs an existing test account in (e.g. in a fresh browser context). */
+export async function signIn(page: Page, name: string) {
+  await page.goto("/login");
+  await page.getByLabel("Email").fill(emailOf(name));
+  await page.getByLabel("Password").fill(PASSWORD);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page).not.toHaveURL(/\/login/);
 }

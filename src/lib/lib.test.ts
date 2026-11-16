@@ -425,3 +425,56 @@ describe("new SBL exercises in search", () => {
     expect(EXERCISE_MUSCLES["kelso-shrug"].primary).toContain("upper_back");
   });
 });
+
+describe("training session drafts", () => {
+  const ex = new Map([
+    ["bench", { id: "bench", ranking_method: "e1rm" as const }],
+    ["pullup", { id: "pullup", ranking_method: "max_reps" as const }],
+    ["curl", { id: "curl", ranking_method: "e1rm" as const }],
+  ]);
+  it("saves only touched rows, keeps blank RIR distinct from 0, and validates partial rows", async () => {
+    const { draftToSets, newBlock, newDraft } = await import("./session");
+    const bench = { ...newBlock("b", "bench", 3, false), values: { "1": { w: "185", r: "8", rir: "1" }, "2": { w: "205", r: "6", rir: "" }, "3": { w: "", r: "", rir: "" } } };
+    const pull = { ...newBlock("p", "pullup", 1, false), values: { "1": { w: "", r: "12", rir: "0" } } };
+    const { sets, errors } = draftToSets(newDraft([bench, pull]), ex, "lb");
+    expect(errors).toEqual([]);
+    expect(sets.map((s) => [s.exercise_id, s.weight, s.reps, s.rir])).toEqual([["bench", 185, 8, 1], ["bench", 205, 6, null], ["pullup", null, 12, 0]]);
+    const bad = { ...newBlock("b", "bench", 2, false), values: { "1": { w: "185", r: "", rir: "" }, "2": { w: "100", r: "5", rir: "11" } } };
+    expect(draftToSets(newDraft([bad]), ex, "lb").errors.map((e) => e.rowKey)).toEqual(["1", "2"]);
+  });
+  it("uses left/right rows only in left/right mode, and reads stored drafts defensively", async () => {
+    const { draftToSets, newBlock, newDraft, parseDraft, differsFromRoutine, blockRows } = await import("./session");
+    const curl = { ...newBlock("c", "curl", 1, true), values: { "1L": { w: "30", r: "10", rir: "" }, "1R": { w: "30", r: "9", rir: "" }, "1": { w: "60", r: "8", rir: "" } } };
+    expect(blockRows(curl).map((r) => r.key)).toEqual(["1L", "1R"]);
+    expect(draftToSets(newDraft([curl]), ex, "lb").sets.map((s) => s.side)).toEqual(["left", "right"]);
+    expect(parseDraft(null)).toBeNull();
+    expect(parseDraft({ blocks: [{ key: "x", exerciseId: "bench", setCount: 99, values: { "1": { w: 5 } } }] })!.blocks[0]).toMatchObject({ setCount: 30, values: { "1": { w: "5", r: "", rir: "" } } });
+    expect(differsFromRoutine(newDraft([newBlock("b", "bench", 3, false)]), [{ exerciseId: "bench", setCount: 3 }])).toBe(false);
+    expect(differsFromRoutine(newDraft([newBlock("b", "bench", 4, false)]), [{ exerciseId: "bench", setCount: 3 }])).toBe(true);
+  });
+});
+
+describe("Training Buddy tips", () => {
+  const exercises = new Map([
+    ["inc", { id: "inc", slug: "incline-smith-press", name: "Incline Smith Press", ranking_method: "e1rm" }],
+    ["rdl", { id: "rdl", slug: "romanian-deadlift", name: "Romanian Deadlift", ranking_method: "e1rm" }],
+  ]);
+  const base = { today: "2026-11-15", sessions: [], sets: [], split: null, exercises, dismissed: new Set<string>() };
+  it("says nothing without enough real data", async () => {
+    const { trainingTips } = await import("./training-tips");
+    expect(trainingTips(base)).toEqual([]);
+    const oneEach = [{ exercise_id: "inc", local_date: "2026-11-10", score: 110, is_ranked: true }, { exercise_id: "inc", local_date: "2026-10-01", score: 100, is_ranked: true }];
+    expect(trainingTips({ ...base, sets: oneEach })).toEqual([]); // one day per window isn't enough
+  });
+  it("reports measured progress, PRs, consistency and split contents, and honors dismissals", async () => {
+    const { trainingTips } = await import("./training-tips");
+    const sets = ["2026-11-10", "2026-11-03"].map((d) => ({ exercise_id: "inc", local_date: d, score: 106, is_ranked: true }))
+      .concat(["2026-10-10", "2026-10-03"].map((d) => ({ exercise_id: "inc", local_date: d, score: 100, is_ranked: true })));
+    const sessions = ["2026-11-10", "2026-11-11", "2026-11-13"].map((d, i) => ({ id: `s${i}`, local_date: d, prs: i === 2 ? ["rdl"] : [] }));
+    const tips = trainingTips({ ...base, sets, sessions, split: { id: "sp", exerciseSlugs: ["barbell-bench-press", "lat-pulldown", "barbell-back-squat", "lateral-raise"] } });
+    expect(tips.map((t) => t.kind)).toEqual(["pr", "progress", "consistency", "split", "split"]);
+    expect(tips[1].text).toBe("Your Incline Smith Press estimated 1RM is up 6% on the 30 days before.");
+    expect(tips[2].text).toBe("You've completed training sessions on 3 different days this week.");
+    expect(trainingTips({ ...base, sets, sessions, dismissed: new Set(tips.map((t) => t.key)) })).toEqual([]);
+  });
+});
