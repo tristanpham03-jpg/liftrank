@@ -28,10 +28,12 @@ test("Exercise pictures fall back to the older drawings, then a plain icon", asy
   await expect(legPress.locator("svg").first()).toBeVisible();
 });
 
+const PENDING_ART = new Set(["Keenan Flaps", "Recline Curl", "Kelso Shrug", "Bicep Supination", "Face Pull"]);
+
 test("Every exercise's thumbnail and full picture load (all categories)", async ({ page }) => {
   test.skip(!hostedAdmin(), "Needs hosted Supabase.");
   test.setTimeout(120_000);
-  const total = (await hostedAdmin()!.from("exercises").select("id", { count: "exact", head: true }).eq("is_active", true)).count ?? 0;
+  const total = (await hostedAdmin()!.from("exercises").select("id", { count: "exact", head: true }).eq("is_active", true).neq("ranking_method", "none")).count ?? 0; // the + picker leaves out training-only exercises
   await signUp(page, username("artall"));
   await page.goto("/lift/new");
   await openPicker(page);
@@ -49,6 +51,12 @@ test("Every exercise's thumbnail and full picture load (all categories)", async 
       await row.scrollIntoViewIfNeeded();
       const name = (await row.locator("span.font-medium").first().textContent())!;
       const img = row.locator("img");
+      // Exercises still waiting for approved art show the plain icon instead (no broken image).
+      if (PENDING_ART.has(name)) {
+        await expect(img, name).toHaveCount(0);
+        seen.set(name, "");
+        continue;
+      }
       await expect(img, name).toHaveAttribute("src", /^\/exercises\/img\/[a-z0-9-]+-thumb\.webp$/);
       await expect.poll(() => img.evaluate((i: HTMLImageElement) => i.complete && i.naturalWidth), { message: name }).toBe(112);
       seen.set(name, (await img.getAttribute("src"))!.replace("-thumb.webp", ".webp"));
@@ -56,7 +64,7 @@ test("Every exercise's thumbnail and full picture load (all categories)", async 
   }
   expect(seen.size).toBe(total);
   // Full-size pictures (loaded when "About this exercise" opens): every file is served.
-  for (const [name, src] of seen) {
+  for (const [name, src] of [...seen].filter(([, src]) => src)) {
     const res = await page.request.get(src);
     expect(res.status(), name).toBe(200);
     expect(res.headers()["content-type"], name).toBe("image/webp");

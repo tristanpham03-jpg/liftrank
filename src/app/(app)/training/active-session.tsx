@@ -243,10 +243,11 @@ function SessionEditor({ session, routine, catalog, unit, recentIds, favoriteIds
       router.refresh();
     });
 
-  const discard = () =>
+  // Ask first, outside the transition: a dialog opened inside a pending transition wouldn't render.
+  const discard = async () => {
+    if (!(await ask({ title: "Discard this session?", body: "Everything you entered since you pressed Start will be deleted. Your history and routine don't change.", confirm: "Discard session", danger: true })))
+      return;
     start(async () => {
-      if (!(await ask({ title: "Discard this session?", body: "Everything you entered since you pressed Start will be deleted. Your history and routine don't change.", confirm: "Discard session", danger: true })))
-        return;
       const res = await discardSession(session.id);
       if (!res.ok) return setFinishError(res.error);
       ended.current = true;
@@ -256,6 +257,7 @@ function SessionEditor({ session, routine, catalog, unit, recentIds, favoriteIds
       } catch {}
       router.refresh();
     });
+  };
 
   const errorsFor = (blockKey: string) => new Map(errors.filter((e) => e.blockKey === blockKey).map((e) => [e.rowKey, e.message]));
   const startedAt = new Date(session.startedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
@@ -289,7 +291,7 @@ function SessionEditor({ session, routine, catalog, unit, recentIds, favoriteIds
                     Save exercise changes to routine
                   </DropdownMenu.Item>
                 ) : null}
-                <DropdownMenu.Item className={`${item} text-danger`} onSelect={discard}>
+                <DropdownMenu.Item className={`${item} text-danger`} onSelect={() => void discard()}>
                   Discard session
                 </DropdownMenu.Item>
               </DropdownMenu.Content>
@@ -706,7 +708,7 @@ function SessionRow({
               focus(nextFocusKey);
             }
           }}
-          className={cn(input, "text-[15px] font-medium text-fg-2")}
+          className={cn(input, "text-base font-medium text-fg-2")}
         />
       </div>
       {error ? <p className="pb-1 pl-7 text-[13px] text-danger">{error}</p> : null}

@@ -2,7 +2,16 @@
 
 _Last updated: 2026-10-15 (Claude Code) · Done: Phases 1–7 + friend verification · **Deployed (unlisted) at https://liftrank-roan.vercel.app** · Finishing launch setup (see "Deployment status")_
 
-## 2026-11-15 Training sessions, RIR, notes, SBL exercises, Buddy (complete locally; migration `…1800` awaits approval)
+## 2026-11-15 Training sessions, RIR, notes, SBL exercises, Buddy (applied and deployed)
+
+**Migration `…1800` was applied with the owner's approval.**
+- **Before applying:** dry run (only `…1800`); permission diff reviewed (old `update_training_set` replaced, everything else additive).
+- **After applying:** existing data identical to the baseline, including the 305 real training sets (none gained a session or RIR). 68 exercises.
+- **Tests:** hosted 16/16 including Flow M and M2, iPhone 7/7, 0 stalls, no test accounts left.
+- **Bugs the tests caught:**
+  - Discard's confirmation was asked inside a React transition and never rendered. Fixed by asking first.
+  - The RIR input was 15 px, which makes iPhone zoom. Now 16 px.
+- **Security:** Next.js 16.4.0 has critical advisories (GHSA-2464-fhr4-w9xw, GHSA-673q-mjm6-r5xr, GHSA-p3m5-59mp-jv5r), fixed in 16.4.6. `next build` now stops once with a security notice. Upgrade pending the owner's OK.
 
 **Done:**
 - **Migration `20261011001800_training_sessions.sql`** (not applied).
@@ -25,9 +34,6 @@ _Last updated: 2026-10-15 (Claude Code) · Done: Phases 1–7 + friend verificat
 - The old checkmark flows (J, K1, K3, L, L2) were removed; K2 (search) is kept. The iPhone Training test starts a session first.
 - Docs: `docs/adding-exercises.md`, `docs/ai-assistant-plan.md`.
 
-**Left:**
-- Apply `…1800` (needs approval).
-- Then run the full browser and iPhone suites (the Training flows need the new tables), push, and confirm the deploy.
 - Recline Curl confirmed by the owner (2026-11-15): standing one-arm dumbbell curl, upper arm braced on an incline bench back.
 
 ## 2026-10-20 "− Set" on the training day (no migration)

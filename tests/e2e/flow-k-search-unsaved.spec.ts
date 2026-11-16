@@ -55,10 +55,9 @@ test("Flow K2: search by muscle, equipment and alias in every exercise picker; c
   await page.goto("/training");
   await page.getByRole("button", { name: /Custom Split/ }).click();
   await page.getByRole("button", { name: "Use Custom" }).click();
-  await page.getByRole("button", { name: "Add exercises" }).click();
+  await page.getByRole("button", { name: "Start Day 1" }).click();
   await page.getByRole("button", { name: "Add exercise" }).click();
   await page.getByRole("dialog").getByLabel("Search exercises").fill(all63 ? "jm press" : "skull");
   await page.getByRole("dialog").getByRole("button", { name: all63 ? /^Smith Machine JM Press/ : /^Skull Crusher/ }).click();
-  await page.getByRole("button", { name: "Save day" }).click();
   await expect(page.getByRole("link", { name: all63 ? "Smith Machine JM Press" : "Skull Crusher", exact: true })).toBeVisible();
 });

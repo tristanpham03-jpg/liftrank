@@ -108,7 +108,7 @@ test("Flow M: Start → log freely (RIR, notes, quick changes) → survive leavi
   await saved(page);
 
   // A half-filled row blocks End and saves nothing.
-  await bench.getByLabel("Set 3 weight (lb)").fill("95");
+  await block(page, "Barbell Bench Press").getByLabel("Set 3 weight (lb)").fill("95");
   await page.getByRole("button", { name: "End and save session" }).click();
   await expect(page.getByText("Add the reps, or clear this row.")).toBeVisible();
   expect((await setRows()).length).toBe(1);
@@ -117,7 +117,7 @@ test("Flow M: Start → log freely (RIR, notes, quick changes) → survive leavi
   // A failed save keeps everything and offers Retry; Retry saves exactly once.
   await page.route("**/training**", (route) => (route.request().method() === "POST" && route.request().headers()["next-action"] ? route.abort() : route.continue()));
   await page.getByRole("button", { name: "End and save session" }).click();
-  await expect(page.getByRole("alert")).toContainText("Couldn't reach LiftRank");
+  await expect(page.getByRole("alert").filter({ hasText: "Couldn't reach LiftRank" })).toBeVisible();
   expect((await sessions("active")).length).toBe(1);
   await page.unrouteAll();
   await page.getByRole("button", { name: /Retry: end and save session/ }).click();
@@ -173,8 +173,11 @@ test("Flow M: Start → log freely (RIR, notes, quick changes) → survive leavi
   await signUp(other, username("milo"));
   await other.goto("/training/sessions");
   await expect(other.getByText("No completed sessions yet.")).toBeVisible();
-  const res = await other.goto(`/training/sessions/${sessionId}`);
-  expect(res?.status()).toBe(404);
+  await other.goto(`/training/sessions/${sessionId}`);
+  // Not found for them (streamed pages may answer 200 with the not-found screen): none of the session shows.
+  await expect(other.getByRole("heading", { name: "Upper" })).toHaveCount(0);
+  await expect(other.getByText("Felt good")).toHaveCount(0);
+  await expect(other.getByText("205 × 6")).toHaveCount(0);
 });
 
 test("Flow M2: left/right and ± set inside a session", async ({ page }) => {
