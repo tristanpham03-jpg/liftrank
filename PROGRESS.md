@@ -1,6 +1,6 @@
 # LiftRank: Progress
 
-_Last updated: 2026-10-15 (Claude Code) · Done: Phases 1–7 + friend verification · **Deployed (unlisted) at https://liftrank-roan.vercel.app** · Finishing launch setup (see "Deployment status")_
+_Last updated: 2026-10-15 · Done: Phases 1–7 + friend verification · **Deployed (unlisted) at https://liftrank-roan.vercel.app** · Finishing launch setup (see "Deployment status")_
 
 ## 2026-11-15 Training sessions, RIR, notes, SBL exercises, Buddy (applied and deployed)
 
@@ -444,7 +444,7 @@ See `.env.example` and SUPABASE_SETUP.md: Supabase URL, publishable key, secret 
 
 ## Launch checklist (private beta)
 
-Done by Claude, verified:
+Done and verified:
 - [x] Profile pictures with own-folder Storage writes, size and type caps, moderation removal, and deletion with the account
 - [x] Reports (profile, lift, group) with categories, limits, and a moderation queue with content-removal actions
 - [x] Rate limits: lifts (60/h), reports (10/day), proof requests (3/day), uploads (3/day), video views (20/day), picture changes (10/day), friend requests, invites
@@ -589,3 +589,4 @@ Done by Claude, verified:
 - **Test-data incident:** a live-check run filed a test report against the owner's real public lift. Found in the leftover check and deleted, along with 21 other test reports. The live check now reports only its own test users' lifts and deletes its reports, and the cleanup script removes test reports.
 - **Git:** initialized on `main`; `.gitignore` covers `.env*` (except `.env.example`), builds, test output, logs and `supabase/.temp`.
 - **README:** added the live link, beta status and a feature summary at the top, ahead of making the repository public.
+- **Repo cleanup:** removed the agent instruction files and the original build brief from the repository; they are now ignored by git.
