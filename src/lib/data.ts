@@ -2,6 +2,8 @@ import "server-only";
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import { AppError, errorCode, friendlyError } from "./errors";
+import { createServerClient } from "@supabase/ssr";
+import { requireSupabaseConfig } from "./env";
 import { createClient, type ServerSupabase } from "./supabase/server";
 import type { Exercise, MyProfile } from "./types";
 
@@ -37,8 +39,30 @@ export async function requireProfile(): Promise<MyProfile & { username: string }
   return profile as MyProfile & { username: string };
 }
 
+/**
+ * The exercise catalog is public (the same rows for everyone, anon included), so
+ * it's read without the visitor's cookies and shared across requests on this
+ * server instance for a minute, instead of two queries on every page. New
+ * exercises show up within a minute; nothing private is cached.
+ */
+const CATALOG_TTL_MS = 60_000;
+let catalogCache: { at: number; data: Promise<Exercise[]> } | null = null;
+
 export const getCatalog = cache(async (): Promise<Exercise[]> => {
-  const supabase = await createClient();
+  const now = Date.now();
+  if (catalogCache && now - catalogCache.at < CATALOG_TTL_MS) return catalogCache.data;
+  const data = loadCatalog();
+  catalogCache = { at: now, data };
+  // A failed load isn't kept: the next request tries again.
+  data.catch(() => {
+    if (catalogCache?.data === data) catalogCache = null;
+  });
+  return data;
+});
+
+async function loadCatalog(): Promise<Exercise[]> {
+  const { url, key } = requireSupabaseConfig();
+  const supabase = createServerClient(url, key, { cookies: { getAll: () => [], setAll: () => {} } });
   const [exercises, aliases] = await Promise.all([
     supabase
       .from("exercises")
@@ -57,7 +81,7 @@ export const getCatalog = cache(async (): Promise<Exercise[]> => {
     max_weight_kg: e.max_weight_kg == null ? null : Number(e.max_weight_kg),
     aliases: byExercise.get(e.id) ?? [],
   }));
-});
+}
 
 /** Record a product event. Never throws: analytics must not break a user action. */
 export async function track(supabase: ServerSupabase, userId: string, name: string, props: Record<string, unknown> = {}) {

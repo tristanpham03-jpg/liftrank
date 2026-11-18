@@ -86,6 +86,21 @@ export const EXERCISE_MUSCLES: Record<string, Tags> = {
   "kelso-shrug": t(["upper_back"], ["rear_delts", "traps"]),
   "bicep-supination": t(["biceps", "forearms"]),
   "face-pull": t(["rear_delts", "upper_back"], ["traps"]),
+  "reverse-cable-curl": t(["forearms", "biceps"]),
+  "machine-lateral-raise": t(["side_delts"], ["traps"]),
+  "dumbbell-front-raise": t(["front_delts"], ["side_delts", "upper_chest"]),
+  "behind-the-back-cable-lateral-raise": t(["side_delts"], ["rear_delts", "traps"]),
+  "smith-decline-press": t(["chest"], PRESS),
+  "low-to-high-cable-fly": t(["upper_chest", "chest"], ["front_delts"]),
+  "high-to-low-cable-fly": t(["chest"], ["front_delts"]),
+  "chest-supported-wide-grip-row": t(["upper_back", "rear_delts"], ["lats", "biceps"]),
+  "chest-supported-close-grip-row": t(["lats", "upper_back"], ROW),
+  "close-grip-lat-row": t(["lats"], ["upper_back", "biceps"]),
+  "back-extension": t(["lower_back", "glutes"], ["hamstrings"]),
+  "smith-romanian-deadlift": t(["hamstrings", "glutes"], ["lower_back", "forearms"]),
+  "smith-shoulder-press": t(["front_delts", "side_delts"], ["triceps"]),
+  "smith-hip-thrust": t(["glutes"], ["hamstrings", "quads"]),
+  "smith-split-squat": t(["quads", "glutes"], ["hamstrings", "adductors"]),
 };
 
 const DELTS: Muscle[] = ["shoulders", "front_delts", "side_delts", "rear_delts"];

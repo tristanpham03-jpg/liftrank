@@ -4,14 +4,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { DropdownMenu } from "radix-ui";
-import { ArrowDown, ArrowUp, History, Minus, MoreHorizontal, Pencil, Play, Plus, Repeat, StickyNote, Trash2, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronRight, History, Minus, MoreHorizontal, Pencil, Play, Plus, Repeat, Split, StickyNote, Trash2, Unlink, X } from "lucide-react";
 import { toggleFavorite } from "@/app/(app)/lift/actions";
 import { ExercisePicker } from "@/components/lifts/exercise-picker";
 import { Button } from "@/components/ui/button";
 import { FormMessage } from "@/components/ui/form";
 import { cn } from "@/lib/cn";
 import { formatDate, todayLocal } from "@/lib/dates";
-import { newBlock, newDraft } from "@/lib/session";
+import { normalizeRoutine } from "@/lib/session";
 import { ROTATION_LABEL, formatSet, rotationText, type Rotation, type TemplateId } from "@/lib/training";
 import type { Previous } from "@/lib/training-previous";
 import type { Tip } from "@/lib/training-tips";
@@ -24,6 +24,8 @@ export type DayExercise = {
   key: string;
   exercise: Exercise;
   setCount: number;
+  /** Entries sharing an altGroup are one slot: choose one at session time. */
+  altGroup: number | null;
   previous: Previous;
   /** Logged left/right (remembered per exercise). */
   unilateral: boolean;
@@ -62,8 +64,8 @@ export function TrainingDay(props: Props) {
     start(async () => {
       if (!day) return;
       setError(null);
-      const draft = newDraft(exercises.map((e) => newBlock(e.key, e.exercise.id, e.setCount, e.unilateral)));
-      const res = await startSession(day.id, todayLocal(), draft);
+      // The server builds the session from the routine as saved right now.
+      const res = await startSession(day.id, todayLocal());
       if (!res.ok) return setError(res.error);
       router.refresh();
     });
@@ -81,6 +83,9 @@ export function TrainingDay(props: Props) {
         <div className="flex shrink-0 items-center gap-3 pt-2 text-sm">
           <Link href="/training/sessions" className="tap inline-flex items-center gap-1 text-fg-2 hover:text-fg">
             <History size={15} aria-hidden /> Sessions
+          </Link>
+          <Link href="/training/exercises" className="tap text-fg-2 hover:text-fg">
+            Exercises
           </Link>
           <Link href="/training?change=1" className="tap text-fg-2 underline-offset-4 hover:text-fg hover:underline">
             Change split
@@ -131,29 +136,22 @@ export function TrainingDay(props: Props) {
             </div>
             {exercises.length ? (
               <ul className="glass-flat divide-y divide-white/[0.06] overflow-hidden rounded-[18px]" aria-label={`${day.name} exercises`}>
-                {exercises.map((e) => {
-                  const prev = e.unilateral ? [...e.previous.left, ...e.previous.right] : e.previous.both;
-                  const top = prev[0];
-                  return (
-                    <li key={e.key} className="flex items-center gap-3 px-3.5 py-2.5">
-                      <span className="min-w-0 flex-1">
-                        <span className="flex items-center gap-1.5">
-                          <Link href={`/training/exercise/${e.exercise.slug}`} className="truncate font-medium hover:underline underline-offset-4">
-                            {e.exercise.name}
-                          </Link>
-                          {e.note ? <StickyNote size={13} className="shrink-0 text-fg-3" aria-label="Has a routine note" /> : null}
-                        </span>
-                        <span className="block truncate text-[13px] text-fg-2">
-                          {e.setCount} {e.setCount === 1 ? "set" : "sets"}
-                          {e.unilateral ? " · left/right" : ""}
-                          {top && e.previous.date
-                            ? ` · last ${formatSet(top, e.exercise.ranking_method, props.unit, { withUnit: true, convention: e.exercise.weight_convention })} on ${formatDate(`${e.previous.date}T12:00:00Z`, "UTC", { month: "short", day: "numeric" })}`
-                            : " · first time"}
-                        </span>
+                {slots(exercises).map((group) =>
+                  group.length > 1 ? (
+                    <li key={group[0].key} className="py-1" aria-label={`Choose one: ${group.map((e) => e.exercise.name).join(" or ")}`}>
+                      <span className="flex items-center gap-1.5 px-3.5 pt-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-fg-3">
+                        <Split size={12} aria-hidden /> Choose one
                       </span>
+                      <ul className="ml-3.5 border-l border-white/10">
+                        {group.map((e) => (
+                          <PreviewRow key={e.key} e={e} unit={props.unit} />
+                        ))}
+                      </ul>
                     </li>
-                  );
-                })}
+                  ) : (
+                    <PreviewRow key={group[0].key} e={group[0]} unit={props.unit} />
+                  ),
+                )}
               </ul>
             ) : (
               <div className="glass-flat rounded-[18px] px-4 py-6 text-center">
@@ -177,7 +175,49 @@ export function TrainingDay(props: Props) {
   );
 }
 
-type EditItem = { key: string; exercise: Exercise; sets: number };
+/** Day entries in display order, each slot's options together. */
+function slots<T extends { altGroup: number | null }>(list: T[]): T[][] {
+  const out: T[][] = [];
+  for (const e of list) {
+    const g = e.altGroup == null ? undefined : out.find((x) => x[0].altGroup === e.altGroup);
+    if (g) g.push(e);
+    else out.push([e]);
+  }
+  return out;
+}
+
+function PreviewRow({ e, unit }: { e: DayExercise; unit: WeightUnit }) {
+  const prev = e.unilateral ? [...e.previous.left, ...e.previous.right] : e.previous.both;
+  const top = prev[0];
+  return (
+    <li className="flex items-center gap-2 py-2.5 pl-3.5 pr-1.5">
+      <span className="min-w-0 flex-1">
+        <span className="flex items-center gap-1.5">
+          <Link href={`/training/exercise/${e.exercise.slug}`} className="truncate font-medium hover:underline underline-offset-4">
+            {e.exercise.name}
+          </Link>
+          {e.note ? <StickyNote size={13} className="shrink-0 text-fg-3" aria-label="Has a routine note" /> : null}
+        </span>
+        <span className="block truncate text-[13px] text-fg-2">
+          {e.setCount} {e.setCount === 1 ? "set" : "sets"}
+          {e.unilateral ? " · left/right" : ""}
+          {top && e.previous.date
+            ? ` · last ${formatSet(top, e.exercise.ranking_method, unit, { withUnit: true, convention: e.exercise.weight_convention })} on ${formatDate(`${e.previous.date}T12:00:00Z`, "UTC", { month: "short", day: "numeric" })}`
+            : " · first time"}
+        </span>
+      </span>
+      <Link
+        href={`/training/exercise/${e.exercise.slug}`}
+        aria-label={`View ${e.exercise.name} history`}
+        className="tap flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-fg-3 hover:bg-white/[0.06] hover:text-fg"
+      >
+        <ChevronRight size={17} aria-hidden />
+      </Link>
+    </li>
+  );
+}
+
+type EditItem = { key: string; exercise: Exercise; sets: number; group: number | null };
 
 /** Edit a day in place: rename, add, remove, replace, reorder, set counts. One Save. */
 function DayEditor({
@@ -192,7 +232,7 @@ function DayEditor({
 }: Props & { dayId: string; dayName: string; canDelete: boolean; initial: DayExercise[]; onDone: () => void }) {
   const router = useRouter();
   const [name, setName] = useState(dayName);
-  const [items, setItems] = useState<EditItem[]>(initial.map((e) => ({ key: e.key, exercise: e.exercise, sets: e.setCount })));
+  const [items, setItems] = useState<EditItem[]>(() => slots(initial).flat().map((e) => ({ key: e.key, exercise: e.exercise, sets: e.setCount, group: e.altGroup })));
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
@@ -205,8 +245,27 @@ function DayEditor({
     });
   const update = (i: number, patch: Partial<EditItem>) => setItems((list) => list.map((it, j) => (j === i ? { ...it, ...patch } : it)));
   const [replacing, setReplacing] = useState<number | null>(null);
+  /** Adding an alternative to the item at this index. */
+  const [altFor, setAltFor] = useState<number | null>(null);
+  const addAlternative = (i: number, e: Exercise) =>
+    setItems((list) => {
+      const base = list[i];
+      const group = base.group ?? Math.max(0, ...list.map((x) => x.group ?? 0)) + 1;
+      const next = list.map((x, j) => (j === i ? { ...x, group } : x));
+      let at = i;
+      while (at + 1 < next.length && next[at + 1].group === group) at++;
+      next.splice(at + 1, 0, { key: crypto.randomUUID(), exercise: e, sets: base.sets, group });
+      return next;
+    });
+  const ungroup = (i: number) =>
+    setItems((list) => {
+      const g = list[i].group;
+      const rest = list.filter((x, j) => j !== i && x.group === g);
+      // The last one left in a slot is just an exercise again.
+      return list.map((x, j) => (j === i || (rest.length < 2 && x.group === g) ? { ...x, group: null } : x));
+    });
   const inDay = items.map((it) => it.exercise.id);
-  const add = (e: Exercise) => setItems((list) => [...list, { key: crypto.randomUUID(), exercise: e, sets: 2 }]);
+  const add = (e: Exercise) => setItems((list) => [...list, { key: crypto.randomUUID(), exercise: e, sets: 2, group: null }]);
   const addButton = (
     <ExercisePicker
       catalog={catalog}
@@ -241,7 +300,14 @@ function DayEditor({
       {addButton}
       <ol className="glass-flat divide-y divide-white/[0.06] overflow-hidden rounded-[18px]">
         {items.map((it, i) => (
-          <li key={it.key} className="px-3.5 pt-2.5 pb-1.5">
+          <li key={it.key} className={cn("px-3.5 pt-2.5 pb-1.5", it.group != null && "border-l-2 border-l-accent/50", it.group != null && items[i - 1]?.group === it.group && "!border-t-0")}>
+            {it.group != null && items[i - 1]?.group === it.group ? (
+              <span className="-mt-1 block text-[11px] font-semibold uppercase tracking-[0.08em] text-fg-3">or</span>
+            ) : it.group != null ? (
+              <span className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-fg-3">
+                <Split size={12} aria-hidden /> Choose one at session time
+              </span>
+            ) : null}
             <div className="flex items-start gap-2">
               {/* Full name, up to two lines: never truncated to "Cable Lateral R…". */}
               <span className="line-clamp-2 min-w-0 flex-1 pt-2.5 text-[15px] font-medium leading-snug">{it.exercise.name}</span>
@@ -260,6 +326,14 @@ function DayEditor({
                     <DropdownMenu.Item className={item} onSelect={() => setReplacing(i)}>
                       <Repeat size={14} className="mr-2 inline" aria-hidden /> Replace exercise
                     </DropdownMenu.Item>
+                    <DropdownMenu.Item className={item} onSelect={() => setAltFor(i)}>
+                      <Split size={14} className="mr-2 inline" aria-hidden /> Add alternative
+                    </DropdownMenu.Item>
+                    {it.group != null ? (
+                      <DropdownMenu.Item className={item} onSelect={() => ungroup(i)}>
+                        <Unlink size={14} className="mr-2 inline" aria-hidden /> Not an alternative
+                      </DropdownMenu.Item>
+                    ) : null}
                     <DropdownMenu.Separator className="my-1 h-px bg-white/10" />
                     <DropdownMenu.Item className={`${item} text-danger`} onSelect={() => setItems((list) => list.filter((_, j) => j !== i))}>
                       <X size={14} className="mr-2 inline" aria-hidden /> Remove from day
@@ -302,7 +376,25 @@ function DayEditor({
           similarTo={items[replacing].exercise}
         />
       ) : null}
-      <p className="px-1 text-[13px] text-fg-3">Removing or replacing an exercise keeps all its logged sets in your history.</p>
+      {altFor != null && items[altFor] ? (
+        <ExercisePicker
+          catalog={catalog}
+          value={null}
+          onSelect={(e) => {
+            addAlternative(altFor, e);
+            setAltFor(null);
+          }}
+          recentIds={recentIds}
+          favoriteIds={favoriteIds}
+          onToggleFavorite={toggleFavorite}
+          trigger={null}
+          open
+          onOpenChange={(o) => (o ? null : setAltFor(null))}
+          title={`Alternative to ${items[altFor].exercise.name}`}
+          inDayIds={inDay}
+        />
+      ) : null}
+      <p className="px-1 text-[13px] text-fg-3">Removing or replacing an exercise keeps all its logged sets in your history. Alternatives each keep their own history.</p>
       <FormMessage>{error}</FormMessage>
       {/* Save / Cancel stay in reach while editing a long day. */}
       <div className="sticky bottom-[calc(var(--nav-height)+10px+var(--safe-bottom))] z-20 -mx-4 flex gap-2 bg-[linear-gradient(to_bottom,transparent,var(--color-bg)_14px)] px-4 pt-3 pb-1 md:bottom-4 md:mx-0 md:px-0">
@@ -311,7 +403,15 @@ function DayEditor({
           disabled={pending}
           onClick={() =>
             start(async () => {
-              const res = await saveDay(dayId, name, items.map((it) => ({ exerciseId: it.exercise.id, sets: it.sets })));
+              const res = await saveDay(
+                dayId,
+                name,
+                normalizeRoutine(items.map((it) => ({ exerciseId: it.exercise.id, setCount: it.sets, altGroup: it.group }))).map((r) => ({
+                  exerciseId: r.exerciseId,
+                  sets: r.setCount,
+                  altGroup: r.altGroup,
+                })),
+              );
               if (!res.ok) return setError(res.error);
               onDone();
               router.refresh();

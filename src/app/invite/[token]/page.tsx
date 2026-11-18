@@ -73,7 +73,7 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
             <h1 className="text-[32px] font-bold tracking-[-0.03em] leading-tight">This invite can’t be used</h1>
             <p className="mt-2 text-fg-2">{REASONS[preview.reason ?? "not_found"]}</p>
             <Button asChild size="lg" variant="secondary" className="mt-8">
-              <Link href="/">Go to LiftRank</Link>
+              <Link href="/">Go to SBLift</Link>
             </Button>
           </>
         )}

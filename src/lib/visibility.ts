@@ -10,7 +10,7 @@ import type { LiftVisibility } from "./types";
  *  private → only you; still counts toward your own records.
  */
 export const VISIBILITY: { value: LiftVisibility; label: string; help: string }[] = [
-  { value: "public", label: "Public", help: "Anyone on LiftRank. Counts on friends and group boards." },
+  { value: "public", label: "Public", help: "Anyone on SBLift. Counts on friends and group boards." },
   { value: "friends", label: "Friends", help: "Only your friends. Counts on the friends board." },
   { value: "groups", label: "Selected groups", help: "Only the groups you pick, on their boards." },
   { value: "private", label: "Private", help: "Only you. Still counts toward your own records." },

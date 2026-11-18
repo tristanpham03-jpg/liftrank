@@ -12,7 +12,7 @@ import { getTimeZone } from "@/lib/timezone";
  * Only the lift's owner can render it; everyone else gets a 404. The lift is
  * read through RLS like the lift page, so nothing outside your own data is used.
  * Shows the verified pill and any title this lift holds right now, and links to
- * your public LiftRank profile. Rendered only when you tap Share.
+ * your public SBLift profile. Rendered only when you tap Share.
  */
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -55,7 +55,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const [weight, reps] = text.split(" × ");
   const e1rm = lift.is_ranked && lift.reps !== 1 ? formatEstimatedMax(lift.score, method, unit) : null;
   const date = formatDate(lift.performed_at, await getTimeZone(), { month: "long", day: "numeric", year: "numeric" });
-  const name = me.display_name || me.username || "LiftRank lifter";
+  const name = me.display_name || me.username || "SBLift lifter";
 
   return renderCard({
     name,
@@ -64,7 +64,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     body: (
       <div style={{ display: "flex", flexDirection: "column" }}>
           <div style={{ display: "flex", gap: 18 }}>
-            <div style={pearlPill}>{isPr ? "New personal record" : "Logged on LiftRank"}</div>
+            <div style={pearlPill}>{isPr ? "New personal record" : "Logged on SBLift"}</div>
             {lift.verification_status === "verified" ? (
               <div style={{ ...pearlPill, color: CARD.silver, backgroundImage: "none", border: "2px solid rgba(214,220,232,0.45)" }}>Verified</div>
             ) : null}

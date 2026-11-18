@@ -1,6 +1,56 @@
-# LiftRank: Progress
+# SBLift (formerly LiftRank): Progress
 
 _Last updated: 2026-10-15 · Done: Phases 1–7 + friend verification · **Deployed (unlisted) at https://liftrank-roan.vercel.app** · Finishing launch setup (see "Deployment status")_
+
+## 2026-11-17 SBLift rebrand and SBL training update (migration `…1900` awaiting approval; committed locally, not pushed)
+
+- **Rebrand:**
+  - "SBLift" in titles, metadata, the PWA manifest, the wordmark, auth, onboarding, invites, share cards and error copy. Tagline: "Built by lifters. Driven by science."
+  - "LiftRank" stays as the name of the leaderboard system ("LiftRank boards").
+  - Unchanged: DB names, env vars, routes, the Vercel project/domain, storage keys (`lr.*`), and the icon.
+  - Landing gains a short, factual SBL community line.
+- **Routine persistence bug:**
+  - **Cause:** an exercise added mid-session was session-only by design, but the only way to keep it was a disabled-looking item in the ⋯ menu. The start draft was also built from whatever the page last rendered, so a stale page could start an old routine.
+  - **Fix:** Start now builds the session on the server from the routine as saved at that moment. Adding an exercise says "added to this session only", and a visible banner offers "Save to routine" whenever the session differs.
+  - **Tests:** `routine persistence and alternative slots` (unit), Flow N (e2e).
+- **Alternative slots (needs `…1900`):**
+  - Editor: ⋯ → "Add alternative" groups exercises ("Choose one at session time"); "Not an alternative" ungroups them.
+  - Session: one block with compact option chips, defaulting to the option you did most recently (never anything outside the slot).
+  - Switching with numbers entered asks: keep them and do both, or clear and switch. You can also do both from ⋯ → "Also do X".
+  - Each option logs under its own exercise and history. Doing both isn't a routine change.
+- **My Exercises** (`/training/exercises`, linked from Training and the session):
+  - Lists everything you've logged plus favorites, with search, star, and a history chevron.
+  - "+" adds the exercise to the active session (session only), or starts a quick "Workout" session (needs `…1900`). Routines are never changed.
+- **History discoverability:** a chevron by exercise names (day preview, session blocks, My Exercises), plus "View history" in the session ⋯ menu. These are separate tap targets from inputs and menus.
+- **Catalog (`…1900`): 68 → 83.**
+  - Added: Reverse Cable Curl, Machine Lateral Raise, Dumbbell Front Raise, Behind-the-Back Cable Lateral Raise, Smith Machine Decline Press, Low-to-High and High-to-Low Cable Fly, Chest-Supported Wide-Grip and Close-Grip Row, Close-Grip Lat Row, Back Extension, and Smith Machine RDL, Shoulder Press, Hip Thrust and Split Squat.
+  - "Preacher Curl" is renamed "Barbell Preacher Curl" (same row, boards and lifts).
+  - Already existed: Machine Preacher Curl, Smith flat (Smith Machine Bench Press), Smith incline (Incline Smith Press), Smith Squat, Keenan Flaps, Recline Curl, Kelso Shrug, Bicep Supination and Face Pull.
+  - **Flagged:**
+    - "Standard Cable Triceps Extension" was not added: it's likely Overhead Triceps Extension (cable) or Triceps Pushdown. Please confirm which.
+    - Close-Grip Lat Row is logged as a cable row.
+    - The chest-supported grip variants are plate-loaded, like Chest-Supported Row.
+    - Back Extension is bodyweight and ranked by reps, so a held plate isn't recorded yet.
+- **Images:** 20 exercises have no approved illustration (icon fallback). See `docs/missing-exercise-images.md` and `.json`.
+- **Navigation delay (~2 s), investigated:**
+  - **Regions:** Vercel functions run in iad1 and the database is in ca-central-1, about 15–25 ms per round trip.
+  - **Where the time goes:**
+    - Each in-app navigation is a server render (dynamic, by design for freshness and privacy) behind auth.
+    - Pages made several sequential round trips: the layout's profile then unread count; Training's catalog, then defaults, then session, then splits, then settings.
+    - The likely rest is serverless cold starts and RSC payload time on phone networks.
+  - **Done (safe):**
+    - The layout fetches profile and unread count in parallel.
+    - Training's independent reads run in one round trip.
+    - The public catalog is read cookieless and shared per server instance for 60 s, removing two queries per page. Nothing private is cached.
+  - **Not done (would need your call):**
+    - Moving the Vercel function region next to the database (yul1/Montreal isn't a Vercel region; the nearest is iad1 already).
+    - Prefetching the Training tab.
+    - Partial prerendering / Cache Components, which would be a larger change.
+- **Docs:** `docs/community-roadmap.md` (future community features, not built) and `docs/ios-packaging.md` (Capacitor, App Store notes, Live Activity plan).
+- **Tests so far:**
+  - Typecheck, lint and unit tests 51/51.
+  - SQL `tests/sql/1900_*` passes in a rolled-back transaction on the hosted DB.
+  - Flow N and the iPhone suites run after `…1900` is applied (they skip until then).
 
 ## 2026-11-16 Training UX review fixes (no migration; committed locally, not yet pushed)
 

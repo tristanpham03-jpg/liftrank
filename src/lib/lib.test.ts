@@ -318,15 +318,16 @@ describe("training templates", () => {
 });
 
 describe("exercise catalog and muscle search", () => {
-  // The real catalog, straight from every migration that adds exercises (0006, 0016, 0018).
-  const sql = ["20261011000600_catalog.sql", "20261011001600_more_exercises.sql", "20261011001800_training_sessions.sql"]
+  // The real catalog, straight from every migration that adds exercises (0006, 0016, 0018, 0019).
+  const sql = ["20261011000600_catalog.sql", "20261011001600_more_exercises.sql", "20261011001800_training_sessions.sql", "20261011001900_alternatives_quick_sessions_exercises.sql"]
     .map((f) => readFileSync(path.join(process.cwd(), "supabase/migrations", f), "utf8"))
     .join("\n");
   const rows = [...sql.matchAll(/\('([^']+)', '([a-z0-9-]+)', '(\w+)', '([^']+)', '(\w+)', '(\w+)', '(\w+)', (?:true|false), (?:null|[\d.]+), (?:null|[\d.]+), (\d+)[,)]/g)];
   const aliasRows = [...sql.matchAll(/\('([a-z0-9-]+)', '([a-z0-9 ]+)'\)/g)];
   const moved = new Set(["sldl", "stiff leg deadlift"]); // 0016 moves these from RDL to SLDL
+  const renamed: Record<string, string> = { "preacher-curl": "Barbell Preacher Curl" }; // 0019 renames in place
   const catalog = rows.map((m) => ({
-    name: m[1],
+    name: renamed[m[2]] ?? m[1],
     slug: m[2],
     category: m[3] as Exercise["category"],
     muscle_group: m[4],
@@ -339,17 +340,24 @@ describe("exercise catalog and muscle search", () => {
   const names = (q: string, n = 30) => searchExercises(catalog, q, n).map((e) => e.name);
   const slugs = (q: string, n = 30) => searchExercises(catalog, q, n).map((e) => e.slug);
 
-  it("has 68 distinct exercises, five of them Abs/Core, all tagged for search", async () => {
+  it("has 83 distinct exercises, five of them Abs/Core, all tagged for search", async () => {
     const { EXERCISE_MUSCLES, CATEGORY_LABEL } = await import("./exercise-muscles");
-    expect(catalog).toHaveLength(68);
-    expect(new Set(catalog.map((e) => e.slug)).size).toBe(68);
+    expect(catalog).toHaveLength(83);
+    expect(new Set(catalog.map((e) => e.slug)).size).toBe(83);
+    expect(new Set(catalog.map((e) => e.name.toLowerCase())).size).toBe(83);
     expect(catalog.filter((e) => e.category === "core").map((e) => e.slug).sort()).toEqual(
       ["cable-crunch", "hanging-knee-raise", "hanging-leg-raise", "machine-ab-crunch", "weighted-decline-sit-up"],
     );
     for (const e of catalog) expect(EXERCISE_MUSCLES[e.slug], e.slug).toBeDefined();
     expect(CATEGORY_LABEL.core).toBe("Abs/Core");
     // Every exercise has an approved illustration on disk, except these, which use the fallback until approved art exists.
-    const pending = ["bicep-supination", "face-pull", "keenan-flaps", "kelso-shrug", "recline-curl"];
+    const pending = [
+      "bicep-supination", "face-pull", "keenan-flaps", "kelso-shrug", "recline-curl",
+      // 0019: no approved art yet (see docs/missing-exercise-images.md)
+      "reverse-cable-curl", "machine-lateral-raise", "dumbbell-front-raise", "behind-the-back-cable-lateral-raise", "smith-decline-press",
+      "low-to-high-cable-fly", "high-to-low-cable-fly", "chest-supported-wide-grip-row", "chest-supported-close-grip-row", "close-grip-lat-row",
+      "back-extension", "smith-romanian-deadlift", "smith-shoulder-press", "smith-hip-thrust", "smith-split-squat",
+    ];
     const { EXERCISE_IMAGES } = await import("./exercise-images");
     expect([...EXERCISE_IMAGES].sort()).toEqual(catalog.map((e) => e.slug).filter((s) => !pending.includes(s)).sort());
     for (const slug of EXERCISE_IMAGES) {
@@ -368,7 +376,7 @@ describe("exercise catalog and muscle search", () => {
   });
 
   it("finds biceps, hamstrings, quads and lats", () => {
-    for (const q of ["bicep", "biceps"]) expect(names(q)).toEqual(expect.arrayContaining(["Dumbbell Curl", "Incline Dumbbell Curl", "Preacher Curl", "Machine Preacher Curl"]));
+    for (const q of ["bicep", "biceps"]) expect(names(q)).toEqual(expect.arrayContaining(["Dumbbell Curl", "Incline Dumbbell Curl", "Barbell Preacher Curl", "Machine Preacher Curl"]));
     for (const q of ["hamstring", "hamstrings", "hams"]) expect(names(q)).toEqual(expect.arrayContaining(["Romanian Deadlift", "Stiff-Leg Deadlift", "Seated Leg Curl", "Lying Leg Curl"]));
     for (const q of ["quad", "quads"]) expect(names(q)).toEqual(expect.arrayContaining(["Leg Extension", "Front Squat", "Hack Squat"]));
     const lat = names("lat");
@@ -449,8 +457,8 @@ describe("training session drafts", () => {
     expect(draftToSets(newDraft([curl]), ex, "lb").sets.map((s) => s.side)).toEqual(["left", "right"]);
     expect(parseDraft(null)).toBeNull();
     expect(parseDraft({ blocks: [{ key: "x", exerciseId: "bench", setCount: 99, values: { "1": { w: 5 } } }] })!.blocks[0]).toMatchObject({ setCount: 30, values: { "1": { w: "5", r: "", rir: "" } } });
-    expect(differsFromRoutine(newDraft([newBlock("b", "bench", 3, false)]), [{ exerciseId: "bench", setCount: 3 }])).toBe(false);
-    expect(differsFromRoutine(newDraft([newBlock("b", "bench", 4, false)]), [{ exerciseId: "bench", setCount: 3 }])).toBe(true);
+    expect(differsFromRoutine(newDraft([newBlock("b", "bench", 3, false)]), [{ exerciseId: "bench", setCount: 3, altGroup: null }])).toBe(false);
+    expect(differsFromRoutine(newDraft([newBlock("b", "bench", 4, false)]), [{ exerciseId: "bench", setCount: 3, altGroup: null }])).toBe(true);
   });
 });
 
@@ -476,5 +484,89 @@ describe("Training Buddy tips", () => {
     expect(tips[1].text).toBe("Your Incline Smith Press estimated 1RM is up 6% on the 30 days before.");
     expect(tips[2].text).toBe("You've completed training sessions on 3 different days this week.");
     expect(trainingTips({ ...base, sets, sessions, dismissed: new Set(tips.map((t) => t.key)) })).toEqual([]);
+  });
+});
+
+describe("routine persistence and alternative slots", () => {
+  const routine = [
+    { key: "k1", exerciseId: "bench", setCount: 3, altGroup: null },
+    { key: "k2", exerciseId: "incline", setCount: 2, altGroup: 7 },
+    { key: "k3", exerciseId: "decline", setCount: 3, altGroup: 7 },
+    { key: "k4", exerciseId: "curl", setCount: 2, altGroup: null },
+  ];
+  const none = { unilateral: () => false, lastDone: [] as string[] };
+
+  it("starts a session from the saved routine: a slot is one block, first option by default", async () => {
+    const { routineToDraft } = await import("./session");
+    const d = routineToDraft(routine, none);
+    expect(d.blocks.map((b) => b.exerciseId)).toEqual(["bench", "incline", "curl"]);
+    expect(d.blocks[1].alts?.map((a) => a.exerciseId)).toEqual(["incline", "decline"]);
+    expect(d.blocks[0].alts).toBeUndefined();
+  });
+
+  it("picks the option you did most recently, never suggesting anything outside the slot", async () => {
+    const { routineToDraft } = await import("./session");
+    const d = routineToDraft(routine, { unilateral: (id) => id === "decline", lastDone: ["squat", "decline", "incline"] });
+    expect(d.blocks[1].exerciseId).toBe("decline");
+    expect(d.blocks[1].setCount).toBe(3);
+    expect(d.blocks[1].unilateral).toBe(true);
+  });
+
+  it("an unchanged session (whichever option was chosen) doesn't differ from the routine", async () => {
+    const { routineToDraft, differsFromRoutine, switchOption } = await import("./session");
+    const d = routineToDraft(routine, none);
+    expect(differsFromRoutine(d, routine)).toBe(false);
+    const switched = { ...d, blocks: d.blocks.map((b) => (b.alts ? switchOption(b, "decline") : b)) };
+    expect(switched.blocks[1]).toMatchObject({ exerciseId: "decline", setCount: 3, values: {} });
+    expect(differsFromRoutine(switched, routine)).toBe(false);
+  });
+
+  it("an exercise added mid-session is session-only until saved, and saving keeps it next time", async () => {
+    const { routineToDraft, differsFromRoutine, draftToRoutine, newBlock } = await import("./session");
+    const d = routineToDraft(routine, none);
+    const added = { ...d, blocks: [...d.blocks, newBlock("x", "fly", 2, false)] };
+    expect(differsFromRoutine(added, routine)).toBe(true);
+    // "Save to routine" writes this; the next session starts from what was saved.
+    const saved = draftToRoutine(added).map((r, i) => ({ ...r, key: `s${i}` }));
+    expect(saved.map((r) => r.exerciseId)).toEqual(["bench", "incline", "decline", "curl", "fly"]);
+    expect(routineToDraft(saved, none).blocks.map((b) => b.exerciseId)).toEqual(["bench", "incline", "curl", "fly"]);
+    expect(differsFromRoutine(routineToDraft(saved, none), saved)).toBe(false);
+  });
+
+  it("doing both options keeps one slot in the routine; each logs under its own exercise", async () => {
+    const { routineToDraft, draftToRoutine, alsoOption, differsFromRoutine, draftToSets } = await import("./session");
+    const d = routineToDraft(routine, none);
+    const both = { ...d, blocks: [d.blocks[0], d.blocks[1], alsoOption(d.blocks[1], "decline", "extra"), d.blocks[2]] };
+    expect(both.blocks[2]).toMatchObject({ exerciseId: "decline", setCount: 3, slot: d.blocks[1].slot });
+    expect(draftToRoutine(both).filter((r) => r.altGroup != null).map((r) => r.exerciseId)).toEqual(["incline", "decline"]);
+    expect(differsFromRoutine(both, routine)).toBe(false);
+    both.blocks[1] = { ...both.blocks[1], values: { "1": { w: "135", r: "8", rir: "" } } };
+    both.blocks[2] = { ...both.blocks[2], values: { "1": { w: "155", r: "6", rir: "" } } };
+    const ex = new Map(["incline", "decline"].map((id) => [id, { id, ranking_method: "e1rm" as const }]));
+    expect(draftToSets(both, ex, "lb").sets.map((s) => s.exercise_id)).toEqual(["incline", "decline"]);
+  });
+
+  it("normalizes slots: together, renumbered, and a slot of one is just an exercise", async () => {
+    const { normalizeRoutine } = await import("./session");
+    expect(
+      normalizeRoutine([
+        { exerciseId: "a", setCount: 2, altGroup: 4 },
+        { exerciseId: "b", setCount: 2, altGroup: null },
+        { exerciseId: "c", setCount: 2, altGroup: 4 },
+        { exerciseId: "d", setCount: 2, altGroup: 9 },
+      ]),
+    ).toEqual([
+      { exerciseId: "a", setCount: 2, altGroup: 1 },
+      { exerciseId: "c", setCount: 2, altGroup: 1 },
+      { exerciseId: "b", setCount: 2, altGroup: null },
+      { exerciseId: "d", setCount: 2, altGroup: null },
+    ]);
+  });
+
+  it("keeps slot data through a stored draft", async () => {
+    const { routineToDraft, parseDraft } = await import("./session");
+    const d = routineToDraft(routine, none);
+    expect(parseDraft(JSON.parse(JSON.stringify(d)))).toEqual(d);
+    expect(parseDraft({ v: 1, blocks: [{ key: "a", exerciseId: "x", setCount: 2, values: {}, note: "", slot: 1, alts: [{ exerciseId: "x", setCount: 2 }] }] })!.blocks[0].alts).toBeUndefined();
   });
 });

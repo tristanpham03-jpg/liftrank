@@ -4,24 +4,26 @@ import { AlertDialog } from "radix-ui";
 import { useCallback, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 
-type Options = { title: string; body: string; confirm: string; cancel?: string; danger?: boolean };
+type Options = { title: string; body: string; confirm: string; cancel?: string; danger?: boolean; alt?: string };
+/** true = confirm, false = cancel, "alt" = the optional second choice (only when `alt` is given). */
+type Answer = boolean | "alt";
 
 /**
  * An in-app confirmation (instead of window.confirm): `const [dialog, ask] = useConfirm()`,
  * render `{dialog}`, then `if (await ask({...})) …`.
  */
-export function useConfirm(): [React.ReactNode, (o: Options) => Promise<boolean>] {
+export function useConfirm(): [React.ReactNode, (o: Options) => Promise<Answer>] {
   const [opts, setOpts] = useState<Options | null>(null);
-  const resolver = useRef<((ok: boolean) => void) | null>(null);
+  const resolver = useRef<((ok: Answer) => void) | null>(null);
   const ask = useCallback(
     (o: Options) =>
-      new Promise<boolean>((resolve) => {
+      new Promise<Answer>((resolve) => {
         resolver.current = resolve;
         setOpts(o);
       }),
     [],
   );
-  const close = (ok: boolean) => {
+  const close = (ok: Answer) => {
     resolver.current?.(ok);
     resolver.current = null;
     setOpts(null);
@@ -37,6 +39,11 @@ export function useConfirm(): [React.ReactNode, (o: Options) => Promise<boolean>
             <Button block variant={opts?.danger ? "danger" : "primary"} onClick={() => close(true)}>
               {opts?.confirm}
             </Button>
+            {opts?.alt ? (
+              <Button block variant="secondary" onClick={() => close("alt")}>
+                {opts.alt}
+              </Button>
+            ) : null}
             <Button block variant="secondary" onClick={() => close(false)}>
               {opts?.cancel ?? "Cancel"}
             </Button>

@@ -6,7 +6,7 @@ import { SITE_URL } from "./env";
 
 /**
  * Shared look for every 1080×1920 share card: the ambient-glass background,
- * the LiftRank mark, and a footer with the person and a public LiftRank link.
+ * the SBLift mark, and a footer with the person and a public SBLift link.
  * Cards are rendered only when someone taps Share, and never cached.
  */
 
@@ -72,7 +72,7 @@ export async function renderCard(opts: { body: React.ReactNode; name: string; de
             <div style={{ width: 13, height: 52, borderRadius: 4, background: "#f3f4f8" }} />
             <div style={{ width: 13, height: 38, borderRadius: 4, background: "#b5a0ff" }} />
           </div>
-          <div style={{ fontSize: 50, fontWeight: 700, letterSpacing: -1.5 }}>LiftRank</div>
+          <div style={{ fontSize: 50, fontWeight: 700, letterSpacing: -1.5 }}>SBLift</div>
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", marginTop: "auto", marginBottom: "auto" }}>{opts.body}</div>

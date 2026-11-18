@@ -119,7 +119,7 @@ test("Flow M: Start → log freely (RIR, notes, quick changes) → survive leavi
   // A failed save keeps everything and offers Retry; Retry saves exactly once.
   await page.route("**/training**", (route) => (route.request().method() === "POST" && route.request().headers()["next-action"] ? route.abort() : route.continue()));
   await page.getByRole("button", { name: "End and save session" }).click();
-  await expect(page.getByRole("alert").filter({ hasText: "Couldn't reach LiftRank" })).toBeVisible();
+  await expect(page.getByRole("alert").filter({ hasText: "Couldn't reach SBLift" })).toBeVisible();
   expect((await sessions("active")).length).toBe(1);
   await page.unrouteAll();
   await page.getByRole("button", { name: /Retry: end and save session/ }).click();

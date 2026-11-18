@@ -56,8 +56,8 @@ export function InvitePanel({
           <p className="rounded-[12px] bg-white/[0.06] px-3 py-2.5 text-sm text-fg-2 break-all select-all">{link}</p>
           <ShareButton
             url={link}
-            title={`Join ${groupName} on LiftRank`}
-            text={`Join ${groupName} on LiftRank and let’s see who’s strongest.`}
+            title={`Join ${groupName} on SBLift`}
+            text={`Join ${groupName} on SBLift and let’s see who’s strongest.`}
             label="Share invite"
             event="invite_shared"
           />
@@ -172,8 +172,8 @@ export function InviteCompact({ groupId, groupName, autoCreate }: { groupId: str
       <p className="rounded-[12px] bg-white/[0.05] px-3 py-2.5 text-sm text-fg-2 break-all select-all">{link}</p>
       <ShareButton
         url={link}
-        title={`Join ${groupName} on LiftRank`}
-        text={`Join ${groupName} on LiftRank and let’s see who’s strongest.`}
+        title={`Join ${groupName} on SBLift`}
+        text={`Join ${groupName} on SBLift and let’s see who’s strongest.`}
         label="Share invite"
         event="invite_shared"
       />

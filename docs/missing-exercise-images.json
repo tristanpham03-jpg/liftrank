@@ -1,0 +1,431 @@
+{
+  "generated": "2026-11-17",
+  "source": "public.exercises on the hosted database (68 rows) + migration 0019 (15 rows, pending approval); files in public/exercises/img; approval list in src/lib/exercise-images.ts",
+  "catalog_total_after_0019": 83,
+  "illustrated": 63,
+  "missing": 20,
+  "visual_standard": "Translucent blue wireframe / point-cloud figure, primary muscles red, secondary muscles orange, matching the existing set. 800 px <slug>.webp and 112 px <slug>-thumb.webp via scripts/optimize-exercise-images.py.",
+  "exercises": [
+    {
+      "display_name": "Keenan Flaps",
+      "slug": "keenan-flaps",
+      "catalog_status": "database",
+      "primary_muscles": [
+        "Lats (latissimus dorsi)"
+      ],
+      "secondary_muscles": [
+        "Teres major",
+        "Rear shoulders (posterior deltoids)"
+      ],
+      "equipment": "cable",
+      "description": "Single-arm cuffed cable pulldown pulling the elbow down and back to the hip, kneeling or seated, isolating the lats.",
+      "expected_assets": [
+        "keenan-flaps.webp",
+        "keenan-flaps-thumb.webp"
+      ],
+      "asset_dir": "public/exercises/img/",
+      "existing_image_status": "missing",
+      "approved_status": "not approved (app shows its icon fallback)"
+    },
+    {
+      "display_name": "Recline Curl",
+      "slug": "recline-curl",
+      "catalog_status": "database",
+      "primary_muscles": [
+        "Biceps"
+      ],
+      "secondary_muscles": [
+        "Forearms (brachialis, brachioradialis)"
+      ],
+      "equipment": "dumbbell",
+      "description": "Standing beside an incline bench with the upper arm braced against the back pad, curling a dumbbell one arm at a time.",
+      "expected_assets": [
+        "recline-curl.webp",
+        "recline-curl-thumb.webp"
+      ],
+      "asset_dir": "public/exercises/img/",
+      "existing_image_status": "missing",
+      "approved_status": "not approved (app shows its icon fallback)"
+    },
+    {
+      "display_name": "Kelso Shrug",
+      "slug": "kelso-shrug",
+      "catalog_status": "database",
+      "primary_muscles": [
+        "Middle traps",
+        "Rhomboids"
+      ],
+      "secondary_muscles": [
+        "Rear shoulders (posterior deltoids)"
+      ],
+      "equipment": "dumbbell",
+      "description": "Chest-supported shrug on an incline bench, squeezing the shoulder blades together (retraction) rather than up.",
+      "expected_assets": [
+        "kelso-shrug.webp",
+        "kelso-shrug-thumb.webp"
+      ],
+      "asset_dir": "public/exercises/img/",
+      "existing_image_status": "missing",
+      "approved_status": "not approved (app shows its icon fallback)"
+    },
+    {
+      "display_name": "Bicep Supination",
+      "slug": "bicep-supination",
+      "catalog_status": "database",
+      "primary_muscles": [
+        "Biceps (supination)",
+        "Supinator"
+      ],
+      "secondary_muscles": [
+        "Forearms (brachioradialis)"
+      ],
+      "equipment": "dumbbell",
+      "description": "Light dumbbell held at the elbow-bent position, rotating the forearm palm-down to palm-up to train supination.",
+      "expected_assets": [
+        "bicep-supination.webp",
+        "bicep-supination-thumb.webp"
+      ],
+      "asset_dir": "public/exercises/img/",
+      "existing_image_status": "missing",
+      "approved_status": "not approved (app shows its icon fallback)"
+    },
+    {
+      "display_name": "Face Pull",
+      "slug": "face-pull",
+      "catalog_status": "database",
+      "primary_muscles": [
+        "Rear shoulders (posterior deltoids)",
+        "Upper back (rhomboids, middle traps)"
+      ],
+      "secondary_muscles": [
+        "Rotator cuff (external rotators)",
+        "Traps"
+      ],
+      "equipment": "cable",
+      "description": "Rope cable pull to face height with elbows high and outward rotation at the end.",
+      "expected_assets": [
+        "face-pull.webp",
+        "face-pull-thumb.webp"
+      ],
+      "asset_dir": "public/exercises/img/",
+      "existing_image_status": "missing",
+      "approved_status": "not approved (app shows its icon fallback)"
+    },
+    {
+      "display_name": "Reverse Cable Curl",
+      "slug": "reverse-cable-curl",
+      "catalog_status": "migration 0019 (not yet applied)",
+      "primary_muscles": [
+        "Forearms (brachioradialis)",
+        "Brachialis"
+      ],
+      "secondary_muscles": [
+        "Biceps"
+      ],
+      "equipment": "cable",
+      "description": "Overhand (pronated) grip curl on a low cable with a straight bar, emphasising brachioradialis and brachialis.",
+      "expected_assets": [
+        "reverse-cable-curl.webp",
+        "reverse-cable-curl-thumb.webp"
+      ],
+      "asset_dir": "public/exercises/img/",
+      "existing_image_status": "missing",
+      "approved_status": "not approved (app shows its icon fallback)"
+    },
+    {
+      "display_name": "Machine Lateral Raise",
+      "slug": "machine-lateral-raise",
+      "catalog_status": "migration 0019 (not yet applied)",
+      "primary_muscles": [
+        "Side shoulders (lateral deltoids)"
+      ],
+      "secondary_muscles": [
+        "Traps"
+      ],
+      "equipment": "selectorized",
+      "description": "Seated lateral raise machine with pads on the outer arms, raising the elbows out to shoulder height.",
+      "expected_assets": [
+        "machine-lateral-raise.webp",
+        "machine-lateral-raise-thumb.webp"
+      ],
+      "asset_dir": "public/exercises/img/",
+      "existing_image_status": "missing",
+      "approved_status": "not approved (app shows its icon fallback)"
+    },
+    {
+      "display_name": "Dumbbell Front Raise",
+      "slug": "dumbbell-front-raise",
+      "catalog_status": "migration 0019 (not yet applied)",
+      "primary_muscles": [
+        "Front shoulders (anterior deltoids)"
+      ],
+      "secondary_muscles": [
+        "Side shoulders (lateral deltoids)",
+        "Upper chest"
+      ],
+      "equipment": "dumbbell",
+      "description": "Standing, raising dumbbells straight in front to shoulder height with a near-straight arm.",
+      "expected_assets": [
+        "dumbbell-front-raise.webp",
+        "dumbbell-front-raise-thumb.webp"
+      ],
+      "asset_dir": "public/exercises/img/",
+      "existing_image_status": "missing",
+      "approved_status": "not approved (app shows its icon fallback)"
+    },
+    {
+      "display_name": "Behind-the-Back Cable Lateral Raise",
+      "slug": "behind-the-back-cable-lateral-raise",
+      "catalog_status": "migration 0019 (not yet applied)",
+      "primary_muscles": [
+        "Side shoulders (lateral deltoids)"
+      ],
+      "secondary_muscles": [
+        "Rear shoulders (posterior deltoids)",
+        "Traps"
+      ],
+      "equipment": "cable",
+      "description": "One-arm lateral raise from a low cable running behind the body, starting the arm across the back.",
+      "expected_assets": [
+        "behind-the-back-cable-lateral-raise.webp",
+        "behind-the-back-cable-lateral-raise-thumb.webp"
+      ],
+      "asset_dir": "public/exercises/img/",
+      "existing_image_status": "missing",
+      "approved_status": "not approved (app shows its icon fallback)"
+    },
+    {
+      "display_name": "Smith Machine Decline Press",
+      "slug": "smith-decline-press",
+      "catalog_status": "migration 0019 (not yet applied)",
+      "primary_muscles": [
+        "Chest (lower pectoralis major)"
+      ],
+      "secondary_muscles": [
+        "Triceps",
+        "Front shoulders (anterior deltoids)"
+      ],
+      "equipment": "smith_machine",
+      "description": "Smith machine press on a decline bench, bar lowered to the lower chest.",
+      "expected_assets": [
+        "smith-decline-press.webp",
+        "smith-decline-press-thumb.webp"
+      ],
+      "asset_dir": "public/exercises/img/",
+      "existing_image_status": "missing",
+      "approved_status": "not approved (app shows its icon fallback)"
+    },
+    {
+      "display_name": "Low-to-High Cable Fly",
+      "slug": "low-to-high-cable-fly",
+      "catalog_status": "migration 0019 (not yet applied)",
+      "primary_muscles": [
+        "Upper chest (clavicular pectoralis)"
+      ],
+      "secondary_muscles": [
+        "Front shoulders (anterior deltoids)"
+      ],
+      "equipment": "cable",
+      "description": "Cables set low, hands sweep up and together to upper-chest height (upper-chest fly).",
+      "expected_assets": [
+        "low-to-high-cable-fly.webp",
+        "low-to-high-cable-fly-thumb.webp"
+      ],
+      "asset_dir": "public/exercises/img/",
+      "existing_image_status": "missing",
+      "approved_status": "not approved (app shows its icon fallback)"
+    },
+    {
+      "display_name": "High-to-Low Cable Fly",
+      "slug": "high-to-low-cable-fly",
+      "catalog_status": "migration 0019 (not yet applied)",
+      "primary_muscles": [
+        "Chest (lower pectoralis major)"
+      ],
+      "secondary_muscles": [
+        "Front shoulders (anterior deltoids)"
+      ],
+      "equipment": "cable",
+      "description": "Cables set high, hands sweep down and together in front of the hips (lower-chest fly).",
+      "expected_assets": [
+        "high-to-low-cable-fly.webp",
+        "high-to-low-cable-fly-thumb.webp"
+      ],
+      "asset_dir": "public/exercises/img/",
+      "existing_image_status": "missing",
+      "approved_status": "not approved (app shows its icon fallback)"
+    },
+    {
+      "display_name": "Chest-Supported Wide-Grip Row",
+      "slug": "chest-supported-wide-grip-row",
+      "catalog_status": "migration 0019 (not yet applied)",
+      "primary_muscles": [
+        "Upper back (rhomboids, middle traps)",
+        "Rear shoulders (posterior deltoids)"
+      ],
+      "secondary_muscles": [
+        "Lats (latissimus dorsi)",
+        "Biceps"
+      ],
+      "equipment": "plate_loaded",
+      "description": "Chest on the pad of a supported row, wide overhand grip, elbows flared to pull toward the upper back.",
+      "expected_assets": [
+        "chest-supported-wide-grip-row.webp",
+        "chest-supported-wide-grip-row-thumb.webp"
+      ],
+      "asset_dir": "public/exercises/img/",
+      "existing_image_status": "missing",
+      "approved_status": "not approved (app shows its icon fallback)"
+    },
+    {
+      "display_name": "Chest-Supported Close-Grip Row",
+      "slug": "chest-supported-close-grip-row",
+      "catalog_status": "migration 0019 (not yet applied)",
+      "primary_muscles": [
+        "Lats (latissimus dorsi)",
+        "Upper back (rhomboids, middle traps)"
+      ],
+      "secondary_muscles": [
+        "Biceps",
+        "Rear shoulders (posterior deltoids)"
+      ],
+      "equipment": "plate_loaded",
+      "description": "Chest on the pad of a supported row, close or neutral grip, elbows tucked toward the hips.",
+      "expected_assets": [
+        "chest-supported-close-grip-row.webp",
+        "chest-supported-close-grip-row-thumb.webp"
+      ],
+      "asset_dir": "public/exercises/img/",
+      "existing_image_status": "missing",
+      "approved_status": "not approved (app shows its icon fallback)"
+    },
+    {
+      "display_name": "Close-Grip Lat Row",
+      "slug": "close-grip-lat-row",
+      "catalog_status": "migration 0019 (not yet applied)",
+      "primary_muscles": [
+        "Lats (latissimus dorsi)"
+      ],
+      "secondary_muscles": [
+        "Upper back (rhomboids, middle traps)",
+        "Biceps"
+      ],
+      "equipment": "cable",
+      "description": "Seated cable row with a close grip, elbows tucked, pulling toward the hips to bias the lats. (Mechanics flagged for confirmation.)",
+      "expected_assets": [
+        "close-grip-lat-row.webp",
+        "close-grip-lat-row-thumb.webp"
+      ],
+      "asset_dir": "public/exercises/img/",
+      "existing_image_status": "missing",
+      "approved_status": "not approved (app shows its icon fallback)"
+    },
+    {
+      "display_name": "Back Extension",
+      "slug": "back-extension",
+      "catalog_status": "migration 0019 (not yet applied)",
+      "primary_muscles": [
+        "Lower back (spinal erectors)",
+        "Glutes"
+      ],
+      "secondary_muscles": [
+        "Hamstrings"
+      ],
+      "equipment": "bodyweight",
+      "description": "45-degree or horizontal back extension bench, hinging at the hips and extending back to a straight line.",
+      "expected_assets": [
+        "back-extension.webp",
+        "back-extension-thumb.webp"
+      ],
+      "asset_dir": "public/exercises/img/",
+      "existing_image_status": "missing",
+      "approved_status": "not approved (app shows its icon fallback)"
+    },
+    {
+      "display_name": "Smith Machine Romanian Deadlift",
+      "slug": "smith-romanian-deadlift",
+      "catalog_status": "migration 0019 (not yet applied)",
+      "primary_muscles": [
+        "Hamstrings",
+        "Glutes"
+      ],
+      "secondary_muscles": [
+        "Lower back (spinal erectors)",
+        "Forearms (grip)"
+      ],
+      "equipment": "smith_machine",
+      "description": "Romanian deadlift in the Smith machine: soft knees, hips push back, bar travels along the thighs.",
+      "expected_assets": [
+        "smith-romanian-deadlift.webp",
+        "smith-romanian-deadlift-thumb.webp"
+      ],
+      "asset_dir": "public/exercises/img/",
+      "existing_image_status": "missing",
+      "approved_status": "not approved (app shows its icon fallback)"
+    },
+    {
+      "display_name": "Smith Machine Shoulder Press",
+      "slug": "smith-shoulder-press",
+      "catalog_status": "migration 0019 (not yet applied)",
+      "primary_muscles": [
+        "Front shoulders (anterior deltoids)",
+        "Side shoulders (lateral deltoids)"
+      ],
+      "secondary_muscles": [
+        "Triceps"
+      ],
+      "equipment": "smith_machine",
+      "description": "Seated Smith machine press from upper chest to overhead.",
+      "expected_assets": [
+        "smith-shoulder-press.webp",
+        "smith-shoulder-press-thumb.webp"
+      ],
+      "asset_dir": "public/exercises/img/",
+      "existing_image_status": "missing",
+      "approved_status": "not approved (app shows its icon fallback)"
+    },
+    {
+      "display_name": "Smith Machine Hip Thrust",
+      "slug": "smith-hip-thrust",
+      "catalog_status": "migration 0019 (not yet applied)",
+      "primary_muscles": [
+        "Glutes"
+      ],
+      "secondary_muscles": [
+        "Hamstrings",
+        "Quads"
+      ],
+      "equipment": "smith_machine",
+      "description": "Upper back on a bench, Smith bar across the hips, driving the hips up to full extension.",
+      "expected_assets": [
+        "smith-hip-thrust.webp",
+        "smith-hip-thrust-thumb.webp"
+      ],
+      "asset_dir": "public/exercises/img/",
+      "existing_image_status": "missing",
+      "approved_status": "not approved (app shows its icon fallback)"
+    },
+    {
+      "display_name": "Smith Machine Split Squat",
+      "slug": "smith-split-squat",
+      "catalog_status": "migration 0019 (not yet applied)",
+      "primary_muscles": [
+        "Quads",
+        "Glutes"
+      ],
+      "secondary_muscles": [
+        "Hamstrings",
+        "Inner thighs (adductors)"
+      ],
+      "equipment": "smith_machine",
+      "description": "Split stance under a Smith bar, front leg working, back knee lowering toward the floor.",
+      "expected_assets": [
+        "smith-split-squat.webp",
+        "smith-split-squat-thumb.webp"
+      ],
+      "asset_dir": "public/exercises/img/",
+      "existing_image_status": "missing",
+      "approved_status": "not approved (app shows its icon fallback)"
+    }
+  ]
+}

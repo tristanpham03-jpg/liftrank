@@ -2,9 +2,9 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "LiftRank",
-    short_name: "LiftRank",
-    description: "Log your best lifts in seconds and see where you rank.",
+    name: "SBLift",
+    short_name: "SBLift",
+    description: "Built by lifters. Driven by science.",
     start_url: "/home",
     scope: "/",
     display: "standalone",

@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { LandingBoard } from "@/components/landing/landing-board";
 import { AmbientBackground } from "@/components/ui/glass";
 
+const TAGLINE = "Built by lifters. Driven by science.";
+
 const STEPS = [
   { title: "Log your lift", body: "Pick the exercise, enter weight and reps. No workout to start, no routine to build." },
   { title: "See your rank", body: "You land on the board right away: your friends and each of your groups." },
@@ -40,6 +42,7 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
       <main>
         <section className="mx-auto grid max-w-[1080px] gap-14 px-4 pt-10 pb-24 md:grid-cols-[1.1fr_1fr] md:items-center md:pt-20">
           <div className="animate-rise">
+            <p className="mb-4 text-sm font-semibold uppercase tracking-[0.14em] text-fg-3">{TAGLINE}</p>
             <h1 className="pearl-text font-bold leading-[0.95] tracking-[-0.045em] text-[clamp(3rem,9vw,5.5rem)]">
               Every lift is a leaderboard.
             </h1>
@@ -103,6 +106,9 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
         <section>
           <div className="mx-auto max-w-[1080px] px-4 py-24 text-center">
             <p className="pearl-text font-bold tracking-[-0.04em] leading-[0.95] text-[clamp(2.5rem,7vw,4.25rem)]">Where do you rank?</p>
+            <p className="mx-auto mt-5 max-w-[46ch] text-fg-2">
+              SBLift is made for the SBL community: log your sessions, follow your own progress, and compete on LiftRank boards when you want to.
+            </p>
             <Button asChild size="xl" className="mt-9">
               <Link href="/signup">Start competing</Link>
             </Button>

@@ -14,14 +14,14 @@ export default function OnboardingInvitePage() {
       <Steps current={3} />
       <h1 className="text-[32px] font-bold tracking-[-0.03em] leading-tight">Bring your training partners</h1>
       <p className="mt-1 mb-7 text-fg-2">
-        Leaderboards get interesting with people you know. Send them LiftRank, then add them as friends or start a group.
+        Leaderboards get interesting with people you know. Send them SBLift, then add them as friends or start a group.
       </p>
       <div className="space-y-3">
         <ShareButton
           url={`${SITE_URL}/signup`}
-          title="LiftRank"
-          text="I’m logging my lifts on LiftRank. Join and let’s see who’s stronger."
-          label="Share LiftRank"
+          title="SBLift"
+          text="I’m logging my lifts on SBLift. Join and let’s see who’s stronger."
+          label="Share SBLift"
           event="invite_shared"
         />
         <Button asChild variant="secondary" size="lg" block>

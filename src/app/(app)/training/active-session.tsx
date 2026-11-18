@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { DropdownMenu } from "radix-ui";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, useTransition } from "react";
-import { MoreHorizontal, Plus, Minus, StickyNote } from "lucide-react";
+import { ChevronRight, MoreHorizontal, Plus, Minus, Split, StickyNote } from "lucide-react";
 import { toggleFavorite } from "@/app/(app)/lift/actions";
 import { ExercisePicker } from "@/components/lifts/exercise-picker";
 import { Button } from "@/components/ui/button";
@@ -14,17 +14,21 @@ import { formatDate, todayLocal } from "@/lib/dates";
 import { formatNumber } from "@/lib/scoring";
 import {
   EMPTY_ROW,
+  alsoOption,
   blockHasInput,
   blockRows,
   differsFromRoutine,
+  draftToRoutine,
   draftToSets,
   newBlock,
   newDraft,
   parseDraft,
   rowHasInput,
+  switchOption,
   type Draft,
   type DraftBlock,
   type RowError,
+  type RoutineItem,
   type RowValues,
 } from "@/lib/session";
 import { formatSet, setWeight, type Side, type TrainingSet } from "@/lib/training";
@@ -35,7 +39,7 @@ import { discardSession, finishSession, getPrevious, saveDay, saveDraft, setExer
 type Props = {
   session: { id: string; dayName: string; startedAt: string; draft: unknown; version: number };
   /** The saved routine day this session came from (null if that day was deleted since). */
-  routine: { dayId: string; name: string; exercises: { exerciseId: string; setCount: number }[] } | null;
+  routine: { dayId: string; name: string; exercises: RoutineItem[] } | null;
   catalog: Exercise[];
   unit: WeightUnit;
   recentIds: string[];
@@ -43,6 +47,8 @@ type Props = {
   previous: Record<string, Previous>;
   /** Routine notes (private, per exercise). */
   notes: Record<string, string>;
+  /** From My Exercises: add this exercise to the session (this session only). */
+  addExerciseId?: string | null;
 };
 
 const noSubscribe = () => () => {};
@@ -60,7 +66,7 @@ export function ActiveSession(props: Props) {
 type Sync = "saved" | "saving" | "device" | "conflict";
 type Stored = { draft: Draft; base: number; dirty: boolean };
 
-function SessionEditor({ session, routine, catalog, unit, recentIds, favoriteIds, previous: initialPrevious, notes: initialNotes }: Props) {
+function SessionEditor({ session, routine, catalog, unit, recentIds, favoriteIds, previous: initialPrevious, notes: initialNotes, addExerciseId }: Props) {
   const router = useRouter();
   const storageKey = `lr.session.${session.id}`;
   const byId = useMemo(() => new Map(catalog.map((e) => [e.id, e])), [catalog]);
@@ -164,6 +170,35 @@ function SessionEditor({ session, routine, catalog, unit, recentIds, favoriteIds
   const addExercise = (e: Exercise) => {
     update((d) => ({ ...d, blocks: [...d.blocks, newBlock(crypto.randomUUID(), e.id, 2, false)] }));
     loadPrevious([e.id]);
+    // Say so right away: adding here doesn't change the routine unless it's saved.
+    setNotice(routine ? `${e.name} added to this session only.` : null);
+  };
+  /** A slot: switch to another option (asking first if numbers were entered, with the choice to keep them and do both). */
+  const choose = async (block: DraftBlock, id: string) => {
+    if (id === block.exerciseId) return;
+    const from = byId.get(block.exerciseId)?.name ?? "this exercise";
+    const to = byId.get(id)?.name ?? "the other option";
+    if (blockHasInput(block)) {
+      const answer = await ask({
+        title: `Switch to ${to}?`,
+        body: `You've entered sets for ${from}. Keep them and do ${to} as well, or clear them and switch.`,
+        confirm: `Keep ${from}, add ${to}`,
+        alt: `Clear and switch`,
+      });
+      if (answer === true) return also(block, id);
+      if (answer !== "alt") return;
+    }
+    updateBlock(block.key, (b) => switchOption(b, id));
+    loadPrevious([id]);
+  };
+  const also = (block: DraftBlock, id: string) => {
+    update((d) => {
+      const blocks = [...d.blocks];
+      const at = blocks.findIndex((b) => b.key === block.key);
+      blocks.splice(at + 1, 0, alsoOption(block, id, crypto.randomUUID()));
+      return { ...d, blocks };
+    });
+    loadPrevious([id]);
   };
   const swap = async (block: DraftBlock, e: Exercise) => {
     const old = byId.get(block.exerciseId)?.name ?? "this exercise";
@@ -172,7 +207,14 @@ function SessionEditor({ session, routine, catalog, unit, recentIds, favoriteIds
       !(await ask({ title: `Swap ${old}?`, body: `The numbers you entered for ${old} in this session will be cleared.`, confirm: `Swap for ${e.name}` }))
     )
       return;
-    updateBlock(block.key, (b) => ({ ...b, exerciseId: e.id, values: {}, unilateral: false }));
+    // In a slot, the swapped-in exercise takes the old one's place among the options.
+    updateBlock(block.key, (b) => ({
+      ...b,
+      exerciseId: e.id,
+      values: {},
+      unilateral: false,
+      ...(b.alts ? { alts: b.alts.map((a) => (a.exerciseId === b.exerciseId ? { exerciseId: e.id, setCount: b.setCount } : a)) } : {}),
+    }));
     loadPrevious([e.id]);
   };
   const remove = async (block: DraftBlock) => {
@@ -189,12 +231,28 @@ function SessionEditor({ session, routine, catalog, unit, recentIds, favoriteIds
       return { ...d, blocks };
     });
 
+  // Arrived from My Exercises with an exercise to add: add it once, then drop the parameter.
+  useEffect(() => {
+    if (!addExerciseId) return;
+    const e = byId.get(addExerciseId);
+    queueMicrotask(() => {
+      if (e && !draftRef.current.blocks.some((b) => b.exerciseId === e.id)) addExercise(e);
+      else if (e) setNotice(`${e.name} is already in this session.`);
+    });
+    router.replace("/training", { scroll: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per arrival
+  }, [addExerciseId]);
+
   const changed = routine ? differsFromRoutine(draft, routine.exercises) : false;
   const saveToRoutine = async () => {
     if (!routine) return;
     if (!(await ask({ title: `Update your ${routine.name} routine?`, body: "Future sessions of this day will start with this session's exercises and set counts. Past sessions don't change.", confirm: "Save to routine" })))
       return;
-    const res = await saveDay(routine.dayId, routine.name, draftRef.current.blocks.map((b) => ({ exerciseId: b.exerciseId, sets: b.setCount })));
+    const res = await saveDay(
+      routine.dayId,
+      routine.name,
+      draftToRoutine(draftRef.current).map((r) => ({ exerciseId: r.exerciseId, sets: r.setCount, altGroup: r.altGroup })),
+    );
     setNotice(res.ok ? "Routine updated." : res.error);
     if (res.ok) router.refresh();
   };
@@ -228,7 +286,7 @@ function SessionEditor({ session, routine, catalog, unit, recentIds, favoriteIds
       try {
         res = await finishSession(session.id, key, todayLocal(), sets, exerciseNotes);
       } catch {
-        res = { ok: false, error: "Couldn't reach LiftRank. Your session is kept on this device." };
+        res = { ok: false, error: "Couldn't reach SBLift. Your session is kept on this device." };
       }
       if (!res.ok) {
         setFinishError(res.error);
@@ -322,6 +380,15 @@ function SessionEditor({ session, routine, catalog, unit, recentIds, favoriteIds
               ask={ask}
               onChange={(fn) => updateBlock(block.key, fn)}
               onSwap={(e) => void swap(block, e)}
+              // Options show on the slot's first block only; an extra option done as well is its own block.
+              options={
+                draft.blocks.findIndex((b) => b.slot != null && b.slot === block.slot) === i
+                  ? (block.alts ?? []).map((a) => ({ id: a.exerciseId, name: byId.get(a.exerciseId)?.name ?? "" }))
+                  : []
+              }
+              inSession={draft.blocks.filter((b) => b.slot != null && b.slot === block.slot).map((b) => b.exerciseId)}
+              onChoose={(id) => void choose(block, id)}
+              onAlso={(id) => also(block, id)}
               onRemove={() => void remove(block)}
               onMove={(by) => move(i, by)}
             />
@@ -344,6 +411,18 @@ function SessionEditor({ session, routine, catalog, unit, recentIds, favoriteIds
           </button>
         }
       />
+      <Link href="/training/exercises" className="tap mt-1 block py-2 text-center text-[13px] text-fg-2 underline-offset-4 hover:text-fg hover:underline">
+        My exercises
+      </Link>
+
+      {routine && changed ? (
+        <div className="glass-flat mt-3 flex items-center gap-3 rounded-[14px] px-3.5 py-2.5" data-testid="routine-changes">
+          <p className="min-w-0 flex-1 text-[13px] text-fg-2">Exercise changes are for this session only. Your {routine.name} routine stays as it was.</p>
+          <Button size="sm" variant="secondary" onClick={() => void saveToRoutine()}>
+            Save to routine
+          </Button>
+        </div>
+      ) : null}
 
       <div className="mt-4 space-y-2">
         {finishError ? (
@@ -379,6 +458,10 @@ function SessionBlock({
   onSwap,
   onRemove,
   onMove,
+  options,
+  inSession,
+  onChoose,
+  onAlso,
 }: {
   block: DraftBlock;
   exercise: Exercise;
@@ -396,6 +479,12 @@ function SessionBlock({
   onSwap: (e: Exercise) => void;
   onRemove: () => void;
   onMove: (by: number) => void;
+  /** A slot's options (empty for an ordinary exercise). */
+  options: { id: string; name: string }[];
+  /** Options of this slot already in the session. */
+  inSession: string[];
+  onChoose: (id: string) => void;
+  onAlso: (id: string) => void;
 }) {
   const [swapOpen, setSwapOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
@@ -456,8 +545,9 @@ function SessionBlock({
   return (
     <section className="glass-flat overflow-hidden rounded-[18px]" aria-labelledby={`ex-${block.key}`} data-exercise={exercise.slug}>
       <div className="flex items-center justify-between gap-2 px-3.5 pt-2.5 pb-1">
-        <Link id={`ex-${block.key}`} href={`/training/exercise/${exercise.slug}`} className="min-w-0 truncate font-semibold hover:underline underline-offset-4">
+        <Link id={`ex-${block.key}`} href={`/training/exercise/${exercise.slug}`} title="View history" className="min-w-0 truncate font-semibold hover:underline underline-offset-4">
           {exercise.name}
+          <ChevronRight size={14} className="ml-0.5 inline align-[-2px] text-fg-3" aria-hidden />
         </Link>
         <span className="flex shrink-0 items-center gap-1">
           {previous?.date ? (
@@ -493,6 +583,16 @@ function SessionBlock({
                 <DropdownMenu.Item className={item} onSelect={() => setSwapOpen(true)}>
                   Swap exercise
                 </DropdownMenu.Item>
+                {options
+                  .filter((o) => !inSession.includes(o.id))
+                  .map((o) => (
+                    <DropdownMenu.Item key={o.id} className={item} onSelect={() => onAlso(o.id)}>
+                      Also do {o.name}
+                    </DropdownMenu.Item>
+                  ))}
+                <DropdownMenu.Item asChild className={item}>
+                  <Link href={`/training/exercise/${exercise.slug}`}>View history</Link>
+                </DropdownMenu.Item>
                 <DropdownMenu.Item className={item} disabled={first} onSelect={() => onMove(-1)}>
                   Move up
                 </DropdownMenu.Item>
@@ -507,6 +607,27 @@ function SessionBlock({
           </DropdownMenu.Root>
         </span>
       </div>
+      {options.length > 1 ? (
+        <div role="radiogroup" aria-label="Choose one" className="flex flex-wrap items-center gap-1.5 px-3.5 pb-1.5">
+          <Split size={12} className="text-fg-3" aria-hidden />
+          {options.map((o) => {
+            const on = o.id === exercise.id;
+            return (
+              <button
+                key={o.id}
+                type="button"
+                role="radio"
+                aria-checked={on}
+                disabled={!on && inSession.includes(o.id)}
+                onClick={() => onChoose(o.id)}
+                className={cn("tap h-7 max-w-full truncate rounded-full border px-2.5 text-xs font-medium", on ? "pearl border-transparent" : "border-white/15 text-fg-2 hover:text-fg")}
+              >
+                {o.name}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
       {bests.length ? (
         <p className="px-3.5 pb-1 text-[12px] text-fg-2" data-testid="best">
           Best{" "}

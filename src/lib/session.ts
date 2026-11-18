@@ -18,7 +18,20 @@ export type DraftBlock = {
   values: Record<string, RowValues>;
   /** A note for this session only (routine notes are saved separately). */
   note: string;
+  /**
+   * Alternative slot: the routine's options for this place in the day ("do one
+   * of these"), in routine order, each with its own set count. Absent for an
+   * ordinary exercise. `slot` ties together blocks of the same slot (doing more
+   * than one option); only the first is written back to the routine.
+   */
+  slot?: number;
+  alts?: AltOption[];
 };
+
+export type AltOption = { exerciseId: string; setCount: number; unilateral?: boolean };
+
+/** One saved routine entry. Entries sharing an altGroup form one slot. */
+export type RoutineItem = { exerciseId: string; setCount: number; altGroup: number | null };
 
 export type Draft = {
   v: 1;
@@ -84,6 +97,14 @@ export function parseDraft(raw: unknown): Draft | null {
         ]),
       ),
       note: typeof b.note === "string" ? b.note : "",
+      ...(Number.isInteger(b.slot) && Array.isArray(b.alts) && b.alts.length > 1
+        ? {
+            slot: b.slot,
+            alts: b.alts
+              .filter((a) => a && typeof a.exerciseId === "string")
+              .map((a) => ({ exerciseId: a.exerciseId, setCount: Math.max(1, Math.min(10, Number(a.setCount) || 2)), unilateral: Boolean(a.unilateral) })),
+          }
+        : {}),
     }));
   const finishKey = typeof (raw as Draft).finishKey === "string" ? (raw as Draft).finishKey : undefined;
   return { v: 1, blocks, ...(finishKey ? { finishKey } : {}) };
@@ -132,8 +153,98 @@ export function draftToSets(
   return { sets, errors };
 }
 
-/** True when the session's exercise list (order and set counts) differs from the saved routine. */
-export function differsFromRoutine(draft: Draft, routine: { exerciseId: string; setCount: number }[]): boolean {
-  if (draft.blocks.length !== routine.length) return true;
-  return draft.blocks.some((b, i) => b.exerciseId !== routine[i].exerciseId || b.setCount !== routine[i].setCount);
+/**
+ * Puts each slot's entries together (at its first entry's place) and numbers
+ * the slots 1, 2, … in order; a "slot" of one exercise is just an exercise.
+ * Two routines are the same when their normalized forms are equal.
+ */
+export function normalizeRoutine(items: RoutineItem[]): RoutineItem[] {
+  const out: RoutineItem[] = [];
+  const done = new Set<number>();
+  let next = 1;
+  for (const it of items) {
+    if (it.altGroup == null) {
+      out.push({ ...it, altGroup: null });
+      continue;
+    }
+    if (done.has(it.altGroup)) continue;
+    done.add(it.altGroup);
+    const members = items.filter((x) => x.altGroup === it.altGroup).filter((x, i, all) => all.findIndex((y) => y.exerciseId === x.exerciseId) === i);
+    if (members.length < 2) out.push({ ...members[0], altGroup: null });
+    else {
+      const g = next++;
+      for (const m of members) out.push({ ...m, altGroup: g });
+    }
+  }
+  return out;
+}
+
+/**
+ * What "Save to routine" writes: the session's exercises in order, with each
+ * slot's options kept (the one done this session gets this session's set count).
+ * Extra blocks of a slot (doing more than one option) aren't written twice.
+ */
+export function draftToRoutine(draft: Draft): RoutineItem[] {
+  const items: RoutineItem[] = [];
+  const seen = new Set<number>();
+  for (const b of draft.blocks) {
+    if (b.slot == null || !b.alts?.length) {
+      items.push({ exerciseId: b.exerciseId, setCount: b.setCount, altGroup: null });
+      continue;
+    }
+    if (seen.has(b.slot)) continue;
+    seen.add(b.slot);
+    const alts = b.alts.some((a) => a.exerciseId === b.exerciseId) ? b.alts : [...b.alts, { exerciseId: b.exerciseId, setCount: b.setCount }];
+    for (const a of alts) items.push({ exerciseId: a.exerciseId, setCount: a.exerciseId === b.exerciseId ? b.setCount : a.setCount, altGroup: b.slot });
+  }
+  return normalizeRoutine(items);
+}
+
+const sameRoutine = (a: RoutineItem[], b: RoutineItem[]) =>
+  a.length === b.length && a.every((x, i) => x.exerciseId === b[i].exerciseId && x.setCount === b[i].setCount && x.altGroup === b[i].altGroup);
+
+/** True when the session's exercise list (order, set counts, slots) differs from the saved routine. */
+export function differsFromRoutine(draft: Draft, routine: RoutineItem[]): boolean {
+  return !sameRoutine(draftToRoutine(draft), normalizeRoutine(routine));
+}
+
+/**
+ * The draft a new session starts with, built from the routine as saved right
+ * now (on the server, so a stale page can't start an old routine). A slot
+ * becomes one block showing the option you did most recently (else the first).
+ */
+export function routineToDraft(
+  routine: (RoutineItem & { key: string })[],
+  opts: { unilateral: (exerciseId: string) => boolean; lastDone: string[] },
+): Draft {
+  const blocks: DraftBlock[] = [];
+  const norm = normalizeRoutine(routine);
+  const keyOf = new Map(routine.map((r) => [r.exerciseId, r.key]));
+  const done = new Set<number>();
+  for (const it of norm) {
+    if (it.altGroup == null) {
+      blocks.push(newBlock(keyOf.get(it.exerciseId) ?? it.exerciseId, it.exerciseId, it.setCount, opts.unilateral(it.exerciseId)));
+      continue;
+    }
+    if (done.has(it.altGroup)) continue;
+    done.add(it.altGroup);
+    const alts = norm.filter((x) => x.altGroup === it.altGroup).map((x) => ({ exerciseId: x.exerciseId, setCount: x.setCount, unilateral: opts.unilateral(x.exerciseId) }));
+    const pick = opts.lastDone.find((id) => alts.some((a) => a.exerciseId === id)) ?? alts[0].exerciseId;
+    const chosen = alts.find((a) => a.exerciseId === pick)!;
+    blocks.push({ ...newBlock(`slot${it.altGroup}-${keyOf.get(pick) ?? pick}`, pick, chosen.setCount, opts.unilateral(pick)), slot: it.altGroup, alts });
+  }
+  return newDraft(blocks);
+}
+
+/** Switches a slot block to another option: its set count comes along, entries are cleared. */
+export function switchOption(block: DraftBlock, exerciseId: string): DraftBlock {
+  const alts = (block.alts ?? []).map((a) => (a.exerciseId === block.exerciseId ? { ...a, setCount: block.setCount, unilateral: block.unilateral } : a));
+  const target = alts.find((a) => a.exerciseId === exerciseId);
+  return { ...block, alts, exerciseId, setCount: target?.setCount ?? block.setCount, values: {}, unilateral: Boolean(target?.unilateral) };
+}
+
+/** Another option of the same slot, done in this session as well (its own block, its own history). */
+export function alsoOption(block: DraftBlock, exerciseId: string, key: string): DraftBlock {
+  const target = block.alts?.find((a) => a.exerciseId === exerciseId);
+  return { ...newBlock(key, exerciseId, target?.setCount ?? block.setCount, Boolean(target?.unilateral)), slot: block.slot, alts: block.alts };
 }

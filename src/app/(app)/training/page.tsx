@@ -21,13 +21,18 @@ export const metadata: Metadata = { title: "My Training" };
  * kept until End or Discard). Otherwise: pick a day and Start. Opening a page or
  * a day never saves anything or moves the rotation.
  */
-export default async function TrainingPage({ searchParams }: { searchParams: Promise<{ day?: string; change?: string; saved?: string }> }) {
-  const { day: dayParam, change, saved } = await searchParams;
-  const profile = await requireProfile();
-  const [supabase, catalog, tz] = await Promise.all([createClient(), getCatalog(), getTimeZone()]);
+export default async function TrainingPage({ searchParams }: { searchParams: Promise<{ day?: string; change?: string; saved?: string; add?: string }> }) {
+  const { day: dayParam, change, saved, add } = await searchParams;
+  const [profile, supabase, catalog, tz] = await Promise.all([requireProfile(), createClient(), getCatalog(), getTimeZone()]);
   const today = dayKey(new Date().toISOString(), tz);
   const byId = new Map(catalog.map((e) => [e.id, e]));
-  const defaults = await rpc<LiftDefaults>(supabase, "get_lift_defaults");
+  // Independent reads in one round trip: defaults, the active session, your splits and settings.
+  const [defaults, { data: activeSession }, { data: splits }, { data: settings }] = await Promise.all([
+    rpc<LiftDefaults>(supabase, "get_lift_defaults"),
+    supabase.from("training_sessions").select("id, day_id, day_name, started_at, draft, draft_version").eq("user_id", profile.id).eq("status", "active").maybeSingle(),
+    supabase.from("training_splits").select("id, name, template, rotation, is_active, created_at").eq("user_id", profile.id).order("created_at", { ascending: false }),
+    supabase.from("user_settings").select("*").eq("user_id", profile.id).maybeSingle(),
+  ]);
 
   const prefsFor = async (ids: string[]) => {
     const { data } = ids.length
@@ -37,12 +42,6 @@ export default async function TrainingPage({ searchParams }: { searchParams: Pro
   };
 
   // 1. An active session wins: you always come back to it.
-  const { data: activeSession } = await supabase
-    .from("training_sessions")
-    .select("id, day_id, day_name, started_at, draft, draft_version")
-    .eq("user_id", profile.id)
-    .eq("status", "active")
-    .maybeSingle();
   if (activeSession && !change) {
     const draft = parseDraft(activeSession.draft);
     const ids = [...new Set((draft?.blocks ?? []).map((b) => b.exerciseId))];
@@ -50,9 +49,9 @@ export default async function TrainingPage({ searchParams }: { searchParams: Pro
     if (activeSession.day_id) {
       const [{ data: dayRow }, { data: planned }] = await Promise.all([
         supabase.from("training_days").select("id, name").eq("id", activeSession.day_id).maybeSingle(),
-        supabase.from("training_day_exercises").select("exercise_id, set_count, position").eq("day_id", activeSession.day_id).order("position"),
+        supabase.from("training_day_exercises").select("exercise_id, set_count, position, alt_group").eq("day_id", activeSession.day_id).order("position"),
       ]);
-      if (dayRow) routine = { dayId: dayRow.id, name: dayRow.name, exercises: (planned ?? []).map((p) => ({ exerciseId: p.exercise_id, setCount: p.set_count })) };
+      if (dayRow) routine = { dayId: dayRow.id, name: dayRow.name, exercises: (planned ?? []).map((p) => ({ exerciseId: p.exercise_id, setCount: p.set_count, altGroup: p.alt_group ?? null })) };
     }
     const [previous, prefs] = await Promise.all([previousFor(supabase, profile.id, ids, today), prefsFor(ids)]);
     return (
@@ -64,17 +63,13 @@ export default async function TrainingPage({ searchParams }: { searchParams: Pro
         recentIds={defaults.recent_exercise_ids}
         favoriteIds={defaults.favorite_exercise_ids}
         previous={previous}
+        addExerciseId={add && byId.has(add) ? add : null}
         notes={Object.fromEntries([...prefs].filter(([, p]) => p.note).map(([id, p]) => [id, p.note!]))}
       />
     );
   }
 
   // 2. No active session: split, days, and the selected day's preview.
-  const { data: splits } = await supabase
-    .from("training_splits")
-    .select("id, name, template, rotation, is_active, created_at")
-    .eq("user_id", profile.id)
-    .order("created_at", { ascending: false });
   const active = (splits ?? []).find((s) => s.is_active);
 
   if (!active || change) {
@@ -98,7 +93,7 @@ export default async function TrainingPage({ searchParams }: { searchParams: Pro
   const [{ data: lastSession }, { data: lastSet }, { data: allPlanned }] = await Promise.all([
     supabase.from("training_sessions").select("day_id").eq("user_id", profile.id).eq("status", "completed").in("day_id", anyDay).order("ended_at", { ascending: false }).limit(1),
     supabase.from("training_sets").select("day_id").eq("user_id", profile.id).in("day_id", anyDay).order("performed_at", { ascending: false }).limit(1),
-    supabase.from("training_day_exercises").select("id, day_id, exercise_id, set_count, position").in("day_id", anyDay).order("position"),
+    supabase.from("training_day_exercises").select("id, day_id, exercise_id, set_count, position, alt_group").in("day_id", anyDay).order("position"),
   ]);
   const nextIndex = nextDayIndex(dayIds, lastSession?.[0]?.day_id ?? lastSet?.[0]?.day_id ?? null);
   const selected = days.find((d) => d.id === dayParam) ?? days[nextIndex] ?? days[0];
@@ -114,6 +109,7 @@ export default async function TrainingPage({ searchParams }: { searchParams: Pro
       key: p.id,
       exercise,
       setCount: p.set_count,
+      altGroup: p.alt_group ?? null,
       previous: previous[p.exercise_id],
       unilateral: Boolean(exercise.supports_unilateral && pref?.unilateral),
       note: pref?.note ?? "",
@@ -143,7 +139,6 @@ export default async function TrainingPage({ searchParams }: { searchParams: Pro
 
   // 4. Training Buddy: one tip from your own data, unless tips are off.
   let tip = null;
-  const { data: settings } = await supabase.from("user_settings").select("*").eq("user_id", profile.id).maybeSingle();
   if (!savedSummary && (settings as { training_tips?: boolean } | null)?.training_tips !== false) {
     const since = shiftDay(today, -60);
     const [{ data: sessions }, { data: sets }, { data: dismissed }] = await Promise.all([

@@ -40,7 +40,7 @@ export default async function FriendInvitePage({ params }: { params: Promise<{ t
         {preview.valid && inviter ? (
           <>
             <Avatar name={inviter.display_name || inviter.username} seed={inviter.id} path={inviter.avatar_path} size={64} />
-            <h1 className="mt-5 text-[32px] font-bold leading-tight tracking-[-0.03em]">{name} invited you to LiftRank</h1>
+            <h1 className="mt-5 text-[32px] font-bold leading-tight tracking-[-0.03em]">{name} invited you to SBLift</h1>
             <p className="mt-2 text-fg-2">
               Friends see each other’s Public and Friends lifts and compete on the friends leaderboard. You can remove a friend any time.
             </p>
@@ -75,7 +75,7 @@ export default async function FriendInvitePage({ params }: { params: Promise<{ t
             <h1 className="text-[32px] font-bold leading-tight tracking-[-0.03em]">This invite can’t be used</h1>
             <p className="mt-2 text-fg-2">The link is invalid, expired or used up. Ask your friend for a new one.</p>
             <Button asChild size="lg" variant="secondary" className="mt-8">
-              <Link href="/">Go to LiftRank</Link>
+              <Link href="/">Go to SBLift</Link>
             </Button>
           </>
         )}

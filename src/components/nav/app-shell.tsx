@@ -39,7 +39,7 @@ export function AppShell({ username, userId, displayName, avatarPath, unread, ch
       {/* Desktop: compact frosted sidebar */}
       <aside className="hidden md:flex sticky top-0 h-dvh flex-col border-r border-white/[0.06] bg-white/[0.015] px-3.5 py-6">
         <div className="mb-8 flex items-center justify-between pl-2">
-          <Link href="/home" aria-label="LiftRank home">
+          <Link href="/home" aria-label="SBLift home">
             <Logo />
           </Link>
           <BellLink unread={unread} />
@@ -85,7 +85,7 @@ export function AppShell({ username, userId, displayName, avatarPath, unread, ch
         <OfflineBanner />
         {/* Phones: logo, notifications and your profile, on every page. */}
         <header className="mx-auto flex w-full max-w-[600px] items-center justify-between px-4 pt-safe md:hidden">
-          <Link href="/home" aria-label="LiftRank home" className="py-3">
+          <Link href="/home" aria-label="SBLift home" className="py-3">
             <Logo />
           </Link>
           <div className="flex items-center gap-1">

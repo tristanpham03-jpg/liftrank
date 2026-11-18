@@ -116,7 +116,7 @@ export default async function ProfilePage({
               <div className="-mr-2 -mt-1 flex">
                 <ShareButton
                   url={`${SITE_URL}/u/${profile.username}`}
-                  title={`${name} on LiftRank`}
+                  title={`${name} on SBLift`}
                   label="Share profile"
                   size="icon"
                   event="profile_shared"

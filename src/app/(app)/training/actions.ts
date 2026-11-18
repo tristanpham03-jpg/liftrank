@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getCatalog, getUserId, rpc, track } from "@/lib/data";
 import { AppError, GENERIC_ERROR } from "@/lib/errors";
 import { createClient } from "@/lib/supabase/server";
-import { MAX_RIR, type Draft, type SessionSet } from "@/lib/session";
+import { MAX_RIR, newBlock, routineToDraft, type Draft, type SessionSet } from "@/lib/session";
 import { TEMPLATES, defaultSetCount, type Rotation, type Side, type TemplateId } from "@/lib/training";
 import { previousFor, type Previous } from "@/lib/training-previous";
 import type { ActionResult, LiftVisibility, SubmitResult, WeightUnit } from "@/lib/types";
@@ -49,11 +49,14 @@ export async function setActiveSplit(splitId: string): Promise<ActionResult> {
   return res.ok ? { ok: true, data: undefined } : res;
 }
 
-export async function saveDay(dayId: string, name: string, exercises: { exerciseId: string; sets: number }[]): Promise<ActionResult> {
+/** Saves a day's exercise list. Entries sharing an altGroup are one slot (choose one at session time). */
+export async function saveDay(dayId: string, name: string, exercises: { exerciseId: string; sets: number; altGroup?: number | null }[]): Promise<ActionResult> {
   const res = await call<null>("save_training_day", {
     p_day_id: dayId,
     p_name: name.trim(),
-    p_exercises: exercises.map((e) => ({ exercise_id: e.exerciseId, set_count: e.sets })),
+    p_exercises: exercises.map((e) =>
+      e.altGroup == null ? { exercise_id: e.exerciseId, set_count: e.sets } : { exercise_id: e.exerciseId, set_count: e.sets, alt_group: e.altGroup },
+    ),
   });
   if (res.ok) revalidatePath("/training");
   return res.ok ? { ok: true, data: undefined } : res;
@@ -143,11 +146,43 @@ export async function submitTrainingSet(setId: string, visibility: LiftVisibilit
 // ───────────── Sessions ─────────────
 
 /** Start (or resume) a session for a training day. Starting saves nothing and doesn't advance the rotation. */
-export async function startSession(dayId: string, localDate: string, draft: Draft): Promise<ActionResult<{ session_id: string; resumed: boolean }>> {
-  if (!UUID.test(dayId) || !DATE.test(localDate)) return { ok: false, error: GENERIC_ERROR };
-  const res = await call<{ session_id: string; resumed: boolean }>("start_training_session", { p_day_id: dayId, p_local_date: localDate, p_draft: draft });
-  if (res.ok) revalidatePath("/training");
-  return res;
+/**
+ * Start. The draft is built here from the routine as saved right now, never
+ * from what a (possibly stale) page showed, so the next session always matches
+ * the latest saved routine. A null day is a quick session (from My Exercises),
+ * optionally starting with one exercise; it never changes a routine.
+ */
+export async function startSession(dayId: string | null, localDate: string, exerciseId?: string): Promise<ActionResult<{ session_id: string; resumed: boolean }>> {
+  if ((dayId !== null && !UUID.test(dayId)) || !DATE.test(localDate) || (exerciseId !== undefined && !UUID.test(exerciseId))) return { ok: false, error: GENERIC_ERROR };
+  const userId = await getUserId();
+  if (!userId) return signedOut;
+  const supabase = await createClient();
+  try {
+    const { data: planned, error } = dayId
+      ? await supabase.from("training_day_exercises").select("id, exercise_id, set_count, alt_group").eq("day_id", dayId).eq("user_id", userId).order("position")
+      : { data: [], error: null };
+    if (error) throw error;
+    const routine = (planned ?? []).map((p) => ({ key: p.id as string, exerciseId: p.exercise_id as string, setCount: p.set_count as number, altGroup: (p.alt_group as number | null) ?? null }));
+    const ids = [...new Set([...routine.map((r) => r.exerciseId), ...(exerciseId ? [exerciseId] : [])])];
+    const slotIds = [...new Set(routine.filter((r) => r.altGroup != null).map((r) => r.exerciseId))];
+    const [{ data: prefs }, { data: exercises }, { data: recent }] = await Promise.all([
+      ids.length ? supabase.from("exercise_preferences").select("exercise_id, unilateral").eq("user_id", userId).in("exercise_id", ids) : Promise.resolve({ data: [] }),
+      ids.length ? supabase.from("exercises").select("id, supports_unilateral").in("id", ids) : Promise.resolve({ data: [] }),
+      slotIds.length
+        ? supabase.from("training_sets").select("exercise_id").eq("user_id", userId).in("exercise_id", slotIds).order("performed_at", { ascending: false }).limit(200)
+        : Promise.resolve({ data: [] }),
+    ]);
+    const canSplit = new Set((exercises ?? []).filter((e) => e.supports_unilateral).map((e) => e.id as string));
+    const lr = new Set((prefs ?? []).filter((p) => p.unilateral).map((p) => p.exercise_id as string));
+    const unilateral = (id: string) => canSplit.has(id) && lr.has(id);
+    const draft = routineToDraft(routine, { unilateral, lastDone: [...new Set((recent ?? []).map((r) => r.exercise_id as string))] });
+    if (exerciseId && !draft.blocks.some((b) => b.exerciseId === exerciseId)) draft.blocks.push(newBlock(crypto.randomUUID(), exerciseId, 2, unilateral(exerciseId)));
+    const data = await rpc<{ session_id: string; resumed: boolean }>(supabase, "start_training_session", { p_day_id: dayId, p_local_date: localDate, p_draft: draft satisfies Draft });
+    revalidatePath("/training");
+    return { ok: true, data };
+  } catch (e) {
+    return fail(e);
+  }
 }
 
 /**

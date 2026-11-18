@@ -31,7 +31,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         googleAction={GOOGLE_AUTH_ENABLED ? signInWithGoogle : undefined}
       />
       <p className="mt-8 text-fg-2">
-        New to LiftRank?{" "}
+        New to SBLift?{" "}
         <Link href="/signup" className="tap font-semibold text-fg underline decoration-white/30 underline-offset-4 hover:decoration-white">
           Create an account
         </Link>

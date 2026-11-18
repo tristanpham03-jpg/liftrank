@@ -4,10 +4,10 @@ import "./globals.css";
 import { TimezoneCookie } from "@/components/timezone-cookie";
 
 export const metadata: Metadata = {
-  title: { default: "LiftRank", template: "%s · LiftRank" },
-  description: "Log your best lifts in seconds and see where you rank against your friends and groups.",
-  applicationName: "LiftRank",
-  appleWebApp: { capable: true, title: "LiftRank", statusBarStyle: "black-translucent" },
+  title: { default: "SBLift", template: "%s · SBLift" },
+  description: "Built by lifters. Driven by science. Track your training, see your progress, and compete with friends on LiftRank boards.",
+  applicationName: "SBLift",
+  appleWebApp: { capable: true, title: "SBLift", statusBarStyle: "black-translucent" },
   formatDetection: { telephone: false },
 };
 

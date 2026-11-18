@@ -64,7 +64,7 @@ export function InviteFriends() {
             onClick={async () => {
               void trackClientEvent("friend_invite_shared");
               try {
-                await navigator.share({ title: "LiftRank", text: "Add me on LiftRank and let’s see who’s stronger.", url });
+                await navigator.share({ title: "SBLift", text: "Add me on SBLift and let’s see who’s stronger.", url });
               } catch (e) {
                 if (!(e instanceof DOMException && e.name === "AbortError")) void copy(url);
               }
