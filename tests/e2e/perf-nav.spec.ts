@@ -113,3 +113,46 @@ for (const mode of ["desktop", "mobile"] as const) {
     console.log(`PERF ${mode} ${JSON.stringify(results)}`);
   });
 }
+
+/** The five main tabs: first visits (cold), then two rounds of returning (warm). */
+for (const mode of ["desktop", "mobile"] as const) {
+  test(`main tabs timing (${mode})`, async ({ browser, browserName }) => {
+    test.skip(process.env.E2E_PERF !== "1" || !hostedAdmin(), "Opt-in: E2E_PERF=1 with hosted Supabase.");
+    test.setTimeout(300_000);
+    const results: Record<string, unknown>[] = [];
+    const ctx = await browser.newContext(mode === "mobile" ? { viewport: { width: 390, height: 844 }, isMobile: browserName === "chromium", hasTouch: true } : {});
+    const page = await ctx.newPage();
+    if (mode === "mobile" && browserName === "chromium") {
+      const cdp = await ctx.newCDPSession(page);
+      await cdp.send("Network.emulateNetworkConditions", { offline: false, latency: 100, downloadThroughput: 9e6 / 8, uploadThroughput: 3e6 / 8 });
+    }
+    await signUp(page, username(mode === "desktop" ? "perft" : "perftm"));
+    await page.goto("/training");
+    await page.getByRole("button", { name: /Push \/ Pull \/ Legs/ }).click();
+    await page.getByRole("radio", { name: "Rotate" }).click();
+    await page.getByRole("button", { name: "Use PPL" }).click();
+    await expect(page.getByRole("button", { name: /^Start / }).first()).toBeVisible();
+    await page.goto("/home");
+    await page.waitForTimeout(1500);
+    await page.evaluate(() => ((window as unknown as { __perfMark?: boolean }).__perfMark = true));
+
+    const busy = `!!document.querySelector('[aria-busy="true"]')`;
+    // Profile lands on /u/<username>.
+    const at = (p: string) => (p === "/profile" ? `location.pathname.startsWith("/u/")` : `location.pathname === "${p}"`);
+    const ready = (p: string) => `${at(p)} && !${busy} && !!document.querySelector("main h1, main h2")`;
+    const tabs = ["/leaderboards", "/training", "/friends", "/profile", "/home"];
+    const label = (p: string) => ({ "/home": "Home", "/leaderboards": "Boards", "/training": "Training", "/friends": "Friends", "/profile": "Profile" })[p];
+    for (const pass of ["cold", "warm 1", "warm 2"]) {
+      let from = "/home";
+      for (const to of tabs) {
+        const href = to === "/profile" ? `a[href="/profile"], a[href^="/u/"][aria-label]` : `a[href="${to}"]`;
+        const fromPath = new URL(page.url()).pathname;
+        const r = await timed(page, href, ready(to), `(${ready(to)}) || ${busy} || location.pathname !== "${fromPath}"`);
+        results.push({ step: `${pass}: ${label(from)} → ${label(to)}`, feedback: r.feedback, done: r.done, dbRequests: r.db.n, fullReload: r.reloaded });
+        from = to;
+      }
+    }
+    await ctx.close();
+    console.log(`PERF tabs-${mode} ${JSON.stringify(results)}`);
+  });
+}

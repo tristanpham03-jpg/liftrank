@@ -2,6 +2,40 @@
 
 _Last updated: 2026-10-15 · Done: Phases 1–7 + friend verification · **Deployed (unlisted) at https://liftrank-roan.vercel.app** · Finishing launch setup (see "Deployment status")_
 
+## 2026-11-18 Fast main tabs (no migration; committed locally, not pushed)
+
+**Cause:**
+- Training's background `router.refresh()` ran after every instant navigation, and in Next 16 a refresh clears the whole client cache (and every prefetch).
+- So only the tab just returned to was instant: Boards, Training and Profile reloaded on every return, taking 0.6–1.75 s.
+- Profile also redirected (`/profile` → `/u/<name>`) on every visit.
+
+**Changes:**
+- **Refresh only when something changed** (`lib/freshness.ts`, `components/nav/nav-speed.tsx`):
+  - The app layout renders a small fingerprint of what the person can see change: unread and latest notification, newest visible lift (RLS), own lift count, friendships, groups, achievements, training sessions, sets and routine, and settings.
+  - When a cached page is shown, or the app returns to the foreground, a read-only server action (`checkFreshness`) compares it, at most every 5 s. Only a difference triggers `router.refresh()`.
+  - Session drafts are excluded from the fingerprint (autosave would trigger constant refreshes; the session view syncs itself).
+  - This is the closest Next 16 gets to per-page invalidation without Cache Components (a major migration). Server actions that change data still clear the cache as before.
+- **Client cache 120 s** (`staleTimes`), up from 30 s.
+- **Idle prefetch:** the other main tabs are prefetched once, 2 s after the app loads, 400 ms apart (skipped on Save-Data or 2G). Hover, touch or press still prefetches any link.
+- **Profile tab links straight to `/u/<username>`.**
+- **Accounts:**
+  - Sign-out was already a full page load, which drops every cached page.
+  - New: if the signed-in account changes without one (e.g. a session expired and someone else signed in in the same tab), the login page reloads once before sign-in, and the shell reloads if the user id changes.
+
+**Measured, before → after (click → content, ms; local production build against the hosted DB):**
+
+| | Desktop | Phone profile (+100 ms, 9 Mbps) |
+|---|---|---|
+| Returning to Home / Boards / Training / Friends / Profile | 4–1750 (Boards 615–969, Training 764–1434, Profile 1185–1750) → **8–16** | 15–1022 → **5–23** |
+| Returning to Sessions / My Exercises / History | 268–1284 → **5–17** | 326–1285 → **4–20** |
+| First visit to a tab, before idle prefetch lands | 320–1152 → 320–845 | 587–1560 → 316–825 |
+| Visual feedback on any tab tap | 4–20 → 6–20 | 6–118 → 5–25 |
+
+Background freshness checks were about 11 small requests each, not blocking, at most every 5 s.
+
+**Regression:**
+- New Flow O: the five tabs render; revisits under 150 ms with no page request; a friend request made elsewhere appears on a cached Friends tab; after a session expiry and sign-in as someone else in the same tab, none of the first account's pages show.
+
 ## 2026-11-18 Navigation speed (no migration; committed locally, not pushed; tests: unit 51/51, hosted 17/17, iPhone 7/7, 0 stalls)
 
 Profiled first with `tests/e2e/perf-nav.spec.ts`.

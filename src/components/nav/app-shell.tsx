@@ -10,7 +10,7 @@ import { Logo } from "./logo";
 import { NavSpeed } from "./nav-speed";
 import { OfflineBanner } from "./offline-banner";
 
-type Props = { username: string; userId: string; displayName: string | null; avatarPath: string | null; unread: number; children: React.ReactNode };
+type Props = { username: string; userId: string; displayName: string | null; avatarPath: string | null; unread: number; stamp: string; children: React.ReactNode };
 
 // Phone bar: five destinations, with + (put a lift on the leaderboards) in the
 // middle. Profile lives in the header avatar on phones (and in the sidebar on
@@ -30,13 +30,15 @@ function isActive(pathname: string, match: string[]) {
   return match.some((m) => pathname === m || pathname.startsWith(m.endsWith("/") ? m : `${m}/`));
 }
 
-export function AppShell({ username, userId, displayName, avatarPath, unread, children }: Props) {
+export function AppShell({ username, userId, displayName, avatarPath, unread, stamp, children }: Props) {
   const pathname = usePathname();
+  // Straight to your profile page (/profile would redirect there: one extra round trip on every visit).
+  const profileHref = `/u/${encodeURIComponent(username)}`;
 
   return (
     <div className="relative isolate min-h-dvh md:grid md:grid-cols-[232px_1fr]">
       <AmbientBackground />
-      <NavSpeed />
+      <NavSpeed userId={userId} stamp={stamp} tabs={["/home", "/leaderboards", "/training", "/friends", profileHref]} />
 
       {/* Desktop: compact frosted sidebar */}
       <aside className="hidden md:flex sticky top-0 h-dvh flex-col border-r border-white/[0.06] bg-white/[0.015] px-3.5 py-6">
@@ -66,7 +68,7 @@ export function AppShell({ username, userId, displayName, avatarPath, unread, ch
             return (
               <Link
                 key={t.href}
-                href={t.href}
+                href={t === PROFILE ? profileHref : t.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
                   "relative flex items-center gap-3 rounded-[12px] px-3 py-2.5 text-[15px] font-medium transition-colors",
@@ -93,7 +95,7 @@ export function AppShell({ username, userId, displayName, avatarPath, unread, ch
           <div className="flex items-center gap-1">
             <BellLink unread={unread} />
             <Link
-              href="/profile"
+              href={profileHref}
               aria-label="Your profile"
               aria-current={isActive(pathname, PROFILE.match) ? "page" : undefined}
               className={cn("rounded-full p-0.5 ring-2", isActive(pathname, PROFILE.match) ? "ring-pearl/80" : "ring-transparent")}

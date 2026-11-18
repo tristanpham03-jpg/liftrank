@@ -4,12 +4,11 @@ const nextConfig: NextConfig = {
   // LiftRank is almost entirely per-user, session-dependent UI, so we use the
   // classic dynamic rendering model instead of Cache Components. See PLAN.md.
   cacheComponents: false,
-  // Client cache: a page you just left reappears instantly when you come back
-  // within 30 s, then refreshes in the background (components/nav/nav-speed.tsx).
-  // Prefetched pages are kept 30 s too (instead of 5 min), so nothing shown is
-  // older than that before the background refresh lands. Server actions that
-  // change data clear this cache.
-  experimental: { staleTimes: { dynamic: 30, static: 30 } },
+  // Client cache: visited and prefetched pages reappear instantly for up to
+  // 2 minutes. Freshness: whenever a cached page is shown, components/nav/nav-speed.tsx
+  // checks a fingerprint of the person's visible data and refreshes only if it
+  // changed. Server actions that change data clear this cache.
+  experimental: { staleTimes: { dynamic: 120, static: 120 } },
   // Lets the local E2E script build into a separate folder without clobbering `next dev`.
   distDir: process.env.NEXT_DIST_DIR || ".next",
   // The PR share card reads its fonts from disk at request time.
