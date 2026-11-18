@@ -1,4 +1,4 @@
--- SBLift 0019 — alternative exercise slots, quick sessions, 15 more exercises (68 → 83).
+-- SBLift 0019 — alternative exercise slots, quick sessions, 19 more exercises (68 → 87).
 --
 -- 1. training_day_exercises.alt_group: rows of one day that share an alt_group
 --    are one slot ("do one of these"). Null = an ordinary exercise. Existing
@@ -7,7 +7,7 @@
 --    items, the existing position limit, so alternatives fit).
 -- 2. start_training_session accepts a null day: a quick session ("Workout")
 --    from My Exercises. It never touches any routine.
--- 3. Catalog: 15 new exercises with aliases; "Preacher Curl" is renamed
+-- 3. Catalog: 19 new exercises with aliases; "Preacher Curl" is renamed
 --    "Barbell Preacher Curl" (same row, slug, boards and lifts; old name kept
 --    as an alias). No other exercise, lift, score or ranking changes.
 --
@@ -93,10 +93,13 @@ end;
 $$;
 
 -- ───────────── 3. Exercises ─────────────
--- Flagged for review (see PROGRESS.md): Close-Grip Lat Row is logged as a cable
--- row (stack); the chest-supported grip variants follow the existing
--- Chest-Supported Row (plate-loaded, plates total); Back Extension is
--- bodyweight and ranked by reps like Pull-Up (a held plate isn't recorded).
+-- Owner-confirmed mechanics: Cable Triceps Extension keeps the elbow fixed and
+-- extends downward (unlike a pushdown or overhead extension); close-grip lat
+-- rows come as a cable and a machine version; the chest-supported grip
+-- variants are plate-loaded machines (like Chest-Supported Row); Back Extension
+-- is bodyweight by reps and Weighted Back Extension records the held plate or
+-- barbell (like Pull-Up / Weighted Pull-Up); preacher curls come as barbell,
+-- dumbbell and machine.
 update public.exercises set name = 'Barbell Preacher Curl' where slug = 'preacher-curl' and name = 'Preacher Curl';
 
 insert into public.exercises
@@ -121,7 +124,7 @@ values
     array['Upper back (rhomboids, middle traps)', 'Rear shoulders (posterior deltoids)'], array['Lats (latissimus dorsi)', 'Biceps']),
   ('Chest-Supported Close-Grip Row', 'chest-supported-close-grip-row', 'back', 'Back', 'plate_loaded', 'e1rm', 'plates_total', true, 350, 200, 77,
     array['Lats (latissimus dorsi)', 'Upper back (rhomboids, middle traps)'], array['Biceps', 'Rear shoulders (posterior deltoids)']),
-  ('Close-Grip Lat Row', 'close-grip-lat-row', 'back', 'Lats', 'cable', 'e1rm', 'stack', true, 300, 170, 78,
+  ('Cable Close-Grip Lat Row', 'close-grip-lat-row', 'back', 'Lats', 'cable', 'e1rm', 'stack', true, 300, 170, 78,
     array['Lats (latissimus dorsi)'], array['Upper back (rhomboids, middle traps)', 'Biceps']),
   ('Back Extension', 'back-extension', 'back', 'Lower back & glutes', 'bodyweight', 'max_reps', 'bodyweight', false, null, null, 79,
     array['Lower back (spinal erectors)', 'Glutes'], array['Hamstrings']),
@@ -132,12 +135,20 @@ values
   ('Smith Machine Hip Thrust', 'smith-hip-thrust', 'legs', 'Glutes', 'smith_machine', 'e1rm', 'total', true, 450, 250, 82,
     array['Glutes'], array['Hamstrings', 'Quads']),
   ('Smith Machine Split Squat', 'smith-split-squat', 'legs', 'Quads & glutes', 'smith_machine', 'e1rm', 'total', true, 300, 160, 83,
-    array['Quads', 'Glutes'], array['Hamstrings', 'Inner thighs (adductors)']);
+    array['Quads', 'Glutes'], array['Hamstrings', 'Inner thighs (adductors)']),
+  ('Cable Triceps Extension', 'cable-triceps-extension', 'arms', 'Triceps', 'cable', 'e1rm', 'stack', true, 150, 70, 84,
+    array['Triceps'], array[]::text[]),
+  ('Machine Close-Grip Lat Row', 'machine-close-grip-lat-row', 'back', 'Lats', 'plate_loaded', 'e1rm', 'plates_total', true, 350, 200, 85,
+    array['Lats (latissimus dorsi)'], array['Upper back (rhomboids, middle traps)', 'Biceps']),
+  ('Weighted Back Extension', 'weighted-back-extension', 'back', 'Lower back & glutes', 'bodyweight', 'added_load_e1rm', 'added', false, 150, 80, 86,
+    array['Lower back (spinal erectors)', 'Glutes'], array['Hamstrings']),
+  ('Dumbbell Preacher Curl', 'dumbbell-preacher-curl', 'arms', 'Biceps', 'dumbbell', 'e1rm', 'per_dumbbell', false, 60, 35, 87,
+    array['Biceps'], array['Forearms']);
 
 update public.exercises set supports_unilateral = true where slug in (
   'reverse-cable-curl', 'machine-lateral-raise', 'dumbbell-front-raise', 'behind-the-back-cable-lateral-raise',
   'low-to-high-cable-fly', 'high-to-low-cable-fly', 'chest-supported-wide-grip-row', 'chest-supported-close-grip-row',
-  'close-grip-lat-row', 'smith-split-squat');
+  'close-grip-lat-row', 'smith-split-squat', 'cable-triceps-extension', 'machine-close-grip-lat-row', 'dumbbell-preacher-curl');
 
 insert into public.exercise_aliases (exercise_id, alias)
 select e.id, a.alias
@@ -155,7 +166,15 @@ from (values
   ('chest-supported-wide-grip-row', 'wide grip row'),
   ('chest-supported-close-grip-row', 'close grip chest supported row'), ('chest-supported-close-grip-row', 'close chest supported row'),
   ('chest-supported-close-grip-row', 'neutral grip chest supported row'),
-  ('close-grip-lat-row', 'lat row'), ('close-grip-lat-row', 'close grip row'), ('close-grip-lat-row', 'cable lat row'),
+  ('close-grip-lat-row', 'lat row'), ('close-grip-lat-row', 'close grip lat row'), ('close-grip-lat-row', 'cable lat row'),
+  ('machine-close-grip-lat-row', 'machine lat row'), ('machine-close-grip-lat-row', 'close grip machine row'),
+  ('machine-close-grip-lat-row', 'machine close grip row'),
+  ('cable-triceps-extension', 'tricep extension'), ('cable-triceps-extension', 'triceps extension'),
+  ('cable-triceps-extension', 'standard cable triceps extension'), ('cable-triceps-extension', 'cable tricep extension'),
+  ('weighted-back-extension', 'weighted hyperextension'), ('weighted-back-extension', 'back extension with plate'),
+  ('weighted-back-extension', 'barbell back extension'),
+  ('dumbbell-preacher-curl', 'db preacher curl'), ('dumbbell-preacher-curl', 'single arm preacher curl'),
+  ('dumbbell-preacher-curl', 'one arm preacher curl'),
   ('back-extension', 'back extensions'), ('back-extension', 'hyperextension'), ('back-extension', 'hyperextensions'),
   ('back-extension', '45 degree back extension'),
   ('smith-romanian-deadlift', 'smith rdl'), ('smith-romanian-deadlift', 'smith machine rdl'),

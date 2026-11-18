@@ -101,6 +101,10 @@ export const EXERCISE_MUSCLES: Record<string, Tags> = {
   "smith-shoulder-press": t(["front_delts", "side_delts"], ["triceps"]),
   "smith-hip-thrust": t(["glutes"], ["hamstrings", "quads"]),
   "smith-split-squat": t(["quads", "glutes"], ["hamstrings", "adductors"]),
+  "cable-triceps-extension": t(["triceps"]),
+  "machine-close-grip-lat-row": t(["lats"], ["upper_back", "biceps"]),
+  "weighted-back-extension": t(["lower_back", "glutes"], ["hamstrings"]),
+  "dumbbell-preacher-curl": t(["biceps"], ["forearms"]),
 };
 
 const DELTS: Muscle[] = ["shoulders", "front_delts", "side_delts", "rear_delts"];

@@ -1,9 +1,9 @@
 {
   "generated": "2026-11-17",
-  "source": "public.exercises on the hosted database (68 rows) + migration 0019 (15 rows, pending approval); files in public/exercises/img; approval list in src/lib/exercise-images.ts",
-  "catalog_total_after_0019": 83,
+  "source": "public.exercises on the hosted database (87 rows, after migration 0019); files in public/exercises/img; approval list in src/lib/exercise-images.ts",
+  "catalog_total_after_0019": 87,
   "illustrated": 63,
-  "missing": 20,
+  "missing": 24,
   "visual_standard": "Translucent blue wireframe / point-cloud figure, primary muscles red, secondary muscles orange, matching the existing set. 800 px <slug>.webp and 112 px <slug>-thumb.webp via scripts/optimize-exercise-images.py.",
   "exercises": [
     {
@@ -114,7 +114,7 @@
     {
       "display_name": "Reverse Cable Curl",
       "slug": "reverse-cable-curl",
-      "catalog_status": "migration 0019 (not yet applied)",
+      "catalog_status": "database",
       "primary_muscles": [
         "Forearms (brachioradialis)",
         "Brachialis"
@@ -135,7 +135,7 @@
     {
       "display_name": "Machine Lateral Raise",
       "slug": "machine-lateral-raise",
-      "catalog_status": "migration 0019 (not yet applied)",
+      "catalog_status": "database",
       "primary_muscles": [
         "Side shoulders (lateral deltoids)"
       ],
@@ -155,7 +155,7 @@
     {
       "display_name": "Dumbbell Front Raise",
       "slug": "dumbbell-front-raise",
-      "catalog_status": "migration 0019 (not yet applied)",
+      "catalog_status": "database",
       "primary_muscles": [
         "Front shoulders (anterior deltoids)"
       ],
@@ -176,7 +176,7 @@
     {
       "display_name": "Behind-the-Back Cable Lateral Raise",
       "slug": "behind-the-back-cable-lateral-raise",
-      "catalog_status": "migration 0019 (not yet applied)",
+      "catalog_status": "database",
       "primary_muscles": [
         "Side shoulders (lateral deltoids)"
       ],
@@ -197,7 +197,7 @@
     {
       "display_name": "Smith Machine Decline Press",
       "slug": "smith-decline-press",
-      "catalog_status": "migration 0019 (not yet applied)",
+      "catalog_status": "database",
       "primary_muscles": [
         "Chest (lower pectoralis major)"
       ],
@@ -218,7 +218,7 @@
     {
       "display_name": "Low-to-High Cable Fly",
       "slug": "low-to-high-cable-fly",
-      "catalog_status": "migration 0019 (not yet applied)",
+      "catalog_status": "database",
       "primary_muscles": [
         "Upper chest (clavicular pectoralis)"
       ],
@@ -238,7 +238,7 @@
     {
       "display_name": "High-to-Low Cable Fly",
       "slug": "high-to-low-cable-fly",
-      "catalog_status": "migration 0019 (not yet applied)",
+      "catalog_status": "database",
       "primary_muscles": [
         "Chest (lower pectoralis major)"
       ],
@@ -258,7 +258,7 @@
     {
       "display_name": "Chest-Supported Wide-Grip Row",
       "slug": "chest-supported-wide-grip-row",
-      "catalog_status": "migration 0019 (not yet applied)",
+      "catalog_status": "database",
       "primary_muscles": [
         "Upper back (rhomboids, middle traps)",
         "Rear shoulders (posterior deltoids)"
@@ -280,7 +280,7 @@
     {
       "display_name": "Chest-Supported Close-Grip Row",
       "slug": "chest-supported-close-grip-row",
-      "catalog_status": "migration 0019 (not yet applied)",
+      "catalog_status": "database",
       "primary_muscles": [
         "Lats (latissimus dorsi)",
         "Upper back (rhomboids, middle traps)"
@@ -300,9 +300,9 @@
       "approved_status": "not approved (app shows its icon fallback)"
     },
     {
-      "display_name": "Close-Grip Lat Row",
+      "display_name": "Cable Close-Grip Lat Row",
       "slug": "close-grip-lat-row",
-      "catalog_status": "migration 0019 (not yet applied)",
+      "catalog_status": "database",
       "primary_muscles": [
         "Lats (latissimus dorsi)"
       ],
@@ -311,7 +311,7 @@
         "Biceps"
       ],
       "equipment": "cable",
-      "description": "Seated cable row with a close grip, elbows tucked, pulling toward the hips to bias the lats. (Mechanics flagged for confirmation.)",
+      "description": "Seated cable row with a close grip, elbows tucked, pulling toward the hips to bias the lats.",
       "expected_assets": [
         "close-grip-lat-row.webp",
         "close-grip-lat-row-thumb.webp"
@@ -323,7 +323,7 @@
     {
       "display_name": "Back Extension",
       "slug": "back-extension",
-      "catalog_status": "migration 0019 (not yet applied)",
+      "catalog_status": "database",
       "primary_muscles": [
         "Lower back (spinal erectors)",
         "Glutes"
@@ -344,7 +344,7 @@
     {
       "display_name": "Smith Machine Romanian Deadlift",
       "slug": "smith-romanian-deadlift",
-      "catalog_status": "migration 0019 (not yet applied)",
+      "catalog_status": "database",
       "primary_muscles": [
         "Hamstrings",
         "Glutes"
@@ -366,7 +366,7 @@
     {
       "display_name": "Smith Machine Shoulder Press",
       "slug": "smith-shoulder-press",
-      "catalog_status": "migration 0019 (not yet applied)",
+      "catalog_status": "database",
       "primary_muscles": [
         "Front shoulders (anterior deltoids)",
         "Side shoulders (lateral deltoids)"
@@ -387,7 +387,7 @@
     {
       "display_name": "Smith Machine Hip Thrust",
       "slug": "smith-hip-thrust",
-      "catalog_status": "migration 0019 (not yet applied)",
+      "catalog_status": "database",
       "primary_muscles": [
         "Glutes"
       ],
@@ -408,7 +408,7 @@
     {
       "display_name": "Smith Machine Split Squat",
       "slug": "smith-split-squat",
-      "catalog_status": "migration 0019 (not yet applied)",
+      "catalog_status": "database",
       "primary_muscles": [
         "Quads",
         "Glutes"
@@ -422,6 +422,86 @@
       "expected_assets": [
         "smith-split-squat.webp",
         "smith-split-squat-thumb.webp"
+      ],
+      "asset_dir": "public/exercises/img/",
+      "existing_image_status": "missing",
+      "approved_status": "not approved (app shows its icon fallback)"
+    },
+    {
+      "display_name": "Cable Triceps Extension",
+      "slug": "cable-triceps-extension",
+      "catalog_status": "database",
+      "primary_muscles": [
+        "Triceps"
+      ],
+      "secondary_muscles": [],
+      "equipment": "cable",
+      "description": "Facing a high cable, upper arm and elbow kept fixed, extending the forearm downward to straight (unlike a pushdown, the upper arm doesn't move).",
+      "expected_assets": [
+        "cable-triceps-extension.webp",
+        "cable-triceps-extension-thumb.webp"
+      ],
+      "asset_dir": "public/exercises/img/",
+      "existing_image_status": "missing",
+      "approved_status": "not approved (app shows its icon fallback)"
+    },
+    {
+      "display_name": "Machine Close-Grip Lat Row",
+      "slug": "machine-close-grip-lat-row",
+      "catalog_status": "database",
+      "primary_muscles": [
+        "Lats (latissimus dorsi)"
+      ],
+      "secondary_muscles": [
+        "Upper back (rhomboids, middle traps)",
+        "Biceps"
+      ],
+      "equipment": "plate_loaded",
+      "description": "Plate-loaded or machine row with a close or neutral grip, elbows tucked, pulling toward the hips to bias the lats.",
+      "expected_assets": [
+        "machine-close-grip-lat-row.webp",
+        "machine-close-grip-lat-row-thumb.webp"
+      ],
+      "asset_dir": "public/exercises/img/",
+      "existing_image_status": "missing",
+      "approved_status": "not approved (app shows its icon fallback)"
+    },
+    {
+      "display_name": "Weighted Back Extension",
+      "slug": "weighted-back-extension",
+      "catalog_status": "database",
+      "primary_muscles": [
+        "Lower back (spinal erectors)",
+        "Glutes"
+      ],
+      "secondary_muscles": [
+        "Hamstrings"
+      ],
+      "equipment": "bodyweight",
+      "description": "Back extension holding a plate at the chest or a barbell across the upper back, hinging at the hips and extending to a straight line.",
+      "expected_assets": [
+        "weighted-back-extension.webp",
+        "weighted-back-extension-thumb.webp"
+      ],
+      "asset_dir": "public/exercises/img/",
+      "existing_image_status": "missing",
+      "approved_status": "not approved (app shows its icon fallback)"
+    },
+    {
+      "display_name": "Dumbbell Preacher Curl",
+      "slug": "dumbbell-preacher-curl",
+      "catalog_status": "database",
+      "primary_muscles": [
+        "Biceps"
+      ],
+      "secondary_muscles": [
+        "Forearms"
+      ],
+      "equipment": "dumbbell",
+      "description": "One-arm dumbbell curl with the upper arm on a preacher pad.",
+      "expected_assets": [
+        "dumbbell-preacher-curl.webp",
+        "dumbbell-preacher-curl-thumb.webp"
       ],
       "asset_dir": "public/exercises/img/",
       "existing_image_status": "missing",

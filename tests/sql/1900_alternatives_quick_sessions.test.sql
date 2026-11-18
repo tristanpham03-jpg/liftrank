@@ -1,4 +1,4 @@
--- Functional test for migration 0019 (alternative slots, quick sessions, 15 exercises), always rolled back:
+-- Functional test for migration 0019 (alternative slots, quick sessions, 19 exercises), always rolled back:
 --   (echo "begin;"; cat <snapshot>; cat supabase/migrations/20261011001900_*.sql tests/sql/1900_*.test.sql; echo "rollback;")
 -- Expects temp table before_0019 (taken just before the migration). Raises at the first failure.
 do $$
@@ -12,17 +12,18 @@ declare
   today date := (now() at time zone 'America/Los_Angeles')::date;
   split uuid; upper uuid; sess uuid; r jsonb; n int;
 begin
-  -- 1. Existing data untouched; 83 exercises; Preacher Curl only renamed.
+  -- 1. Existing data untouched; 87 exercises; Preacher Curl only renamed.
   if (select md5(string_agg(row_to_json(e)::text, ',' order by e.id)) from public.exercises e
       where slug not in ('preacher-curl', 'reverse-cable-curl', 'machine-lateral-raise', 'dumbbell-front-raise', 'behind-the-back-cable-lateral-raise',
         'smith-decline-press', 'low-to-high-cable-fly', 'high-to-low-cable-fly', 'chest-supported-wide-grip-row', 'chest-supported-close-grip-row',
-        'close-grip-lat-row', 'back-extension', 'smith-romanian-deadlift', 'smith-shoulder-press', 'smith-hip-thrust', 'smith-split-squat'))
+        'close-grip-lat-row', 'back-extension', 'smith-romanian-deadlift', 'smith-shoulder-press', 'smith-hip-thrust', 'smith-split-squat',
+        'cable-triceps-extension', 'machine-close-grip-lat-row', 'weighted-back-extension', 'dumbbell-preacher-curl'))
      <> (select v from before_0019 where kind = 'exercises') then raise exception '1: an existing exercise changed'; end if;
   if (select md5(row_to_json(e)::text) from (select id, slug, category, ranking_method, weight_convention, equipment_type, popular_rank from public.exercises where slug = 'preacher-curl') e)
      <> (select v from before_0019 where kind = 'preacher') then raise exception '1: preacher curl changed beyond its name'; end if;
   if (select name from public.exercises where slug = 'preacher-curl') <> 'Barbell Preacher Curl' then raise exception '1: rename'; end if;
-  if (select count(*) from public.exercises where is_active) <> 83 then raise exception '1: expected 83 exercises'; end if;
-  if (select count(distinct lower(name)) from public.exercises) <> 83 then raise exception '1: duplicate names'; end if;
+  if (select count(*) from public.exercises where is_active) <> 87 then raise exception '1: expected 87 exercises'; end if;
+  if (select count(distinct lower(name)) from public.exercises) <> 87 then raise exception '1: duplicate names'; end if;
   if (select md5(coalesce(string_agg(row_to_json(l)::text, ',' order by l.id), '')) from public.lifts l) <> (select v from before_0019 where kind = 'lifts') then raise exception '1: lifts'; end if;
   if (select md5(coalesce(string_agg(row_to_json(s)::text, ',' order by s.id), '')) from public.training_sets s) <> (select v from before_0019 where kind = 'sets') then raise exception '1: sets'; end if;
   if (select md5(coalesce(string_agg(row_to_json(d)::text, ',' order by d.id), '')) from (select id, user_id, day_id, exercise_id, position, set_count from public.training_day_exercises) d)

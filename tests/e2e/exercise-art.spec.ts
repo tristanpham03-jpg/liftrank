@@ -28,7 +28,14 @@ test("Exercise pictures fall back to the older drawings, then a plain icon", asy
   await expect(legPress.locator("svg").first()).toBeVisible();
 });
 
-const PENDING_ART = new Set(["Keenan Flaps", "Recline Curl", "Kelso Shrug", "Bicep Supination", "Face Pull"]);
+const PENDING_ART = new Set([
+  "Keenan Flaps", "Recline Curl", "Kelso Shrug", "Bicep Supination", "Face Pull",
+  // 0019: no approved art yet (docs/missing-exercise-images.md)
+  "Reverse Cable Curl", "Machine Lateral Raise", "Dumbbell Front Raise", "Behind-the-Back Cable Lateral Raise", "Smith Machine Decline Press",
+  "Low-to-High Cable Fly", "High-to-Low Cable Fly", "Chest-Supported Wide-Grip Row", "Chest-Supported Close-Grip Row", "Cable Close-Grip Lat Row",
+  "Back Extension", "Smith Machine Romanian Deadlift", "Smith Machine Shoulder Press", "Smith Machine Hip Thrust", "Smith Machine Split Squat",
+  "Cable Triceps Extension", "Machine Close-Grip Lat Row", "Weighted Back Extension", "Dumbbell Preacher Curl",
+]);
 
 test("Every exercise's thumbnail and full picture load (all categories)", async ({ page }) => {
   test.skip(!hostedAdmin(), "Needs hosted Supabase.");

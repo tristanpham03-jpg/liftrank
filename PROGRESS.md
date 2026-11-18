@@ -2,7 +2,7 @@
 
 _Last updated: 2026-10-15 · Done: Phases 1–7 + friend verification · **Deployed (unlisted) at https://liftrank-roan.vercel.app** · Finishing launch setup (see "Deployment status")_
 
-## 2026-11-17 SBLift rebrand and SBL training update (migration `…1900` awaiting approval; committed locally, not pushed)
+## 2026-11-17 SBLift rebrand and SBL training update (migration `…1900` applied with the owner's approval; not yet pushed)
 
 - **Rebrand:**
   - "SBLift" in titles, metadata, the PWA manifest, the wordmark, auth, onboarding, invites, share cards and error copy. Tagline: "Built by lifters. Driven by science."
@@ -22,16 +22,17 @@ _Last updated: 2026-10-15 · Done: Phases 1–7 + friend verification · **Deplo
   - Lists everything you've logged plus favorites, with search, star, and a history chevron.
   - "+" adds the exercise to the active session (session only), or starts a quick "Workout" session (needs `…1900`). Routines are never changed.
 - **History discoverability:** a chevron by exercise names (day preview, session blocks, My Exercises), plus "View history" in the session ⋯ menu. These are separate tap targets from inputs and menus.
-- **Catalog (`…1900`): 68 → 83.**
+- **Catalog (`…1900`): 68 → 87.**
   - Added: Reverse Cable Curl, Machine Lateral Raise, Dumbbell Front Raise, Behind-the-Back Cable Lateral Raise, Smith Machine Decline Press, Low-to-High and High-to-Low Cable Fly, Chest-Supported Wide-Grip and Close-Grip Row, Close-Grip Lat Row, Back Extension, and Smith Machine RDL, Shoulder Press, Hip Thrust and Split Squat.
   - "Preacher Curl" is renamed "Barbell Preacher Curl" (same row, boards and lifts).
   - Already existed: Machine Preacher Curl, Smith flat (Smith Machine Bench Press), Smith incline (Incline Smith Press), Smith Squat, Keenan Flaps, Recline Curl, Kelso Shrug, Bicep Supination and Face Pull.
-  - **Flagged:**
-    - "Standard Cable Triceps Extension" was not added: it's likely Overhead Triceps Extension (cable) or Triceps Pushdown. Please confirm which.
-    - Close-Grip Lat Row is logged as a cable row.
-    - The chest-supported grip variants are plate-loaded, like Chest-Supported Row.
-    - Back Extension is bodyweight and ranked by reps, so a held plate isn't recorded yet.
-- **Images:** 20 exercises have no approved illustration (icon fallback). See `docs/missing-exercise-images.md` and `.json`.
+  - **Owner decisions (2026-11-17), all added:**
+    - Cable Triceps Extension: the elbow stays fixed and the arm extends downward. It's distinct from Triceps Pushdown and Overhead Triceps Extension.
+    - Close-grip lat row in two versions: Cable Close-Grip Lat Row and Machine Close-Grip Lat Row.
+    - The wide-grip chest-supported row stays a plate-loaded machine.
+    - Back Extension (bodyweight, reps) plus Weighted Back Extension (held plate or barbell, on the added load, like Weighted Pull-Up).
+    - Preacher curls come in barbell, dumbbell (new) and machine versions.
+- **Images:** 24 exercises have no approved illustration (icon fallback). See `docs/missing-exercise-images.md` and `.json`.
 - **Navigation delay (~2 s), investigated:**
   - **Regions:** Vercel functions run in iad1 and the database is in ca-central-1, about 15–25 ms per round trip.
   - **Where the time goes:**
@@ -50,7 +51,11 @@ _Last updated: 2026-10-15 · Done: Phases 1–7 + friend verification · **Deplo
 - **Tests so far:**
   - Typecheck, lint and unit tests 51/51.
   - SQL `tests/sql/1900_*` passes in a rolled-back transaction on the hosted DB.
-  - Flow N and the iPhone suites run after `…1900` is applied (they skip until then).
+  - **E2E after applying:** hosted 17/17 (including Flow N), art 3/3, iPhone 7/7, 0 stalls, test accounts removed.
+  - **`…1900` applied:**
+    - Dry run showed only that file.
+    - The permission diff adds only `authenticated` SELECT on `training_day_exercises.alt_group`, still behind owner-only RLS.
+    - After applying: exercises 1–68, lifts, all 339 training sets, routines, sessions and profiles are identical to the baseline. All 218 old aliases are kept (279 now). 87 exercises; Preacher Curl only renamed.
 
 ## 2026-11-16 Training UX review fixes (no migration; committed locally, not yet pushed)
 

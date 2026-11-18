@@ -340,11 +340,11 @@ describe("exercise catalog and muscle search", () => {
   const names = (q: string, n = 30) => searchExercises(catalog, q, n).map((e) => e.name);
   const slugs = (q: string, n = 30) => searchExercises(catalog, q, n).map((e) => e.slug);
 
-  it("has 83 distinct exercises, five of them Abs/Core, all tagged for search", async () => {
+  it("has 87 distinct exercises, five of them Abs/Core, all tagged for search", async () => {
     const { EXERCISE_MUSCLES, CATEGORY_LABEL } = await import("./exercise-muscles");
-    expect(catalog).toHaveLength(83);
-    expect(new Set(catalog.map((e) => e.slug)).size).toBe(83);
-    expect(new Set(catalog.map((e) => e.name.toLowerCase())).size).toBe(83);
+    expect(catalog).toHaveLength(87);
+    expect(new Set(catalog.map((e) => e.slug)).size).toBe(87);
+    expect(new Set(catalog.map((e) => e.name.toLowerCase())).size).toBe(87);
     expect(catalog.filter((e) => e.category === "core").map((e) => e.slug).sort()).toEqual(
       ["cable-crunch", "hanging-knee-raise", "hanging-leg-raise", "machine-ab-crunch", "weighted-decline-sit-up"],
     );
@@ -357,6 +357,7 @@ describe("exercise catalog and muscle search", () => {
       "reverse-cable-curl", "machine-lateral-raise", "dumbbell-front-raise", "behind-the-back-cable-lateral-raise", "smith-decline-press",
       "low-to-high-cable-fly", "high-to-low-cable-fly", "chest-supported-wide-grip-row", "chest-supported-close-grip-row", "close-grip-lat-row",
       "back-extension", "smith-romanian-deadlift", "smith-shoulder-press", "smith-hip-thrust", "smith-split-squat",
+      "cable-triceps-extension", "machine-close-grip-lat-row", "weighted-back-extension", "dumbbell-preacher-curl",
     ];
     const { EXERCISE_IMAGES } = await import("./exercise-images");
     expect([...EXERCISE_IMAGES].sort()).toEqual(catalog.map((e) => e.slug).filter((s) => !pending.includes(s)).sort());
