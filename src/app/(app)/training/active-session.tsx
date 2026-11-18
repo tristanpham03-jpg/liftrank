@@ -80,7 +80,9 @@ function SessionEditor({ session, routine, catalog, unit, recentIds, favoriteIds
       if (raw) {
         const local = JSON.parse(raw) as Stored;
         const d = parseDraft(local.draft);
-        if (d && local.dirty && local.base === session.version) return { draft: d, base: session.version, dirty: true };
+        // This device's copy wins when it has unsynced changes on top of the server's version, or when
+        // it's newer than the page it came with (a page shown from the client cache can be a few saves behind).
+        if (d && ((local.dirty && local.base === session.version) || local.base > session.version)) return { draft: d, base: local.base, dirty: local.dirty };
       }
     } catch {
       // Private mode or corrupted storage: the server copy is used.

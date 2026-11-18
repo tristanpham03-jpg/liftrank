@@ -2,6 +2,58 @@
 
 _Last updated: 2026-10-15 · Done: Phases 1–7 + friend verification · **Deployed (unlisted) at https://liftrank-roan.vercel.app** · Finishing launch setup (see "Deployment status")_
 
+## 2026-11-18 Navigation speed (no migration; committed locally, not pushed; tests: unit 51/51, hosted 17/17, iPhone 7/7, 0 stalls)
+
+Profiled first with `tests/e2e/perf-nav.spec.ts`.
+- **How it measures:** `E2E_PERF=1`, a local production build with `LR_NET_TRACE=1` logging every server-side database request. Times are taken in the page, from the click to the next screen's real content.
+- **Profiles:** desktop, and a phone profile (390 px, +100 ms latency, 9 Mbps).
+- **Caveat:** the local server talks to the hosted database from this Mac (about 100–400 ms per request), so absolute server times are higher than production (iad1 → ca-central-1, about 20 ms). The before/after comparison uses the same setup.
+
+**Findings:**
+- **Routing:** client-side everywhere. No full reloads in any step.
+- **Day switches were full server renders:** 14 database requests in about 5 sequential waves, with no loading state. 0.9–1.5 s.
+- **Training render:**
+  - Queries chained where they didn't need to.
+  - `previousFor` ran its two queries one after the other.
+  - Prev/next day data was fetched per day on demand.
+- **No client cache:** Next 16 defaults dynamic pages to 0 s, so every return refetched everything.
+- **Subpages under Training** (Sessions, My Exercises, History) had no loading state: nothing visible for 0.3–1 s.
+- **Database execution is negligible:** 339 training sets, indexed. The cost is round trips and new connections after idle (a request can take 0.8–1.5 s locally when sockets are cold).
+- **Production on a public page:** about 1.8 s TTFB on a cold Vercel function, 0.25–0.30 s warm. Requests go `sfo1` edge → `iad1` function. The function region is still the best choice for a database in ca-central-1, given 2+ query waves per page.
+
+**Changes:**
+- **Training loads in 2 parallel waves:**
+  - Splits, days and exercises come in one embedded query, alongside everything else independent.
+  - Previous sets for every day and the preferences come in the second wave.
+  - `previousFor` runs its queries in parallel.
+- **Day switching on the device:** all days' data arrives with the page, the selected day is client state, and the URL is updated in place (`?day=`), so reload and links still work.
+- **`loading.tsx` for Training subpages:** immediate visual feedback.
+- **Client cache 30 s (`staleTimes`), with background refresh (`components/nav/nav-speed.tsx`):**
+  - A page shown complete from the cache refreshes in the background right away.
+  - Server actions that change data, and `router.refresh`, clear the cache.
+- **Session drafts:** this device's newer local copy wins over an older cached page (`local.base > version`), so a cached Training page can't roll back a session draft.
+- **Prefetch on intent:** hover, touch or press on an in-app link prefetches it (at most once per 30 s per page).
+- **TanStack Query: not adopted.** Data is loaded in server components. A client query layer would duplicate every read behind new API routes, and the router cache plus a background refresh covers the need.
+
+**Measured, before → after (click → content, ms):**
+
+| | Desktop | Phone profile |
+|---|---|---|
+| Switch day (cold / warm) | 1042–1298 / 939–1511 → **2–9** | 1090–1261 / 1061–1133 → **2–5** |
+| Back to Training (within 30 s) | 994–2636 → **5–27** | 1007–1285 → **6–131** |
+| Training, cache expired (>30 s idle) | ~1.0–1.3 s → 2.1 s* | ~1.0–1.2 s → 1.5 s* |
+| Sessions / My Exercises / History | 268–1060 → 304–828 (feedback 4–27 ms, was 268–1060) | 382–513 → 347–929 (feedback 12–22 ms) |
+| Home | 313–583 → 313–1375 | |
+
+\* The expired-cache run hits cold database connections after 31 s idle (single requests up to 1.5–2.2 s locally). Earlier runs without the idle wait measured 0.5–0.75 s.
+
+**Trade-offs and what's left:**
+- **Background refreshes:** they clear Next's whole client cache, so only the page just returned to is instant; other pages show their loading state immediately and then load. They can also overlap the next navigation (Home was sometimes slower right after leaving Training).
+- **Cold Vercel starts (~1.8 s) and cold database connections dominate the first navigation after idle.** Options (owner's call):
+  - Vercel Fluid compute / a keep-warm ping.
+  - A longer server keep-alive to Supabase (careful: stale sockets caused stalls before).
+  - Cache Components / Partial Prefetching (a larger migration).
+
 ## 2026-11-17 SBLift rebrand and SBL training update (migration `…1900` applied with the owner's approval; not yet pushed)
 
 - **Rebrand:**

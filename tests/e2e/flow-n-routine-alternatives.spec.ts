@@ -39,6 +39,7 @@ test("Flow N: session-only vs saved-to-routine, alternative slots, My Exercises"
   await page.getByRole("button", { name: /Upper \/ Lower/ }).click();
   await page.getByRole("radio", { name: "Rotate" }).click();
   await page.getByRole("button", { name: "Use U/L" }).click();
+  await expect(page.getByRole("button", { name: "Start Upper" })).toBeVisible();
   const upperBefore = await routineOf("Upper");
 
   // 1. Added mid-session = this session only, and it says so.

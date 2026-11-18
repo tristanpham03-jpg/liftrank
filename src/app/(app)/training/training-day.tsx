@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { DropdownMenu } from "radix-ui";
 import { ArrowDown, ArrowUp, ChevronRight, History, Minus, MoreHorizontal, Pencil, Play, Plus, Repeat, Split, StickyNote, Trash2, Unlink, X } from "lucide-react";
 import { toggleFavorite } from "@/app/(app)/lift/actions";
@@ -38,7 +38,8 @@ type Props = {
   days: { id: string; name: string }[];
   selectedDayId: string | null;
   nextDayId: string | null;
-  exercises: DayExercise[];
+  /** Every day's exercises, so switching days needs no server round trip. */
+  exercisesByDay: Record<string, DayExercise[]>;
   unit: WeightUnit;
   catalog: Exercise[];
   recentIds: string[];
@@ -53,12 +54,38 @@ type Props = {
  * only End does.
  */
 export function TrainingDay(props: Props) {
-  const { split, days, selectedDayId, nextDayId, exercises } = props;
+  const { split, days, nextDayId, exercisesByDay } = props;
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
-  const day = days.find((d) => d.id === selectedDayId);
+  // The selected day lives on the device: switching is instant, and the URL
+  // (?day=) is updated in place so reload and sharing still land on it.
+  const [selectedDayId, setSelectedDayId] = useState(props.selectedDayId);
+  const [prevPropDay, setPrevPropDay] = useState(props.selectedDayId);
+  if (prevPropDay !== props.selectedDayId) {
+    // A real navigation to another ?day= (e.g. after adding a day) wins.
+    setPrevPropDay(props.selectedDayId);
+    setSelectedDayId(props.selectedDayId);
+  }
+  const day = days.find((d) => d.id === selectedDayId) ?? days[0];
+  const exercises = (day && exercisesByDay[day.id]) || [];
+  const selectDay = (id: string) => {
+    if (id === selectedDayId) return;
+    setSelectedDayId(id);
+    setEditing(false);
+    setError(null);
+    window.history.replaceState(null, "", `/training?day=${id}`);
+  };
+  // Keep the browser's back/forward in step if the URL changes some other way.
+  useEffect(() => {
+    const onPop = () => {
+      const id = new URLSearchParams(location.search).get("day");
+      if (id && days.some((d) => d.id === id)) setSelectedDayId(id);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [days]);
 
   const begin = () =>
     start(async () => {
@@ -98,12 +125,18 @@ export function TrainingDay(props: Props) {
 
       <nav aria-label="Training days" className="-mx-4 mb-4 flex gap-2 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {days.map((d) => {
-          const on = d.id === selectedDayId;
+          const on = d.id === day?.id;
           return (
             <Link
               key={d.id}
               href={`/training?day=${d.id}`}
               scroll={false}
+              prefetch={false}
+              onClick={(e) => {
+                if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return; // new tab etc.: normal link
+                e.preventDefault();
+                selectDay(d.id);
+              }}
               aria-current={on ? "page" : undefined}
               className={cn(
                 "inline-flex h-10 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-4 text-sm font-semibold",
@@ -154,7 +187,7 @@ export function TrainingDay(props: Props) {
                 )}
               </ul>
             ) : (
-              <div className="glass-flat rounded-[18px] px-4 py-6 text-center">
+              <div className="glass-flat rounded-[18px] px-4 py-6 text-center" data-day-empty={day.name}>
                 <p className="text-fg-2">No exercises on this day yet. You can still start and add them as you go.</p>
               </div>
             )}

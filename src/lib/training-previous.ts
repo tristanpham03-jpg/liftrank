@@ -23,24 +23,27 @@ export async function previousFor(
 ): Promise<Record<string, Previous>> {
   const out: Record<string, Previous> = {};
   if (!exerciseIds.length) return out;
-  const { data } = await supabase
-    .from("training_sets")
-    .select("*")
-    .eq("user_id", userId)
-    .in("exercise_id", exerciseIds)
-    .lt("local_date", today)
-    .order("local_date", { ascending: false })
-    .order("set_number")
-    .limit(800);
+  // The latest earlier sets and the best sets, in parallel (one round trip).
+  const [{ data }, { data: bestRows }] = await Promise.all([
+    supabase
+      .from("training_sets")
+      .select("*")
+      .eq("user_id", userId)
+      .in("exercise_id", exerciseIds)
+      .lt("local_date", today)
+      .order("local_date", { ascending: false })
+      .order("set_number")
+      .limit(800),
+    supabase
+      .from("training_sets")
+      .select("*")
+      .eq("user_id", userId)
+      .in("exercise_id", exerciseIds)
+      .eq("is_ranked", true)
+      .order("score", { ascending: false })
+      .limit(1000),
+  ]);
   const sets = (data ?? []) as TrainingSet[];
-  const { data: bestRows } = await supabase
-    .from("training_sets")
-    .select("*")
-    .eq("user_id", userId)
-    .in("exercise_id", exerciseIds)
-    .eq("is_ranked", true)
-    .order("score", { ascending: false })
-    .limit(1000);
   const bests = (bestRows ?? []) as TrainingSet[];
   for (const id of exerciseIds) {
     const mine = sets.filter((s) => s.exercise_id === id);

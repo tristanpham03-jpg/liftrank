@@ -35,7 +35,9 @@ export function installNetDebug() {
     try {
       const res = await original(input, init);
       const ms = Date.now() - req.started;
-      if (ms > 2000 || req.warned) console.log(`[net] #${req.id} ${req.method} ${req.target} → ${res.status} after ${ms} ms`);
+      // LR_NET_TRACE=1 (measurement runs only): every request with its time, to profile navigation.
+      if (process.env.LR_NET_TRACE === "1") console.log(`[trace] ${req.method} ${req.target} ${ms}ms`);
+      else if (ms > 2000 || req.warned) console.log(`[net] #${req.id} ${req.method} ${req.target} → ${res.status} after ${ms} ms`);
       return res;
     } catch (e) {
       console.log(`[net] #${req.id} ${req.method} ${req.target} FAILED after ${Date.now() - req.started} ms: ${e instanceof Error ? e.message : e}`);

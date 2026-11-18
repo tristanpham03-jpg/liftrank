@@ -7,6 +7,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { AmbientBackground } from "@/components/ui/glass";
 import { cn } from "@/lib/cn";
 import { Logo } from "./logo";
+import { NavSpeed } from "./nav-speed";
 import { OfflineBanner } from "./offline-banner";
 
 type Props = { username: string; userId: string; displayName: string | null; avatarPath: string | null; unread: number; children: React.ReactNode };
@@ -35,6 +36,7 @@ export function AppShell({ username, userId, displayName, avatarPath, unread, ch
   return (
     <div className="relative isolate min-h-dvh md:grid md:grid-cols-[232px_1fr]">
       <AmbientBackground />
+      <NavSpeed />
 
       {/* Desktop: compact frosted sidebar */}
       <aside className="hidden md:flex sticky top-0 h-dvh flex-col border-r border-white/[0.06] bg-white/[0.015] px-3.5 py-6">
