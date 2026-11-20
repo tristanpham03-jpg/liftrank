@@ -8,7 +8,8 @@ import { toggleFavorite } from "@/app/(app)/lift/actions";
 import { ExercisePicker } from "@/components/lifts/exercise-picker";
 import { FormMessage } from "@/components/ui/form";
 import { cn } from "@/lib/cn";
-import { formatDate, todayLocal } from "@/lib/dates";
+import { shortDay, todayLocal } from "@/lib/dates";
+import { formatNumber } from "@/lib/scoring";
 import { searchExercises } from "@/lib/exercise-search";
 import type { Exercise } from "@/lib/types";
 import { startSession } from "../actions";
@@ -86,20 +87,24 @@ export function MyExercisesList({
           {shown.map(({ exercise: e, sets, last }) => (
             <li key={e.id} className="flex items-center gap-1 py-1 pl-3.5 pr-1.5">
               <span className="min-w-0 flex-1 py-1.5">
-                <Link href={`/training/exercise/${e.slug}`} className="block truncate font-medium hover:underline underline-offset-4">
+                {/* Full names (two lines at most): "Chest-Supported Close-Grip Row" and "…Wide-Grip Row" must not both read "Chest-Support…". */}
+                {/* The name opens its history (chevron inline, like the session logger), leaving the row's width for the name. */}
+                <Link href={`/training/exercise/${e.slug}`} title="View history" className="line-clamp-2 font-medium leading-snug hover:underline underline-offset-4">
                   {e.name}
+                  <ChevronRight size={14} className="ml-0.5 inline align-[-2px] text-fg-3" aria-hidden />
                 </Link>
-                <span className="block truncate text-[13px] text-fg-2">
-                  {sets ? `${sets} ${sets === 1 ? "set" : "sets"} · last ${formatDate(`${last}T12:00:00Z`, "UTC", { month: "short", day: "numeric" })}` : "Not logged yet"}
+                {/* Counts and dates are never cut: the line wraps instead. */}
+                <span className="block text-[13px] text-fg-2">
+                  {sets ? (
+                    <>
+                      <span className="whitespace-nowrap">{`${formatNumber(sets)} ${sets === 1 ? "set" : "sets"}`}</span>
+                      {last ? <span className="whitespace-nowrap">{` · last ${shortDay(last)}`}</span> : null}
+                    </>
+                  ) : (
+                    "Not logged yet"
+                  )}
                 </span>
               </span>
-              <Link
-                href={`/training/exercise/${e.slug}`}
-                aria-label={`View ${e.name} history`}
-                className="tap flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-fg-3 hover:bg-white/[0.06] hover:text-fg"
-              >
-                <ChevronRight size={17} aria-hidden />
-              </Link>
               <button
                 type="button"
                 onClick={() => star(e.id)}

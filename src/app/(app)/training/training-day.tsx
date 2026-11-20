@@ -10,7 +10,7 @@ import { ExercisePicker } from "@/components/lifts/exercise-picker";
 import { Button } from "@/components/ui/button";
 import { FormMessage } from "@/components/ui/form";
 import { cn } from "@/lib/cn";
-import { formatDate, todayLocal } from "@/lib/dates";
+import { shortDay, todayLocal } from "@/lib/dates";
 import { normalizeRoutine } from "@/lib/session";
 import { ROTATION_LABEL, formatSet, rotationText, type Rotation, type TemplateId } from "@/lib/training";
 import type { Previous } from "@/lib/training-previous";
@@ -235,7 +235,7 @@ function PreviewRow({ e, unit }: { e: DayExercise; unit: WeightUnit }) {
           {e.setCount} {e.setCount === 1 ? "set" : "sets"}
           {e.unilateral ? " · left/right" : ""}
           {top && e.previous.date
-            ? ` · last ${formatSet(top, e.exercise.ranking_method, unit, { withUnit: true, convention: e.exercise.weight_convention })} on ${formatDate(`${e.previous.date}T12:00:00Z`, "UTC", { month: "short", day: "numeric" })}`
+            ? ` · last ${formatSet(top, e.exercise.ranking_method, unit, { withUnit: true, convention: e.exercise.weight_convention })} on ${shortDay(e.previous.date)}`
             : " · first time"}
         </span>
       </span>

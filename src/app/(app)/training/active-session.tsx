@@ -10,7 +10,7 @@ import { ExercisePicker } from "@/components/lifts/exercise-picker";
 import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/components/ui/confirm";
 import { cn } from "@/lib/cn";
-import { formatDate, todayLocal } from "@/lib/dates";
+import { shortDay, todayLocal } from "@/lib/dates";
 import { formatNumber } from "@/lib/scoring";
 import {
   EMPTY_ROW,
@@ -326,17 +326,19 @@ function SessionEditor({ session, routine, catalog, unit, recentIds, favoriteIds
   return (
     <>
       {dialog}
-      <header className="mb-3 flex items-start justify-between gap-3 pt-2" data-testid="active-session">
-        <div className="min-w-0">
-          <h1 className="truncate text-[24px] font-bold uppercase leading-tight tracking-[-0.02em]">{session.dayName}</h1>
+      {/* The day name (up to 30 characters, the DB limit) is the session's only label: it wraps rather than being cut,
+          and End / ⋯ move below it if the screen is too narrow (large text zoom) to fit both. */}
+      <header className="mb-3 flex flex-wrap items-start justify-between gap-x-3 gap-y-1 pt-2" data-testid="active-session">
+        <div className="min-w-[10rem] flex-1">
+          <h1 className="line-clamp-2 text-[24px] font-bold uppercase leading-tight tracking-[-0.02em]">{session.dayName}</h1>
           <p className="text-[13px] text-fg-2">
-            Active session · started {startedAt} ·{" "}
+            Active session · started <span className="whitespace-nowrap">{startedAt}</span> ·{" "}
             <span data-testid="sync-status" className={cn(sync === "conflict" && "text-warning")}>
               {sync === "saved" ? "Saved" : sync === "saving" ? "Saving…" : sync === "device" ? "Saved on this device" : "Updated from another device; this one's numbers kept"}
             </span>
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-1">
+        <div className="ml-auto flex shrink-0 items-center gap-1">
           <Button size="sm" onClick={end} disabled={pending}>
             {pending ? "Saving…" : finishError ? "Retry End" : "End"}
           </Button>
@@ -495,7 +497,11 @@ function SessionBlock({
   const [, start] = useTransition();
   const bodyweight = exercise.ranking_method === "max_reps";
   const added = exercise.ranking_method === "added_load_e1rm";
-  const grid = block.unilateral ? "grid-cols-[28px_minmax(0,1fr)_minmax(0,1fr)_52px]" : "grid-cols-[20px_minmax(0,1fr)_minmax(0,1fr)_52px]";
+  // RIR (two digits at most) gives way first on narrow screens, so weight and reps keep their room. In a very
+  // narrow card (large text zoom), the set number moves above its row and the grid is just weight · reps · RIR.
+  const grid = block.unilateral
+    ? "grid-cols-[28px_minmax(0,1fr)_minmax(0,1fr)_clamp(2.25rem,13vw,3.25rem)] @max-3xs:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_2rem]"
+    : "grid-cols-[20px_minmax(0,1fr)_minmax(0,1fr)_clamp(2.25rem,13vw,3.25rem)] @max-3xs:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_2rem]";
   const rows = blockRows(block);
   const hasNotes = Boolean(routine.trim());
   // Your best counted set, shown once per exercise (per side in left/right mode).
@@ -545,16 +551,20 @@ function SessionBlock({
     });
 
   return (
-    <section className="glass-flat overflow-hidden rounded-[18px]" aria-labelledby={`ex-${block.key}`} data-exercise={exercise.slug}>
-      <div className="flex items-center justify-between gap-2 px-3.5 pt-2.5 pb-1">
-        <Link id={`ex-${block.key}`} href={`/training/exercise/${exercise.slug}`} title="View history" className="min-w-0 truncate font-semibold hover:underline underline-offset-4">
+    <section className="@container glass-flat overflow-hidden rounded-[18px]" aria-labelledby={`ex-${block.key}`} data-exercise={exercise.slug}>
+      {/* The name is how you know which exercise this is: full name on up to two lines, never cut to "Behin…".
+          If the controls don't fit beside it (very narrow or zoomed), they move to their own line. */}
+      <div className="flex flex-wrap items-start gap-x-2 px-3.5 pt-2.5 pb-1">
+        <Link
+          id={`ex-${block.key}`}
+          href={`/training/exercise/${exercise.slug}`}
+          title="View history"
+          className="line-clamp-2 min-w-[9rem] flex-1 break-words pt-1 font-semibold leading-snug hover:underline underline-offset-4"
+        >
           {exercise.name}
           <ChevronRight size={14} className="ml-0.5 inline align-[-2px] text-fg-3" aria-hidden />
         </Link>
-        <span className="flex shrink-0 items-center gap-1">
-          {previous?.date ? (
-            <span className="mr-1 text-xs text-fg-3">Last {formatDate(`${previous.date}T12:00:00Z`, "UTC", { month: "short", day: "numeric" })}</span>
-          ) : null}
+        <span className="ml-auto flex shrink-0 items-center gap-1">
           {exercise.supports_unilateral ? (
             <button
               type="button"
@@ -630,16 +640,28 @@ function SessionBlock({
           })}
         </div>
       ) : null}
-      {bests.length ? (
-        <p className="px-3.5 pb-1 text-[12px] text-fg-2" data-testid="best">
-          Best{" "}
-          {bests.map(([tag, b], i) => (
-            <span key={tag || "both"} className="tabular">
-              {i ? " · " : ""}
-              {tag ? `${tag} ` : ""}
-              <span className="font-semibold text-fg">{formatSet(b!, exercise.ranking_method, unit, { withUnit: true, convention: exercise.weight_convention })}</span>
+      {bests.length || previous?.date ? (
+        <p className="px-3.5 pb-1 text-[12px] text-fg-2">
+          {bests.length ? (
+            <span data-testid="best">
+              Best{" "}
+              {bests.map(([tag, b], i) => (
+                <span key={tag || "both"} className="tabular">
+                  {i ? " · " : ""}
+                  {tag ? `${tag} ` : ""}
+                  <span className="whitespace-nowrap font-semibold text-fg">
+                    {formatSet(b!, exercise.ranking_method, unit, { withUnit: true, convention: exercise.weight_convention })}
+                  </span>
+                </span>
+              ))}
             </span>
-          ))}
+          ) : null}
+          {previous?.date ? (
+            <span className="text-fg-3">
+              {bests.length ? " · " : ""}
+              <span className="whitespace-nowrap">Last {shortDay(previous.date)}</span>
+            </span>
+          ) : null}
         </p>
       ) : null}
       <ExercisePicker
@@ -680,7 +702,7 @@ function SessionBlock({
       ) : null}
 
       <div className={cn("grid items-center gap-x-1.5 px-2.5 pb-1 pt-1 text-[11px] font-medium uppercase tracking-wide text-fg-3", grid)} aria-hidden>
-        <span className="text-center">Set</span>
+        <span className="text-center @max-3xs:hidden">Set</span>
         <span className="text-center">{bodyweight ? "" : added ? `+${unit}` : unit}</span>
         <span className="text-center">Reps</span>
         <span className="text-center normal-case">RIR</span>
@@ -762,8 +784,13 @@ function SessionRow({
   const focus = (key: string | null) => key && document.querySelector<HTMLInputElement>(`[data-focus="${key}"]`)?.focus();
   return (
     <li className={cn("px-2.5 py-1", side === "left" && "pb-0")} data-side={side ?? undefined} data-row-error={error ? "true" : undefined}>
-      <div className={cn("grid items-center gap-x-1.5", grid)}>
-        <span className="text-center text-sm font-semibold tabular text-fg-2">
+      {/* Very narrow card only: the set label sits above the row instead of in its own column. */}
+      <span className="hidden px-0.5 pb-0.5 text-[11px] font-semibold text-fg-3 @max-3xs:block" aria-hidden>
+        Set {n}
+        {side ? ` · ${side === "left" ? "L" : "R"}` : ""}
+      </span>
+      <div className={cn("grid items-center gap-x-1.5 @max-3xs:gap-x-1", grid)}>
+        <span className="text-center text-sm font-semibold tabular text-fg-2 @max-3xs:hidden">
           {side === "right" ? "" : n}
           {side ? <span className="ml-0.5 text-[11px] font-medium text-fg-3">{side === "left" ? "L" : "R"}</span> : null}
         </span>
@@ -808,13 +835,13 @@ function SessionRow({
           aria-invalid={Boolean(error) && !values.r}
           className={input}
         />
-        {/* RIR: optional and secondary. Shows 0 as a hint; blank means "not recorded", not 0. */}
+        {/* RIR: optional and secondary. Blank means "not recorded", which is not 0, so the hint is a dash, not a 0. */}
         <input
           inputMode="numeric"
           enterKeyHint="next"
           autoComplete="off"
           aria-label={`${label} RIR (optional)`}
-          placeholder="0"
+          placeholder="–"
           value={values.rir}
           onChange={(e) => onValue("rir", e.target.value.replace(/[^0-9]/g, "").slice(0, 2))}
           onKeyDown={(e) => {

@@ -22,6 +22,15 @@ export function formatDate(iso: string, tz: string, opts: Intl.DateTimeFormatOpt
   return new Date(iso).toLocaleDateString("en-US", { ...opts, timeZone: validTimeZone(tz) });
 }
 
+/**
+ * A calendar day ("YYYY-MM-DD") as a short label: "Nov 12" this year,
+ * "Jan 3, 2025" otherwise, so an old date never reads as recent.
+ */
+export function shortDay(ymd: string): string {
+  const sameYear = ymd.slice(0, 4) === String(new Date().getFullYear());
+  return formatDate(`${ymd}T12:00:00Z`, "UTC", sameYear ? { month: "short", day: "numeric" } : { month: "short", day: "numeric", year: "numeric" });
+}
+
 /** "2026-10-15" for an instant, in a time zone (for grouping by day). */
 export function dayKey(iso: string, tz: string) {
   const p = new Intl.DateTimeFormat("en-CA", { timeZone: validTimeZone(tz), year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date(iso));
