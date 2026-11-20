@@ -12,7 +12,9 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
+  // SBLift is dark-only (globals.css sets color-scheme: dark), so one status-bar color is right.
   themeColor: "#0F131D",
+  colorScheme: "dark",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",

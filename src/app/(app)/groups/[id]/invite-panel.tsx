@@ -71,7 +71,7 @@ export function InvitePanel({
               <select
                 value={days}
                 onChange={(e) => setDays(Number(e.target.value))}
-                className="mt-1 w-full h-11 rounded-[12px] bg-white/[0.045] border border-white/10 px-3 text-fg"
+                className="mt-1 w-full h-11 rounded-[12px] bg-white/[0.045] border border-white/10 px-3 text-base text-fg"
               >
                 <option value={1}>1 day</option>
                 <option value={7}>7 days</option>
@@ -83,7 +83,7 @@ export function InvitePanel({
               <select
                 value={maxUses}
                 onChange={(e) => setMaxUses(e.target.value)}
-                className="mt-1 w-full h-11 rounded-[12px] bg-white/[0.045] border border-white/10 px-3 text-fg"
+                className="mt-1 w-full h-11 rounded-[12px] bg-white/[0.045] border border-white/10 px-3 text-base text-fg"
               >
                 <option value="">Unlimited</option>
                 <option value="1">1 person</option>
