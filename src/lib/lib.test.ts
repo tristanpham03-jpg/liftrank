@@ -366,6 +366,41 @@ describe("exercise catalog and muscle search", () => {
     }
   });
 
+  it("curated Similar Exercises point at real exercises, never at themselves, with no duplicate pairs", async () => {
+    const { RELATIONS, similarTo } = await import("./exercise-relations");
+    const slugs = new Set(catalog.map((e) => e.slug));
+    const seen = new Set<string>();
+    for (const r of RELATIONS) {
+      expect(slugs.has(r.a), r.a).toBe(true);
+      expect(slugs.has(r.b), r.b).toBe(true);
+      expect(r.a, `${r.a} relates to itself`).not.toBe(r.b);
+      const key = [r.a, r.b].sort().join("|");
+      expect(seen.has(key), `duplicate ${key}`).toBe(false);
+      seen.add(key);
+      expect(["close", "related"]).toContain(r.type);
+      expect(r.reason.length).toBeGreaterThan(10);
+    }
+    // Works both ways, close alternatives first.
+    expect(similarTo("machine-lateral-raise").map((x) => x.slug)).toEqual(expect.arrayContaining(["cable-lateral-raise", "lateral-raise"]));
+    const lat = similarTo("lat-pulldown");
+    expect(lat[0]).toMatchObject({ slug: "close-grip-lat-pulldown", type: "close" });
+    expect(lat.filter((x) => x.type === "related").map((x) => x.slug)).toEqual(["pull-up", "close-grip-lat-row"]);
+    expect(similarTo("preacher-curl").map((x) => x.slug)).toEqual(["machine-preacher-curl", "dumbbell-preacher-curl"]);
+  });
+
+  it("technique videos: real exercises, original https links, credited and verified", async () => {
+    const { TECHNIQUE_VIDEOS, techniqueVideoFor } = await import("./technique-videos");
+    const slugs = new Set(catalog.map((e) => e.slug));
+    for (const v of TECHNIQUE_VIDEOS) {
+      expect(slugs.has(v.slug), v.slug).toBe(true);
+      expect(v.url).toMatch(/^https:\/\/(www\.youtube\.com\/watch\?v=[\w-]{11}|www\.tiktok\.com\/|www\.instagram\.com\/)/);
+      expect(v.creator.trim().length).toBeGreaterThan(1);
+      expect(v.verified.method).toBe("oembed");
+    }
+    expect(techniqueVideoFor("kelso-shrug")?.creator).toBe("All Strength Training");
+    expect(techniqueVideoFor("barbell-bench-press")).toBeNull();
+  });
+
   it("finds triceps work by any spelling, name matches first", () => {
     for (const q of ["tricep", "triceps", "tris", "TRICEPS"]) {
       const r = names(q);

@@ -6,25 +6,11 @@ import { useMemo, useState, useTransition } from "react";
 import { cn } from "@/lib/cn";
 import { searchExercises } from "@/lib/exercise-search";
 import { CATEGORY_LABEL, EXERCISE_MUSCLES } from "@/lib/exercise-muscles";
+import { similarTo as curatedSimilar } from "@/lib/exercise-relations";
 import type { Exercise } from "@/lib/types";
-import { ExerciseThumb } from "./exercise-art";
 
-const EQUIPMENT_LABEL: Record<string, string> = {
-  barbell: "Barbell",
-  dumbbell: "Dumbbell",
-  smith_machine: "Smith machine",
-  cable: "Cable",
-  plate_loaded: "Plate-loaded",
-  selectorized: "Machine",
-  bodyweight: "Bodyweight",
-  assisted_bodyweight: "Assisted",
-  other: "Other",
-};
-
-export function equipmentLabel(e: Pick<Exercise, "equipment_type" | "ranking_method">) {
-  if (e.ranking_method === "added_load_e1rm") return "Weighted";
-  return EQUIPMENT_LABEL[e.equipment_type] ?? "Other";
-}
+export { equipmentLabel } from "@/lib/exercise-labels";
+import { exerciseMeta } from "@/lib/exercise-labels";
 
 type Props = {
   catalog: Exercise[];
@@ -46,7 +32,11 @@ type Props = {
   currentId?: string;
   /** Marked "In this day". */
   inDayIds?: string[];
-  /** When replacing: list similar movements (same primary muscles, then category/equipment) first. */
+  /**
+   * When replacing or adding an alternative: curated Close alternatives and
+   * Related exercises first (with the reason), then other exercises for the
+   * same muscles, then the full library (search covers everything).
+   */
   similarTo?: Exercise;
 };
 
@@ -91,9 +81,14 @@ export function ExercisePicker({
     const shown = new Set([...recent, ...favs].map((e) => e.id));
     const popular = catalog.filter((e) => !shown.has(e.id)).slice(0, 40);
     if (similarTo) {
+      const bySlug = new Map(catalog.map((e) => [e.slug, e]));
+      const curated = curatedSimilar(similarTo.slug).filter((c) => bySlug.has(c.slug));
+      const close = curated.filter((c) => c.type === "close").map((c) => bySlug.get(c.slug)!);
+      const related = curated.filter((c) => c.type === "related").map((c) => bySlug.get(c.slug)!);
+      const listed = new Set([similarTo.id, ...close.map((e) => e.id), ...related.map((e) => e.id)]);
       const mine = new Set(EXERCISE_MUSCLES[similarTo.slug]?.primary ?? []);
       const similar = catalog
-        .filter((e) => e.id !== similarTo.id)
+        .filter((e) => !listed.has(e.id))
         .map((e) => {
           const shared = (EXERCISE_MUSCLES[e.slug]?.primary ?? []).filter((m) => mine.has(m)).length;
           const score = shared * 4 + (e.category === similarTo.category ? 2 : 0) + (e.equipment_type === similarTo.equipment_type ? 1 : 0);
@@ -101,9 +96,14 @@ export function ExercisePicker({
         })
         .filter((x) => x.shared > 0)
         .sort((a, b) => b.score - a.score || a.e.popular_rank - b.e.popular_rank)
-        .slice(0, 10)
+        .slice(0, 8)
         .map((x) => x.e);
-      return [{ title: "Similar", items: similar }, { title: "All exercises", items: catalog.filter((e) => e.id !== similarTo.id).slice(0, 60) }].filter((s) => s.items.length);
+      return [
+        { title: "Close alternatives", items: close },
+        { title: "Related exercises", items: related },
+        { title: "Also works the same muscles", items: similar },
+        { title: "All exercises", items: catalog.filter((e) => e.id !== similarTo.id) },
+      ].filter((s) => s.items.length);
     }
     return [
       { title: "Recent", items: recent.slice(0, 6) },
@@ -111,6 +111,8 @@ export function ExercisePicker({
       { title: recent.length || favs.length ? "More exercises" : "Popular", items: popular },
     ].filter((s) => s.items.length);
   }, [query, category, catalog, recentIds, favorites, byId, similarTo]);
+  // Why a curated suggestion is listed ("Same primary target, different equipment").
+  const reasons = useMemo(() => new Map(similarTo ? curatedSimilar(similarTo.slug).map((c) => [c.slug, c.reason] as const) : []), [similarTo]);
 
   function choose(e: Exercise) {
     onSelect(e);
@@ -141,7 +143,6 @@ export function ExercisePicker({
           aria-label={value ? `${label}: ${value.name}. Change` : `Choose ${label.toLowerCase()}`}
         >
           <span className="flex min-w-0 items-center gap-3">
-            {value ? <ExerciseThumb key={value.id} exercise={value} size={34} /> : null}
             <span className="block truncate text-[17px] font-semibold">{value ? value.name : "Choose an exercise"}</span>
           </span>
           <ChevronDown size={20} className="text-fg-3 group-hover:text-fg-2 shrink-0" />
@@ -224,7 +225,6 @@ export function ExercisePicker({
                               selected && "bg-white/[0.06]",
                             )}
                           >
-                            <ExerciseThumb exercise={e} />
                             <span className="min-w-0 flex-1">
                               <span className="block font-medium truncate">{e.name}</span>
                               {e.id === currentId ? (
@@ -232,7 +232,11 @@ export function ExercisePicker({
                               ) : inDayIds.includes(e.id) ? (
                                 <span className="mr-1.5 inline-block rounded-full bg-white/[0.08] px-1.5 text-[11px] font-medium text-fg-2">In this day</span>
                               ) : null}
-                              <span className="block text-sm text-fg-3">{equipmentLabel(e)}</span>
+                              <span className="block text-sm text-fg-3">
+                                {(section.title === "Close alternatives" || section.title === "Related exercises") && reasons.get(e.slug)
+                                  ? reasons.get(e.slug)
+                                  : exerciseMeta(e)}
+                              </span>
                             </span>
                             {selected ? <Check size={18} className="text-pearl" aria-label="Selected" /> : null}
                           </button>

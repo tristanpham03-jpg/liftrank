@@ -20,6 +20,7 @@ import {
   differsFromRoutine,
   draftToRoutine,
   draftToSets,
+  normalizeRoutine,
   newBlock,
   newDraft,
   parseDraft,
@@ -192,6 +193,38 @@ function SessionEditor({ session, routine, catalog, unit, recentIds, favoriteIds
     }
     updateBlock(block.key, (b) => switchOption(b, id));
     loadPrevious([id]);
+  };
+  /**
+   * Saves `e` as a permanent alternative to this block's exercise in the saved routine (a separate action
+   * from Swap, which only changes this session). The session itself doesn't change: the block just learns
+   * its new options, so it matches the routine. No numbers move between exercises.
+   */
+  const addAlternativeToRoutine = async (block: DraftBlock, e: Exercise) => {
+    if (!routine) return;
+    const current = byId.get(block.exerciseId)?.name ?? "this exercise";
+    const items = normalizeRoutine(routine.exercises);
+    if (items.some((x) => x.exerciseId === e.id)) return setNotice(`${e.name} is already in your ${routine.name} routine.`);
+    const idx = items.findIndex((x) => x.exerciseId === block.exerciseId);
+    if (idx === -1) return setNotice(`Save ${current} to your routine first, then add alternatives to it.`);
+    if (
+      !(await ask({
+        title: `Add ${e.name} as an alternative?`,
+        body: `Future ${routine.name} sessions can do ${current} or ${e.name}. This session and your logged sets don't change.`,
+        confirm: "Add to routine",
+      }))
+    )
+      return;
+    const group = items[idx].altGroup ?? Math.max(0, ...items.map((x) => x.altGroup ?? 0)) + 1;
+    const next = items.map((x, i) => (i === idx ? { ...x, altGroup: group } : x));
+    let at = idx;
+    while (at + 1 < next.length && next[at + 1].altGroup === group) at++;
+    next.splice(at + 1, 0, { exerciseId: e.id, setCount: block.setCount, altGroup: group });
+    const res = await saveDay(routine.dayId, routine.name, next.map((r) => ({ exerciseId: r.exerciseId, sets: r.setCount, altGroup: r.altGroup })));
+    if (!res.ok) return setNotice(res.error);
+    const alts = next.filter((x) => x.altGroup === group).map((x) => ({ exerciseId: x.exerciseId, setCount: x.exerciseId === block.exerciseId ? block.setCount : x.setCount }));
+    update((d) => ({ ...d, blocks: d.blocks.map((b) => (b.key === block.key ? { ...b, slot: group, alts } : b)) }));
+    setNotice(`${e.name} added as an alternative in your ${routine.name} routine.`);
+    router.refresh();
   };
   const also = (block: DraftBlock, id: string) => {
     update((d) => {
@@ -393,6 +426,7 @@ function SessionEditor({ session, routine, catalog, unit, recentIds, favoriteIds
               inSession={draft.blocks.filter((b) => b.slot != null && b.slot === block.slot).map((b) => b.exerciseId)}
               onChoose={(id) => void choose(block, id)}
               onAlso={(id) => also(block, id)}
+              onAddAlternative={routine ? (e) => void addAlternativeToRoutine(block, e) : undefined}
               onRemove={() => void remove(block)}
               onMove={(by) => move(i, by)}
             />
@@ -466,6 +500,7 @@ function SessionBlock({
   inSession,
   onChoose,
   onAlso,
+  onAddAlternative,
 }: {
   block: DraftBlock;
   exercise: Exercise;
@@ -489,8 +524,11 @@ function SessionBlock({
   inSession: string[];
   onChoose: (id: string) => void;
   onAlso: (id: string) => void;
+  /** Saves a suggestion as a permanent alternative in the routine (absent in a quick session). */
+  onAddAlternative?: (e: Exercise) => void;
 }) {
   const [swapOpen, setSwapOpen] = useState(false);
+  const [altOpen, setAltOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
   const [routine, setRoutine] = useState(routineNote);
   const [routineSaved, setRoutineSaved] = useState<string | null>(null);
@@ -602,6 +640,11 @@ function SessionBlock({
                       Also do {o.name}
                     </DropdownMenu.Item>
                   ))}
+                {onAddAlternative ? (
+                  <DropdownMenu.Item className={item} onSelect={() => setAltOpen(true)}>
+                    Add alternative to routine…
+                  </DropdownMenu.Item>
+                ) : null}
                 <DropdownMenu.Item asChild className={item}>
                   <Link href={`/training/exercise/${exercise.slug}`}>View history</Link>
                 </DropdownMenu.Item>
@@ -679,6 +722,22 @@ function SessionBlock({
         currentId={exercise.id}
         similarTo={exercise}
       />
+      {onAddAlternative ? (
+        <ExercisePicker
+          catalog={catalog}
+          value={null}
+          onSelect={onAddAlternative}
+          recentIds={recentIds}
+          favoriteIds={favoriteIds}
+          onToggleFavorite={toggleFavorite}
+          trigger={null}
+          open={altOpen}
+          onOpenChange={setAltOpen}
+          title={`Alternative to ${exercise.name} in your routine`}
+          currentId={exercise.id}
+          similarTo={exercise}
+        />
+      ) : null}
 
       {notesOpen ? (
         <div className="space-y-2 border-y border-white/[0.06] px-3.5 py-2.5" data-testid="exercise-notes">

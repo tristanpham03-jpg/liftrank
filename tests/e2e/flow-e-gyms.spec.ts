@@ -61,13 +61,18 @@ test("Flow E: add a gym → review → gym and nearby boards → machine lifts",
   await optIn(b);
 
   // Gym board: both lifters, best first. Nearby board: same two, no locations shown.
-  await a.goto("/leaderboards?exercise=barbell-bench-press&scope=gym");
+  // The switch flips at once; saving the opt-in takes a moment, so reload the board until it's in.
   const rows = a.locator("ol li");
-  await expect(rows).toHaveCount(2);
+  await expect(async () => {
+    await a.goto("/leaderboards?exercise=barbell-bench-press&scope=gym");
+    await expect(rows).toHaveCount(2, { timeout: 3000 });
+  }).toPass({ timeout: 30_000 });
   await expect(rows.nth(0)).toContainText(other);
   await expect(rows.nth(1)).toContainText("You");
-  await a.goto("/leaderboards?exercise=barbell-bench-press&scope=nearby&radius=5");
-  await expect(a.locator("ol li")).toHaveCount(2);
+  await expect(async () => {
+    await a.goto("/leaderboards?exercise=barbell-bench-press&scope=nearby&radius=5");
+    await expect(a.locator("ol li")).toHaveCount(2, { timeout: 3000 });
+  }).toPass({ timeout: 30_000 });
   await expect(a.getByText("48.8767")).toHaveCount(0);
 
   // Machine lift with a new model: the board shows the maker, and the model once approved.

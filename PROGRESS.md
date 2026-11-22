@@ -2,6 +2,50 @@
 
 _Last updated: 2026-10-15 · Done: Phases 1–7 + friend verification · **Deployed (unlisted) at https://liftrank-roan.vercel.app** · Finishing launch setup (see "Deployment status")_
 
+## 2026-11-22 Phase 2: exercise experience and loading screen (no migration; committed locally, not pushed)
+
+**Illustrations removed from the UI:**
+- Only two components ever drew them:
+  - `ExercisePicker`: the trigger thumbnail and the list thumbnails, used by Training, swap/replace, the day editor, My Exercises, Progress, Leaderboards and Submit Lift.
+  - The Submit Lift "About this exercise" picture.
+- **Now:** rows show the name plus "Primary muscle · Equipment" (`lib/exercise-labels.ts`). "About this exercise" lists the muscles as text.
+- **Not touched:** `public/exercises/img`, `src/lib/exercise-images.ts` and the mapping test. No image is requested anywhere (Flow Q asserts zero `/exercises/` requests).
+- The old picture e2e specs were removed.
+
+**Similar Exercises** (`lib/exercise-relations.ts`):
+- Curated pairs, each listed once and applying both ways, marked **close** (a reasonable swap) or **related** (overlapping muscles, different mechanics), each with a short reason.
+- 65 relationships (48 close, 17 related) across chest, back, shoulders, arms, legs and abs.
+- Unit tests check that every slug exists, and that there are no self-pairs, duplicates, or empty reasons.
+- Shown on the exercise page as Close alternatives / Related exercises, each linking to its own history, with "Each exercise keeps its own history and personal records".
+- Shown at the top of the Swap and "Add alternative" pickers (then "Also works the same muscles", then the full library and search).
+- In a session: Swap stays session-only. The new ⋯ → "Add alternative to routine…" asks first, then writes the saved routine through `saveDay` with an alternative group, and updates the session block to match (no banner, no numbers moved).
+- The day editor's "Add alternative" uses the same suggestions.
+- No migration, no AI.
+
+**Technique reference** (`lib/technique-videos.ts`):
+- Model: slug, original URL, creator, platform, title, optional description, verification. Several are allowed per exercise; the first is shown.
+- Four linked, each title naming the exact variation, with title and channel confirmed through YouTube oEmbed on 2026-11-22. Not watched (`reviewed: false`):
+  - Kelso Shrug: All Strength Training
+  - Smith Machine JM Press: ATLASTHETICS
+  - Keenan Flaps: Nui Brothers (cuffed cable frontal adduction)
+  - Cable Lateral Raise: Jacob Garcia
+- No verified links were found from TNF, Jeff Nippard, Toosa, Bigpro or YO Talks for these exercises.
+- `scripts/check-technique-videos.mjs` re-checks every link.
+- Exercises without a verified video show nothing. "Not affiliated with SBLift" is shown under the link.
+
+**White screen at startup:**
+- **Causes:**
+  - The dark background lived only in `globals.css`, so anything painted before the stylesheet arrived was white.
+  - iOS home-screen apps show a white launch screen unless `apple-touch-startup-image` is provided, and none was.
+  - A fresh load waited for the signed-in shell's data (profile, notifications, freshness) before sending any page.
+- **Fixes:**
+  - Inline `background-color:#0F131D; color-scheme:dark` on `<html>` and `<body>`.
+  - iPhone launch images for 12 device sizes (`/splash/<w>x<h>`, the existing wordmark on navy, prerendered at build).
+  - A root `app/loading.tsx`: the wordmark and a small sweep bar, streamed immediately on a fresh load, with no timers or minimum duration. Tab navigation never shows it (asserted in Flow Q); cached pages render immediately; session drafts are unaffected.
+- Manifest and theme colors were already dark.
+
+**Phase 3 prep:** the exercise page order is performance → Similar exercises → Technique reference → (My Recordings) → History. Plan in `docs/recordings-plan.md`.
+
 ## 2026-11-22 Phase 1: training-first redesign (no migration; committed locally, not pushed)
 
 **Navigation and routing:**

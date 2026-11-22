@@ -425,6 +425,8 @@ function DayEditor({
           onOpenChange={(o) => (o ? null : setAltFor(null))}
           title={`Alternative to ${items[altFor].exercise.name}`}
           inDayIds={inDay}
+          currentId={items[altFor].exercise.id}
+          similarTo={items[altFor].exercise}
         />
       ) : null}
       <p className="px-1 text-[13px] text-fg-3">Removing or replacing an exercise keeps all its logged sets in your history. Alternatives each keep their own history.</p>

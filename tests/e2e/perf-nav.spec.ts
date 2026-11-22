@@ -152,6 +152,19 @@ for (const mode of ["desktop", "mobile"] as const) {
         from = to;
       }
     }
+    // Startup: a full page load of Training. First byte, first paint (loading screen or page), and when the page itself is ready.
+    for (const run of ["cold", "warm"]) {
+      const t0 = Date.now();
+      await page.goto("/training", { waitUntil: "commit" });
+      await page.locator('nav[aria-label="Training days"], [data-testid="active-session"]').first().waitFor();
+      const ready = Date.now() - t0;
+      const paint = await page.evaluate(() => {
+        const nav = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming;
+        const fcp = performance.getEntriesByName("first-contentful-paint")[0];
+        return { ttfb: Math.round(nav.responseStart), fcp: fcp ? Math.round(fcp.startTime) : -1 };
+      });
+      results.push({ step: `startup ${run}: /training`, feedback: paint.fcp, done: ready, dbRequests: paint.ttfb, fullReload: true });
+    }
     await ctx.close();
     console.log(`PERF tabs-${mode} ${JSON.stringify(results)}`);
   });
