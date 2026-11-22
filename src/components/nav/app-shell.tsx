@@ -7,6 +7,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { AmbientBackground } from "@/components/ui/glass";
 import { cn } from "@/lib/cn";
 import { Logo } from "./logo";
+import { KeyboardFix } from "./keyboard-fix";
 import { NavSpeed } from "./nav-speed";
 import { OfflineBanner } from "./offline-banner";
 
@@ -38,6 +39,7 @@ export function AppShell({ username, userId, displayName, avatarPath, unread, st
   return (
     <div className="relative isolate min-h-dvh md:grid md:grid-cols-[232px_1fr]">
       <AmbientBackground />
+      <KeyboardFix />
       <NavSpeed userId={userId} stamp={stamp} tabs={["/home", "/leaderboards", "/training", "/friends", profileHref]} />
 
       {/* Desktop: compact frosted sidebar */}
