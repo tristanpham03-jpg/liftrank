@@ -44,7 +44,8 @@ export async function proxy(request: NextRequest) {
     url.search = `?next=${encodeURIComponent(pathname + search)}`;
     return redirectWithCookies(url, response);
   }
-  if (signedIn && matches(pathname, AUTH_PAGES)) {
+  // Signed in: the marketing landing page and the auth pages go straight to Training.
+  if (signedIn && (pathname === "/" || matches(pathname, AUTH_PAGES))) {
     const url = request.nextUrl.clone();
     url.pathname = "/training";
     url.search = "";

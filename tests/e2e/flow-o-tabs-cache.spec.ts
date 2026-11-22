@@ -85,7 +85,7 @@ test("Flow O: five main tabs, instant revisits, fresh data, no cross-account lea
   await page.getByLabel("Password").fill(PASSWORD);
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).not.toHaveURL(/\/login/);
-  await page.goto("/home");
+  await page.goto("/progress");
   await tab(page, "/training").click();
   await expect(page).toHaveURL(/\/training/);
   await expect(page.getByText("Pick a split to start.")).toBeVisible();

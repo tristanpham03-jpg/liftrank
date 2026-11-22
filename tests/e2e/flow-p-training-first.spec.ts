@@ -14,8 +14,9 @@ test("Flow P: Training is home, Progress shows real progression, Boards are rank
   const name = username("pia");
   await signUp(page, name);
   const uid = (await db().from("profiles").select("id").eq("username", name).single()).data!.id as string;
+  await page.setViewportSize({ width: 390, height: 844 });
 
-  // 1. Signing in lands on Training; /home goes to Progress.
+  // 1. Signing in lands on Training; old /home links and a signed-in visit to / go there too.
   await page.context().clearCookies();
   await page.goto("/login");
   await page.getByLabel("Email").fill(emailOf(name));
@@ -23,10 +24,13 @@ test("Flow P: Training is home, Progress shows real progression, Boards are rank
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL(/\/training$/);
   await page.goto("/home");
-  await expect(page).toHaveURL(/\/progress$/);
+  await expect(page).toHaveURL(/\/training$/);
+  await page.goto("/");
+  await expect(page).toHaveURL(/\/training$/);
+  await page.goto("/progress");
+  await expect(page.locator('nav.mobile-tabs a[aria-current="page"]')).toHaveText("Progress");
 
   // 2. Navigation: Training | Progress | Boards | Friends; no Home, no Submit tab.
-  await page.setViewportSize({ width: 390, height: 844 });
   const tabs = page.locator('nav.mobile-tabs[aria-label="Main"] a');
   await expect(tabs).toHaveText(["Training", "Progress", "Boards", "Friends"]);
 

@@ -1,6 +1,10 @@
 import { redirect } from "next/navigation";
 
-/** Home was replaced by Progress (training-first). Old links and bookmarks land there. */
+/**
+ * Home is gone (training-first). Old links, bookmarks, and home-screen apps
+ * installed when the start page was /home (iOS keeps that address) land on
+ * Training, the main destination.
+ */
 export default function HomePage() {
-  redirect("/progress");
+  redirect("/training");
 }

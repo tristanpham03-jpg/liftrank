@@ -20,7 +20,7 @@ type Props = { username: string; userId: string; displayName: string | null; ava
 // activity sit behind the bell.
 const TABS = [
   { href: "/training", label: "Training", icon: Dumbbell, match: ["/training"], primary: true },
-  { href: "/progress", label: "Progress", icon: ChartLine, match: ["/progress", "/home"] },
+  { href: "/progress", label: "Progress", icon: ChartLine, match: ["/progress"] },
   { href: "/leaderboards", label: "Leaderboards", short: "Boards", icon: Trophy, match: ["/leaderboards", "/groups", "/lift"] },
   { href: "/friends", label: "Friends", icon: Users, match: ["/friends"] },
 ];
@@ -116,11 +116,12 @@ export function AppShell({ username, userId, displayName, avatarPath, unread, st
                   )}
                 >
                   {t.primary ? (
-                    // Training stands out with a soft pill behind its icon (bright when active), not an oversized button.
+                    // Training stands out with a soft pill behind its icon: bright only when it's the active tab,
+                    // faint otherwise, so it never looks selected while you're on another tab.
                     <span
                       className={cn(
                         "flex h-8 w-12 items-center justify-center rounded-full transition-colors",
-                        active ? "pearl text-accent-ink" : "bg-white/[0.09] text-fg",
+                        active ? "pearl text-accent-ink" : "bg-white/[0.05] text-fg-3",
                       )}
                     >
                       <t.icon size={20} strokeWidth={active ? 2.3 : 2} />
@@ -131,7 +132,7 @@ export function AppShell({ username, userId, displayName, avatarPath, unread, st
                       <t.icon size={21} strokeWidth={active ? 2.2 : 1.8} />
                     </span>
                   )}
-                  <span className={cn("flex items-center gap-1", t.primary && "font-semibold text-fg")}>{t.short ?? t.label}</span>
+                  <span className={cn("flex items-center gap-1", t.primary && active && "font-semibold")}>{t.short ?? t.label}</span>
                   <span aria-hidden className={cn("h-1 w-1 rounded-full", active && !t.primary ? "bg-pearl" : "bg-transparent")} />
 
                 </Link>

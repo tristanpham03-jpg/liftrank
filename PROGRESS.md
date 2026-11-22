@@ -10,7 +10,8 @@ _Last updated: 2026-10-15 · Done: Phases 1–7 + friend verification · **Deplo
   - The bell and avatar stay in the header, and the bell shows as active on Activity and Notifications.
 - **Training is the signed-in default:**
   - Login, `safeNext` fallback, email confirm, OAuth, onboarding ("Done, take me to Training"), already-signed-in visits to `/login` and `/signup`, the PWA `start_url`, the logo and the 404 page all go there.
-  - `/home` redirects to `/progress`.
+  - `/home` redirects to Training (changed 2026-11-22: home-screen apps installed with `/home` as their start page opened on Progress), and a signed-in visit to `/` goes to Training too.
+  - Inactive Training shows a faint pill and a grey label, so it never looks selected while another tab is active.
   - Deep links are unchanged: exercise history, sessions, leaderboards, profiles, `/lift/new` (the Submit route is kept, under Boards).
 
 **Progress (`/progress`), from saved sets and completed sessions only; drafts never count:**
