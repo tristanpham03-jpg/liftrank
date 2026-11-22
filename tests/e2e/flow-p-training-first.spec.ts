@@ -25,10 +25,10 @@ test("Flow P: Training is home, Progress shows real progression, Boards are rank
   await page.goto("/home");
   await expect(page).toHaveURL(/\/progress$/);
 
-  // 2. Navigation: Progress | Boards | Training | Friends; no Home, no Submit tab.
+  // 2. Navigation: Training | Progress | Boards | Friends; no Home, no Submit tab.
   await page.setViewportSize({ width: 390, height: 844 });
   const tabs = page.locator('nav.mobile-tabs[aria-label="Main"] a');
-  await expect(tabs).toHaveText(["Progress", "Boards", "Training", "Friends"]);
+  await expect(tabs).toHaveText(["Training", "Progress", "Boards", "Friends"]);
 
   // 3. Empty Progress: an introduction, never sample numbers.
   await expect(page.getByText("Your progress starts with your first workout.")).toBeVisible();

@@ -5,7 +5,7 @@ _Last updated: 2026-10-15 · Done: Phases 1–7 + friend verification · **Deplo
 ## 2026-11-22 Phase 1: training-first redesign (no migration; committed locally, not pushed)
 
 **Navigation and routing:**
-- **Tabs:** Progress | Boards | Training | Friends on phone and desktop (the desktop sidebar lists Training first). Home and the Submit (+) tab are gone.
+- **Tabs:** Training | Progress | Boards | Friends on phone and desktop (Training far left, at the owner's request). Home and the Submit (+) tab are gone.
   - Training is emphasized with a soft pill behind its icon (bright when active), not an oversized button.
   - The bell and avatar stay in the header, and the bell shows as active on Activity and Notifications.
 - **Training is the signed-in default:**

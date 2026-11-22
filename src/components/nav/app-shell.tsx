@@ -13,20 +13,19 @@ import { OfflineBanner } from "./offline-banner";
 
 type Props = { username: string; userId: string; displayName: string | null; avatarPath: string | null; unread: number; stamp: string; children: React.ReactNode };
 
-// Training-first: Progress | Boards | Training | Friends. Training (the default
+// Training-first: Training | Progress | Boards | Friends. Training (the default
 // landing page) is the emphasized tab. Competition is one tab, Boards, which
 // also holds Groups and the competitive Submit Lift flow (/lift). Profile is the
 // header avatar on phones (sidebar on desktop); notifications and friends'
 // activity sit behind the bell.
 const TABS = [
+  { href: "/training", label: "Training", icon: Dumbbell, match: ["/training"], primary: true },
   { href: "/progress", label: "Progress", icon: ChartLine, match: ["/progress", "/home"] },
   { href: "/leaderboards", label: "Leaderboards", short: "Boards", icon: Trophy, match: ["/leaderboards", "/groups", "/lift"] },
-  { href: "/training", label: "Training", icon: Dumbbell, match: ["/training"], primary: true },
   { href: "/friends", label: "Friends", icon: Users, match: ["/friends"] },
 ];
 const PROFILE = { href: "/profile", label: "Profile", icon: User, match: ["/profile", "/u/", "/settings", "/lifts"] };
-// Desktop sidebar: Training first.
-const SIDEBAR_TABS = [TABS[2], TABS[0], TABS[1], TABS[3]];
+const SIDEBAR_TABS = TABS;
 
 function isActive(pathname: string, match: string[]) {
   return match.some((m) => pathname === m || pathname.startsWith(m.endsWith("/") ? m : `${m}/`));
