@@ -27,7 +27,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       <AuthForm
         mode="signin"
         action={signIn}
-        next={safeNext(next, "/home")}
+        next={safeNext(next, "/training")}
         googleAction={GOOGLE_AUTH_ENABLED ? signInWithGoogle : undefined}
       />
       <p className="mt-8 text-fg-2">

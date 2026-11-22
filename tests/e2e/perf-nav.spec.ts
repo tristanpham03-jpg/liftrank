@@ -90,8 +90,8 @@ for (const mode of ["desktop", "mobile"] as const) {
     const busy = `!!document.querySelector('[aria-busy="true"]')`;
     const trainingReady = `${path("/training")} && !${busy} && !!document.querySelector('nav[aria-label="Training days"]')`;
     const steps: [string, string, string][] = [
-      ["Training → Home", `${main} a[href="/home"]`, `${path("/home")} && !${busy}`],
-      ["Home → Training", `${main} a[href="/training"]`, trainingReady],
+      ["Training → Progress", `${main} a[href="/progress"]`, `${path("/progress")} && !${busy}`],
+      ["Progress → Training", `${main} a[href="/training"]`, trainingReady],
       ["Training → Sessions", `a[href="/training/sessions"]`, `${path("/training/sessions")} && !${busy}`],
       ["Sessions → Training", `${main} a[href="/training"]`, trainingReady],
       ["Training → My Exercises", `a[href="/training/exercises"]`, `${path("/training/exercises")} && !${busy}`],
@@ -105,10 +105,10 @@ for (const mode of ["desktop", "mobile"] as const) {
       }
     }
     // Cache expired (> 30 s): a truly cold Training load from Home.
-    await page.evaluate((sel) => (document.querySelector(sel) as HTMLElement).click(), `${main} a[href="/home"]`);
-    await expect(page).toHaveURL(/\/home/);
+    await page.evaluate((sel) => (document.querySelector(sel) as HTMLElement).click(), `${main} a[href="/progress"]`);
+    await expect(page).toHaveURL(/\/progress/);
     await page.waitForTimeout(31_000);
-    record("expired: Home → Training", await timed(page, `${main} a[href="/training"]`, trainingReady, `(${trainingReady}) || ${busy}`));
+    record("expired: Progress → Training", await timed(page, `${main} a[href="/training"]`, trainingReady, `(${trainingReady}) || ${busy}`));
     await ctx.close();
     console.log(`PERF ${mode} ${JSON.stringify(results)}`);
   });
@@ -132,7 +132,7 @@ for (const mode of ["desktop", "mobile"] as const) {
     await page.getByRole("radio", { name: "Rotate" }).click();
     await page.getByRole("button", { name: "Use PPL" }).click();
     await expect(page.getByRole("button", { name: /^Start / }).first()).toBeVisible();
-    await page.goto("/home");
+    await page.goto("/progress");
     await page.waitForTimeout(1500);
     await page.evaluate(() => ((window as unknown as { __perfMark?: boolean }).__perfMark = true));
 
@@ -140,10 +140,10 @@ for (const mode of ["desktop", "mobile"] as const) {
     // Profile lands on /u/<username>.
     const at = (p: string) => (p === "/profile" ? `location.pathname.startsWith("/u/")` : `location.pathname === "${p}"`);
     const ready = (p: string) => `${at(p)} && !${busy} && !!document.querySelector("main h1, main h2")`;
-    const tabs = ["/leaderboards", "/training", "/friends", "/profile", "/home"];
-    const label = (p: string) => ({ "/home": "Home", "/leaderboards": "Boards", "/training": "Training", "/friends": "Friends", "/profile": "Profile" })[p];
+    const tabs = ["/leaderboards", "/training", "/friends", "/profile", "/progress"];
+    const label = (p: string) => ({ "/progress": "Progress", "/leaderboards": "Boards", "/training": "Training", "/friends": "Friends", "/profile": "Profile" })[p];
     for (const pass of ["cold", "warm 1", "warm 2"]) {
-      let from = "/home";
+      let from = "/progress";
       for (const to of tabs) {
         const href = to === "/profile" ? `a[href="/profile"], a[href^="/u/"][aria-label]` : `a[href="${to}"]`;
         const fromPath = new URL(page.url()).pathname;

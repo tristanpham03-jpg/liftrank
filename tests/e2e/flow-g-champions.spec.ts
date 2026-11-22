@@ -76,10 +76,10 @@ test("Flow G: title → achievements, profile, cards, record history → a group
   await expect(b.getByRole("heading", { name: "Record history" })).toBeVisible();
   await expect(b.getByRole("region", { name: "Current champion" })).toContainText(owner);
 
-  // Proof: the owner adds a video; a groupmate finds it on Home, watches it and verifies it.
+  // Proof: the owner adds a video; a groupmate finds it under Activity (behind the bell), watches it and verifies it.
   await a.goto(liftPath);
   await uploadVideo(a);
-  await b.goto("/home");
+  await b.goto("/activity");
   const toCheck = b.getByRole("region", { name: "Check a friend’s lift" });
   await expect(toCheck).toContainText(owner);
   await toCheck.getByRole("link", { name: new RegExp(owner) }).click();
@@ -95,7 +95,6 @@ test("Flow G: title → achievements, profile, cards, record history → a group
   await expect(a.getByText(new RegExp(`${second} verified your Barbell Bench Press`))).toBeVisible();
   await b.goto(boardUrl);
   await expect(b.locator("ol li").first()).toContainText(owner);
-  await expect(b.getByText("Current champion")).toBeVisible();
   await a.goto(`/u/${owner}`);
   await expect(a.getByRole("region", { name: "Titles" })).toContainText("Barbell Bench Press champion");
   await expect(a.getByRole("region", { name: "Achievements" })).toContainText("Verified Lifter");

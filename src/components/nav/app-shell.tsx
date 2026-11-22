@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, Dumbbell, Home, Plus, Trophy, User, Users } from "lucide-react";
+import { Bell, ChartLine, Dumbbell, Trophy, User, Users } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { AmbientBackground } from "@/components/ui/glass";
 import { cn } from "@/lib/cn";
@@ -13,19 +13,20 @@ import { OfflineBanner } from "./offline-banner";
 
 type Props = { username: string; userId: string; displayName: string | null; avatarPath: string | null; unread: number; stamp: string; children: React.ReactNode };
 
-// Phone bar: five destinations, with + (put a lift on the leaderboards) in the
-// middle. Profile lives in the header avatar on phones (and in the sidebar on
-// desktop); notifications behind the bell. Groups live under Leaderboards.
+// Training-first: Progress | Boards | Training | Friends. Training (the default
+// landing page) is the emphasized tab. Competition is one tab, Boards, which
+// also holds Groups and the competitive Submit Lift flow (/lift). Profile is the
+// header avatar on phones (sidebar on desktop); notifications and friends'
+// activity sit behind the bell.
 const TABS = [
-  { href: "/home", label: "Home", icon: Home, match: ["/home", "/notifications", "/activity"] },
-  { href: "/leaderboards", label: "Leaderboards", short: "Boards", icon: Trophy, match: ["/leaderboards", "/groups"] },
-  { href: "/lift/new", label: "Submit lift", short: "Submit", icon: Plus, match: ["/lift"] },
-  { href: "/training", label: "Training", icon: Dumbbell, match: ["/training"] },
+  { href: "/progress", label: "Progress", icon: ChartLine, match: ["/progress", "/home"] },
+  { href: "/leaderboards", label: "Leaderboards", short: "Boards", icon: Trophy, match: ["/leaderboards", "/groups", "/lift"] },
+  { href: "/training", label: "Training", icon: Dumbbell, match: ["/training"], primary: true },
   { href: "/friends", label: "Friends", icon: Users, match: ["/friends"] },
 ];
 const PROFILE = { href: "/profile", label: "Profile", icon: User, match: ["/profile", "/u/", "/settings", "/lifts"] };
-// Phone order: Home | Boards | Training | + | Friends.
-const PHONE_TABS = [TABS[0], TABS[1], TABS[3], TABS[2], TABS[4]];
+// Desktop sidebar: Training first.
+const SIDEBAR_TABS = [TABS[2], TABS[0], TABS[1], TABS[3]];
 
 function isActive(pathname: string, match: string[]) {
   return match.some((m) => pathname === m || pathname.startsWith(m.endsWith("/") ? m : `${m}/`));
@@ -40,33 +41,19 @@ export function AppShell({ username, userId, displayName, avatarPath, unread, st
     <div className="relative isolate min-h-dvh md:grid md:grid-cols-[232px_1fr]">
       <AmbientBackground />
       <KeyboardFix />
-      <NavSpeed userId={userId} stamp={stamp} tabs={["/home", "/leaderboards", "/training", "/friends", profileHref]} />
+      <NavSpeed userId={userId} stamp={stamp} tabs={["/training", "/progress", "/leaderboards", "/friends", profileHref]} />
 
       {/* Desktop: compact frosted sidebar */}
       <aside className="hidden md:flex sticky top-0 h-dvh flex-col border-r border-white/[0.06] bg-white/[0.015] px-3.5 py-6">
         <div className="mb-8 flex items-center justify-between pl-2">
-          <Link href="/home" aria-label="SBLift home">
+          <Link href="/training" aria-label="SBLift home">
             <Logo />
           </Link>
-          <BellLink unread={unread} />
+          <BellLink unread={unread} active={isActive(pathname, ["/notifications", "/activity"])} />
         </div>
         <nav aria-label="Main" className="flex flex-col gap-1">
-          {[...TABS, PROFILE].map((t) => {
+          {[...SIDEBAR_TABS, PROFILE].map((t) => {
             const active = isActive(pathname, t.match);
-            const isAdd = t.href === "/lift/new";
-            if (isAdd) {
-              return (
-                <Link
-                  key={t.href}
-                  href={t.href}
-                  aria-current={active ? "page" : undefined}
-                  className="pearl my-2 flex items-center gap-3 rounded-[14px] px-3 py-2.5 font-semibold transition-[filter] hover:brightness-[1.03]"
-                >
-                  <t.icon size={18} strokeWidth={2.6} />
-                  Submit lift
-                </Link>
-              );
-            }
             return (
               <Link
                 key={t.href}
@@ -91,11 +78,11 @@ export function AppShell({ username, userId, displayName, avatarPath, unread, st
         <OfflineBanner />
         {/* Phones: logo, notifications and your profile, on every page. */}
         <header className="mx-auto flex w-full max-w-[600px] items-center justify-between px-4 pt-safe md:hidden">
-          <Link href="/home" aria-label="SBLift home" className="py-3">
+          <Link href="/training" aria-label="SBLift home" className="py-3">
             <Logo />
           </Link>
           <div className="flex items-center gap-1">
-            <BellLink unread={unread} />
+            <BellLink unread={unread} active={isActive(pathname, ["/notifications", "/activity"])} />
             <Link
               href={profileHref}
               aria-label="Your profile"
@@ -115,10 +102,9 @@ export function AppShell({ username, userId, displayName, avatarPath, unread, st
         className="mobile-tabs md:hidden fixed inset-x-3 z-40"
         style={{ bottom: "calc(10px + var(--safe-bottom))" }}
       >
-        <ul className="glass grid h-[var(--nav-height)] grid-cols-5 rounded-[26px] px-1">
-          {PHONE_TABS.map((t) => {
+        <ul className="glass grid h-[var(--nav-height)] grid-cols-4 rounded-[26px] px-1">
+          {TABS.map((t) => {
             const active = isActive(pathname, t.match);
-            const isAdd = t.href === "/lift/new";
             return (
               <li key={t.href} className="flex">
                 <Link
@@ -126,26 +112,28 @@ export function AppShell({ username, userId, displayName, avatarPath, unread, st
                   aria-current={active ? "page" : undefined}
                   aria-label={t.label}
                   className={cn(
-                    "flex min-w-0 flex-1 flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors",
+                    "flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-medium transition-colors",
                     active ? "text-fg" : "text-fg-3",
                   )}
                 >
-                  {isAdd ? (
-                    <>
-                      <span className="pearl flex h-9 w-9 items-center justify-center rounded-full">
-                        <t.icon size={20} strokeWidth={2.6} />
-                      </span>
-                      <span>{t.short}</span>
-                    </>
+                  {t.primary ? (
+                    // Training stands out with a soft pill behind its icon (bright when active), not an oversized button.
+                    <span
+                      className={cn(
+                        "flex h-8 w-12 items-center justify-center rounded-full transition-colors",
+                        active ? "pearl text-accent-ink" : "bg-white/[0.09] text-fg",
+                      )}
+                    >
+                      <t.icon size={20} strokeWidth={active ? 2.3 : 2} />
+                    </span>
                   ) : (
-                    <>
+                    // Same height as Training's pill, so every label sits on one line.
+                    <span className="flex h-8 items-center">
                       <t.icon size={21} strokeWidth={active ? 2.2 : 1.8} />
-                      <span className="flex items-center gap-1">
-                        {t.short ?? t.label}
-                      </span>
-                      <span aria-hidden className={cn("h-1 w-1 rounded-full", active ? "bg-pearl" : "bg-transparent")} />
-                    </>
+                    </span>
                   )}
+                  <span className={cn("flex items-center gap-1", t.primary && "font-semibold text-fg")}>{t.short ?? t.label}</span>
+                  <span aria-hidden className={cn("h-1 w-1 rounded-full", active && !t.primary ? "bg-pearl" : "bg-transparent")} />
 
                 </Link>
               </li>
@@ -157,12 +145,16 @@ export function AppShell({ username, userId, displayName, avatarPath, unread, st
   );
 }
 
-export function BellLink({ unread }: { unread: number }) {
+export function BellLink({ unread, active = false }: { unread: number; active?: boolean }) {
   return (
     <Link
       href="/notifications"
       aria-label={unread > 0 ? `Notifications, ${unread} unread` : "Notifications"}
-      className="relative inline-flex h-10 w-10 items-center justify-center rounded-full text-fg-2 transition-colors hover:bg-white/[0.06] hover:text-fg"
+      aria-current={active ? "page" : undefined}
+      className={cn(
+        "relative inline-flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-white/[0.06] hover:text-fg",
+        active ? "bg-white/[0.07] text-fg" : "text-fg-2",
+      )}
     >
       <Bell size={20} strokeWidth={1.9} />
       {unread > 0 ? (

@@ -73,8 +73,8 @@ test("Flow M: Start → log freely (RIR, notes, quick changes) → survive leavi
   await saved(page);
 
   // Leaving Training keeps the session (no warning); coming back resumes it.
-  await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Home" }).click();
-  await expect(page).toHaveURL(/\/home/);
+  await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Progress" }).click();
+  await expect(page).toHaveURL(/\/progress/);
   await page.goto("/training");
   await expect(block(page, "Barbell Bench Press").getByLabel("Set 2 weight (lb)")).toHaveValue("205");
 

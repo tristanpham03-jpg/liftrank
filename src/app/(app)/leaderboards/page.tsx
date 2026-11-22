@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { BadgeCheck, Crown } from "lucide-react";
+import { BadgeCheck, Plus, SlidersHorizontal } from "lucide-react";
 import { BoardExercisePicker } from "@/components/boards/board-exercise-picker";
 import { BoardList } from "@/components/boards/board-list";
 import { ModelFilter } from "@/components/boards/model-filter";
@@ -8,25 +8,19 @@ import { GymBoardOptIn } from "@/components/gyms/gym-opt-in";
 import { GymPicker } from "@/components/gyms/gym-picker";
 import { ShareImageButton } from "@/components/share-image-button";
 import { TrackView } from "@/components/track-view";
-import { Avatar } from "@/components/ui/avatar";
-import { GlassCard } from "@/components/ui/glass";
 import { Button } from "@/components/ui/button";
-import { EmptyState, PageHeader, TabLinks } from "@/components/ui/misc";
+import { EmptyState, TabLinks } from "@/components/ui/misc";
 import { cn } from "@/lib/cn";
 import { getCatalog, requireProfile, rpc } from "@/lib/data";
-import { rivalComparison } from "@/lib/rival";
 import { BoardContext } from "@/components/boards/board-context";
-import { formatEstimatedMax, formatLift } from "@/lib/scoring";
+import { formatLift } from "@/lib/scoring";
 import { createClient } from "@/lib/supabase/server";
-import { topPercent } from "@/lib/standing";
 import type {
   Board,
   GroupSummary,
   LiftDefaults,
   MachineOptions,
 } from "@/lib/types";
-import { formatDate } from "@/lib/dates";
-import { getTimeZone } from "@/lib/timezone";
 
 export const metadata: Metadata = { title: "Leaderboards" };
 
@@ -45,11 +39,6 @@ type SearchParams = {
 };
 const RADII = [5, 10, 25] as const;
 
-function since(date: string, tz: string) {
-  const sameYear = formatDate(date, tz, { year: "numeric" }) === formatDate(new Date().toISOString(), tz, { year: "numeric" });
-  return formatDate(date, tz, { month: "short", day: "numeric", ...(sameYear ? {} : { year: "numeric" }) });
-}
-
 export default async function LeaderboardsPage({
   searchParams,
 }: {
@@ -57,7 +46,6 @@ export default async function LeaderboardsPage({
 }) {
   const sp = await searchParams;
   const profile = await requireProfile();
-  const tz = await getTimeZone();
   const unit = profile.preferred_unit;
   const supabase = await createClient();
   const [catalog, defaults, groups] = await Promise.all([
@@ -154,7 +142,6 @@ export default async function LeaderboardsPage({
 
   const method = exercise.ranking_method;
   const me = board?.me;
-  const above = board?.above;
   const pages = board ? Math.max(1, Math.ceil(board.total / PAGE_SIZE)) : 1;
 
   return (
@@ -163,51 +150,33 @@ export default async function LeaderboardsPage({
         event="leaderboard_viewed"
         props={{ exercise: exercise.slug, scope, period, ...(verified ? { verified: "1" } : {}) }}
       />
-      <PageHeader
-        title="Leaderboards"
-        action={
+      {/* Rankings first: a compact header, scope, exercise + period, then the list. */}
+      {/* The actions sit beside the heading, or just below it on the narrowest phones; never off-screen. */}
+      <header className="mb-3 flex flex-wrap items-center justify-between gap-x-2 gap-y-1 pt-2">
+        <h1 className="text-[28px] font-bold leading-tight tracking-[-0.03em]">Leaderboards</h1>
+        <span className="ml-auto flex shrink-0 items-center gap-1.5">
           <Button asChild variant="secondary" size="sm">
+            <Link href={`/lift/new?exercise=${exercise.slug}`}>
+              <Plus size={15} aria-hidden /> Submit lift
+            </Link>
+          </Button>
+          <Button asChild variant="ghost" size="sm">
             <Link href="/groups">Groups</Link>
           </Button>
-        }
-      />
+        </span>
+      </header>
 
-      <div className="space-y-3">
-        <BoardExercisePicker
-          catalog={catalog}
-          value={exercise}
-          recentIds={defaults.recent_exercise_ids}
-        />
+      <div className="space-y-2">
         <TabLinks
           items={[
-            {
-              label: "Friends",
-              href: href({ scope: "friends", group: undefined }),
-              active: scope === "friends",
-            },
-            {
-              label: "Groups",
-              href: href({ scope: "groups" }),
-              active: scope === "groups",
-            },
-            {
-              label: "Gym",
-              href: href({ scope: "gym", group: undefined }),
-              active: scope === "gym",
-            },
-            {
-              label: "Nearby",
-              href: href({ scope: "nearby", group: undefined }),
-              active: scope === "nearby",
-            },
+            { label: "Friends", href: href({ scope: "friends", group: undefined }), active: scope === "friends" },
+            { label: "Groups", href: href({ scope: "groups" }), active: scope === "groups" },
+            { label: "Gym", href: href({ scope: "gym", group: undefined }), active: scope === "gym" },
+            { label: "Nearby", href: href({ scope: "nearby", group: undefined }), active: scope === "nearby" },
           ]}
         />
         {scope === "groups" && groups.length > 1 ? (
-          <div
-            className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4"
-            role="list"
-            aria-label="Groups"
-          >
+          <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-0.5 [scrollbar-width:none]" role="list" aria-label="Groups">
             {groups.map((g) => (
               <Link
                 key={g.id}
@@ -217,9 +186,7 @@ export default async function LeaderboardsPage({
                 aria-current={g.id === group?.id ? "true" : undefined}
                 className={cn(
                   "shrink-0 rounded-full border px-3 py-1.5 text-sm font-medium",
-                  g.id === group?.id
-                    ? "pearl border-transparent"
-                    : "border-white/10 bg-white/[0.04] text-fg-2 hover:text-fg",
+                  g.id === group?.id ? "pearl border-transparent" : "border-white/10 bg-white/[0.04] text-fg-2 hover:text-fg",
                 )}
               >
                 {g.name}
@@ -227,66 +194,65 @@ export default async function LeaderboardsPage({
             ))}
           </div>
         ) : null}
-        <div className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <div
-            className="flex shrink-0 gap-1 text-sm"
-            role="group"
-            aria-label="Time period"
-          >
+
+        <div className="flex items-center gap-2">
+          <BoardExercisePicker catalog={catalog} value={exercise} recentIds={defaults.recent_exercise_ids} compact />
+          <div className="glass-flat flex shrink-0 gap-0.5 rounded-full p-0.5 text-[13px]" role="group" aria-label="Time period">
             {(["all", "month"] as const).map((p) => (
               <Link
                 key={p}
                 href={href({ period: p })}
                 scroll={false}
                 aria-current={period === p ? "true" : undefined}
-                className={cn(
-                  "whitespace-nowrap rounded-full px-3 py-1.5 font-medium",
-                  period === p
-                    ? "bg-white/[0.09] text-fg"
-                    : "text-fg-3 hover:text-fg-2",
-                )}
+                className={cn("whitespace-nowrap rounded-full px-2.5 py-1.5 font-medium", period === p ? "bg-white/[0.1] text-fg" : "text-fg-3 hover:text-fg-2")}
               >
-                {p === "all" ? "All time" : "This month"}
+                {p === "all" ? "All time" : "Month"}
               </Link>
             ))}
           </div>
-          {scope === "nearby" ? (
-            <div
-              className="flex shrink-0 gap-1 text-sm"
-              role="group"
-              aria-label="Distance"
-            >
-              {RADII.map((r) => (
-                <Link
-                  key={r}
-                  href={href({ radius: String(r) })}
-                  scroll={false}
-                  aria-current={radius === r ? "true" : undefined}
-                  className={cn(
-                    "rounded-full px-3 py-1.5 font-medium",
-                    radius === r
-                      ? "bg-white/[0.09] text-fg"
-                      : "text-fg-3 hover:text-fg-2",
-                  )}
-                >
-                  {r} mi
-                </Link>
-              ))}
-            </div>
-          ) : null}
-          <Link
-            href={href({ verified: verified ? undefined : "1" })}
-            scroll={false}
-            aria-pressed={verified}
-            className={cn(
-              "inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-medium",
-              verified ? "bg-white/[0.09] text-fg" : "text-fg-3 hover:text-fg-2",
-            )}
-          >
-            <BadgeCheck size={15} className={verified ? "text-silver" : undefined} aria-hidden />
-            Verified only
-          </Link>
         </div>
+
+        {/* Less frequent settings behind one small control; anything active stays visible on the summary. */}
+        <details className="group" open={verified || Boolean(model) || undefined}>
+          <summary className="flex h-9 cursor-pointer list-none items-center gap-2 text-[13px] [&::-webkit-details-marker]:hidden">
+            <span className="inline-flex h-8 items-center gap-1.5 rounded-full border border-white/10 px-3 font-medium text-fg-2 group-open:border-white/25 group-open:text-fg">
+              <SlidersHorizontal size={14} aria-hidden /> Filters
+              {verified || model || scope === "nearby" ? (
+                <span className="text-fg-3">· {[scope === "nearby" ? `${radius} mi` : null, verified ? "Verified" : null, model ? "1 machine" : null].filter(Boolean).join(", ")}</span>
+              ) : null}
+            </span>
+          </summary>
+          <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[13px]">
+            {scope === "nearby" ? (
+              <div className="flex gap-0.5" role="group" aria-label="Distance">
+                {RADII.map((r) => (
+                  <Link
+                    key={r}
+                    href={href({ radius: String(r) })}
+                    scroll={false}
+                    aria-current={radius === r ? "true" : undefined}
+                    className={cn("rounded-full px-3 py-1.5 font-medium", radius === r ? "bg-white/[0.09] text-fg" : "text-fg-3 hover:text-fg-2")}
+                  >
+                    {r} mi
+                  </Link>
+                ))}
+              </div>
+            ) : null}
+            <Link
+              href={href({ verified: verified ? undefined : "1" })}
+              scroll={false}
+              aria-pressed={verified}
+              className={cn(
+                "inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1.5 font-medium",
+                verified ? "bg-white/[0.09] text-fg" : "text-fg-3 hover:text-fg-2",
+              )}
+            >
+              <BadgeCheck size={15} className={verified ? "text-silver" : undefined} aria-hidden />
+              Verified only
+            </Link>
+            {models.length ? <ModelFilter models={models} value={model?.id ?? null} /> : null}
+          </div>
+        </details>
       </div>
 
       <div className="mt-3">
@@ -351,151 +317,53 @@ export default async function LeaderboardsPage({
               </div>
             ) : null}
             {board.rows.length > 0 ? (
-              <BoardContext
-                exercise={exercise}
-                model={model}
-                machineFilter={models.length ? <ModelFilter models={models} value={model?.id ?? null} /> : null}
-              />
+              <BoardContext exercise={exercise} model={model} />
             ) : null}
-            {me ? (
-              <GlassCard glow="ice" as="div" className="sticky top-2 z-10 mb-4">
-                <div className={cn("flex items-center gap-4 px-4 py-3", board.total > 1 && "pr-14")}>
-                  {board.total <= 1 ? (
-                    <span className="shrink-0 self-start whitespace-nowrap rounded-full border border-white/12 bg-white/[0.06] px-2.5 py-1 text-xs font-medium text-fg-2">
-                      Just you
-                    </span>
-                  ) : (
-                    <div className="min-w-16 text-center">
-                      {topPercent(me.rank, board.total) != null ? (
-                        <>
-                          <span className="block text-xs font-medium text-fg-3">
-                            Top
-                          </span>
-                          <span className="num pearl-text block text-[30px] leading-none">
-                            {topPercent(me.rank, board.total)}%
-                          </span>
-                          <p className="mt-1 text-xs text-fg-3 tabular">
-                            #{me.rank} of {board.total}
-                          </p>
-                        </>
-                      ) : (
-                        <>
-                          <span className="num pearl-text block text-[32px] leading-none">
-                            #{me.rank}
-                          </span>
-                          <p className="mt-1 text-xs text-fg-3 tabular">
-                            of {board.total}
-                          </p>
-                        </>
-                      )}
-                    </div>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm text-fg-3">Your best</p>
-                    <p className="num text-[22px] leading-tight">
-                      {formatLift(me, method, unit, true)}
-                    </p>
-                    {formatEstimatedMax(me.score, method, unit) &&
-                    me.reps !== 1 ? (
-                      <p className="text-sm text-fg-3">
-                        Est. 1RM{" "}
-                        <span className="whitespace-nowrap">{formatEstimatedMax(me.score, method, unit)}</span>
-                      </p>
-                    ) : null}
-                  </div>
-                </div>
-                {board.total > 1 ? (
-                  <ShareImageButton
-                    src={`/cards/leaderboard?${cardQuery}`}
-                    fileName={`liftrank-${exercise.slug}-leaderboard.png`}
-                    title={`${exercise.name} leaderboard`}
-                    event="leaderboard_card_shared"
-                    label="Share this leaderboard"
-                    variant="ghost"
-                    iconOnly
-                    className="absolute right-3 top-3"
-                  />
-                ) : null}
-                {above ? (
-                  <p className="border-t border-white/[0.07] px-4 py-2.5 text-sm text-fg">
-                    <Link
-                      href={`/u/${above.username}`}
-                      className="hover:underline underline-offset-4"
-                    >
-                      {
-                        rivalComparison(me, above, method, unit, above.display_name || above.username || "them", {
-                          mixedMachines: exercise.supports_machine_selection && !model,
-                        }).text
-                      }
-                    </Link>
-                  </p>
-                ) : me.rank === 1 && board.total > 1 ? (
-                  <p className="border-t border-white/[0.07] px-4 py-2.5 text-sm font-medium text-fg">
-                    You’re on top of this board.
-                  </p>
-                ) : null}
-              </GlassCard>
-            ) : null}
-
-            {(scope === "groups" || scope === "gym") &&
-            board.champion?.user_id ? (
-              <div className="glass-flat mb-4 flex items-center gap-3 rounded-[var(--radius-panel)] px-4 py-3">
-                <Crown size={18} className="text-silver shrink-0" aria-hidden />
-                <Avatar
-                  name={board.champion.display_name || board.champion.username}
-                  seed={board.champion.user_id}
-                  path={board.champion.avatar_path}
-                  size={32}
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm text-fg-2">
-                    {period === "month"
-                      ? "Leading this month"
-                      : scope === "gym"
-                        ? `${gym?.name ?? "Gym"} record`
-                        : "Current champion"}
-                  </p>
-                  <p className="font-semibold truncate">
-                    {board.champion.user_id === profile.id
-                      ? "You"
-                      : board.champion.display_name || board.champion.username}
-                    {board.champion.since ? (
-                      <span className="font-normal text-fg-3">
-                        {" "}
-                        since {since(board.champion.since, tz)}
-                      </span>
-                    ) : null}
-                  </p>
-                </div>
-                {board.champion.reps ? (
-                  <span className="num text-lg">
-                    {formatLift(board.champion, method, unit)}
-                  </span>
-                ) : null}
-                {boardKey && board.champion.user_id === profile.id && period === "all" && !model && !verified ? (
-                  <ShareImageButton
-                    src={`/cards/champion?board=${encodeURIComponent(boardKey)}`}
-                    fileName={`liftrank-${exercise.slug}-champion.png`}
-                    title={`${exercise.name} champion`}
-                    event="champion_card_shared"
-                    label="Share your title"
-                    variant="ghost"
-                    iconOnly
-                  />
-                ) : null}
-              </div>
-            ) : null}
-
             {board.rows.length > 0 ? (
               <>
+                {me && !board.rows.some((r) => r.is_me) ? (
+                  <Link
+                    href={href({ page: String(Math.ceil(me.rank / PAGE_SIZE)) })}
+                    className="mb-2 flex items-center justify-between gap-2 rounded-[14px] bg-white/[0.07] px-3.5 py-2 text-sm shadow-[inset_0_0_0_1px_rgba(255,255,255,0.14)]"
+                  >
+                    <span>
+                      You’re <span className="num">#{me.rank}</span> of {board.total}
+                    </span>
+                    <span className="num">{formatLift(me, method, unit, true)}</span>
+                  </Link>
+                ) : null}
                 <BoardList rows={board.rows} method={method} unit={unit} />
-                {historyHref && !verified && !model ? (
-                  <p className="mt-3 px-1 text-sm">
+                <div className="mt-2 flex items-center gap-3 px-1 text-sm">
+                  {historyHref && !verified && !model ? (
                     <Link href={historyHref} className="text-fg-3 underline-offset-4 hover:text-fg-2 hover:underline">
                       Record history
                     </Link>
-                  </p>
-                ) : null}
+                  ) : null}
+                  <span className="ml-auto flex items-center gap-1">
+                    {boardKey && board.champion?.user_id === profile.id && period === "all" && !model && !verified ? (
+                      <ShareImageButton
+                        src={`/cards/champion?board=${encodeURIComponent(boardKey)}`}
+                        fileName={`sblift-${exercise.slug}-champion.png`}
+                        title={`${exercise.name} champion`}
+                        event="champion_card_shared"
+                        label="Share your title"
+                        variant="ghost"
+                        iconOnly
+                      />
+                    ) : null}
+                    {me && board.total > 1 ? (
+                      <ShareImageButton
+                        src={`/cards/leaderboard?${cardQuery}`}
+                        fileName={`sblift-${exercise.slug}-leaderboard.png`}
+                        title={`${exercise.name} leaderboard`}
+                        event="leaderboard_card_shared"
+                        label="Share this leaderboard"
+                        variant="ghost"
+                        iconOnly
+                      />
+                    ) : null}
+                  </span>
+                </div>
                 {pages > 1 ? (
                   <nav
                     className="mt-4 flex items-center justify-between"

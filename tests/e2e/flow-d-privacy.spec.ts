@@ -53,7 +53,7 @@ test("Flow D: a private lift never reaches another user, even a friend", async (
   await expect(b.getByText("405")).toHaveCount(0);
 
   // Feed → nothing about the lift.
-  await b.goto("/home");
+  await b.goto("/activity");
   await expect(b.getByText(/Deadlift/)).toHaveCount(0);
 
   // Owner still sees it as their PR.

@@ -70,12 +70,12 @@ export async function signIn(_: AuthState, formData: FormData): Promise<AuthStat
   if (joined) redirect(`/groups/${joined}?joined=1`);
   const friendInvite = await pendingFriendInvitePath();
   if (friendInvite) redirect(friendInvite);
-  redirect(safeNext(String(formData.get("next") ?? ""), "/home"));
+  redirect(safeNext(String(formData.get("next") ?? ""), "/training"));
 }
 
 export async function signInWithGoogle(formData: FormData) {
   if (!GOOGLE_AUTH_ENABLED) redirect("/login");
-  const next = safeNext(String(formData.get("next") ?? ""), "/home");
+  const next = safeNext(String(formData.get("next") ?? ""), "/training");
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
@@ -104,5 +104,5 @@ export async function updatePassword(_: AuthState, formData: FormData): Promise<
   const supabase = await createClient();
   const { error } = await supabase.auth.updateUser({ password: parsed.data });
   if (error) return { error: authMessage(error.message) };
-  redirect("/home");
+  redirect("/training");
 }

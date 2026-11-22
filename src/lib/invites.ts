@@ -37,7 +37,7 @@ export async function consumePendingInvite(supabase: ServerSupabase): Promise<st
 }
 
 /** Only allow same-site relative redirects. */
-export function safeNext(next: string | null | undefined, fallback = "/home") {
+export function safeNext(next: string | null | undefined, fallback = "/training") {
   if (!next || !next.startsWith("/") || next.startsWith("//") || next.startsWith("/\\")) return fallback;
   return next;
 }

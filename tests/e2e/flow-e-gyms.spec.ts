@@ -66,7 +66,6 @@ test("Flow E: add a gym → review → gym and nearby boards → machine lifts",
   await expect(rows).toHaveCount(2);
   await expect(rows.nth(0)).toContainText(other);
   await expect(rows.nth(1)).toContainText("You");
-  await expect(a.getByText(/behind .+ on estimated 1RM|leads with/)).toBeVisible();
   await a.goto("/leaderboards?exercise=barbell-bench-press&scope=nearby&radius=5");
   await expect(a.locator("ol li")).toHaveCount(2);
   await expect(a.getByText("48.8767")).toHaveCount(0);
@@ -96,6 +95,9 @@ test("Flow E: add a gym → review → gym and nearby boards → machine lifts",
   await expect(a.getByText("Approved", { exact: true })).toBeVisible();
   await a.goto("/leaderboards?exercise=machine-chest-press&scope=gym");
   await expect(a.locator("ol li").first()).toContainText(`Hammer Strength Iso Press ${RUN}`);
+  // The mixed-machines disclosure stays visible; the machine filter itself is under Filters.
+  await expect(a.getByText("Mixed machines · informal")).toBeVisible();
+  await a.locator("summary", { hasText: "Filters" }).click();
   await a.getByLabel("Machine", { exact: true }).selectOption({ label: `Hammer Strength Iso Press ${RUN}` });
   await expect(a).toHaveURL(/model=/);
   await expect(a.locator("ol li")).toHaveCount(1);

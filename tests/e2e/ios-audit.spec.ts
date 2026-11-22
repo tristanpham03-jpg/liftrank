@@ -71,8 +71,10 @@ for (const [tag, device] of Object.entries(DEVICES)) {
       await audit(page, tag, "11-friends", issues);
       await page.goto("/groups/new");
       await audit(page, tag, "12-new-group", issues);
-      await page.goto("/home");
-      await audit(page, tag, "13-home", issues);
+      await page.goto("/progress");
+      await audit(page, tag, "13-progress", issues);
+      await page.goto("/activity");
+      await audit(page, tag, "14-activity", issues);
       for (const note of issues.filter((i) => i.includes("tap target"))) test.info().annotations.push({ type: "tap target", description: note });
       expect(issues.filter((i) => !i.includes("tap target"))).toEqual([]);
     });

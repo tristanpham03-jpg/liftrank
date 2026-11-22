@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { supabaseConfig } from "@/lib/env";
 
 const PROTECTED = [
-  "/home", "/leaderboards", "/lift", "/lifts", "/profile", "/u", "/groups",
+  "/home", "/progress", "/leaderboards", "/lift", "/lifts", "/profile", "/u", "/groups",
   "/friends", "/notifications", "/settings", "/onboarding", "/activity", "/moderation", "/training",
 ];
 const AUTH_PAGES = ["/login", "/signup"];
@@ -46,7 +46,7 @@ export async function proxy(request: NextRequest) {
   }
   if (signedIn && matches(pathname, AUTH_PAGES)) {
     const url = request.nextUrl.clone();
-    url.pathname = "/home";
+    url.pathname = "/training";
     url.search = "";
     return redirectWithCookies(url, response);
   }

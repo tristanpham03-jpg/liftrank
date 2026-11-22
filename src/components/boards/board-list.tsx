@@ -28,7 +28,7 @@ export function BoardRowItem({ row, method, unit }: { row: BoardRow; method: Ran
       <Link
         href={row.username ? `/u/${row.username}` : "#"}
         className={cn(
-          "grid grid-cols-[36px_36px_1fr_auto] items-center gap-3 px-4 py-3 transition-colors hover:bg-white/[0.03]",
+          "grid grid-cols-[32px_36px_1fr_auto] items-center gap-2.5 px-3 py-2.5 transition-colors hover:bg-white/[0.03]",
           row.is_me && "bg-white/[0.08] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.14)] rounded-[16px]",
         )}
       >

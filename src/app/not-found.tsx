@@ -8,7 +8,7 @@ export default function NotFound() {
       <h1 className="mt-4 text-[28px] font-bold tracking-[-0.025em]">This page doesn’t exist, or you can’t see it.</h1>
       <p className="mt-2 text-fg-2">Private lifts and groups only show up for the people they’re shared with.</p>
       <Button asChild size="lg" className="mt-8 self-start">
-        <Link href="/home">Go home</Link>
+        <Link href="/training">Go to Training</Link>
       </Button>
     </main>
   );

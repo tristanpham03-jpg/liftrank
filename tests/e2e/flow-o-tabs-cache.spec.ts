@@ -32,7 +32,7 @@ test("Flow O: five main tabs, instant revisits, fresh data, no cross-account lea
   // 1. Every main tab renders (Profile goes straight to /u/<username>).
   const profile = `/u/${a}`;
   const visits: [string, RegExp][] = [
-    ["/home", /Home/],
+    ["/progress", /Progress/],
     ["/leaderboards", /Leaderboards/],
     ["/training", /My Training/],
     ["/friends", /^Friends$/],
@@ -67,8 +67,8 @@ test("Flow O: five main tabs, instant revisits, fresh data, no cross-account lea
   // 3. Fresh: B sends A a friend request while A's Friends tab is cached; returning shows it.
   await tab(page, "/friends").click();
   await expect(heading(page, /^Friends$/)).toBeAttached();
-  await tab(page, "/home").click();
-  await expect(page).toHaveURL(/\/home$/);
+  await tab(page, "/progress").click();
+  await expect(page).toHaveURL(/\/progress$/);
   await db().from("friendships").insert({ requester_id: bId, addressee_id: aId, status: "pending" });
   await page.waitForTimeout(5_500); // past the check throttle
   await tab(page, "/friends").click();

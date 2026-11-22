@@ -20,7 +20,8 @@ test("Flow A: sign up → onboarding → first lift → ranking, in under a minu
   await expect(page).toHaveURL(/\/leaderboards\?exercise=barbell-bench-press/);
   const myRow = page.getByRole("listitem").filter({ hasText: "You" });
   await expect(myRow).toContainText("185 × 8");
-  await expect(page.getByText("Just you", { exact: true })).toBeVisible();
+  // Your own row is the highlight; the separate "Your best" card is gone, so the rankings sit near the top.
+  await expect(page.getByText("Your best")).toHaveCount(0);
 
   expect(Date.now() - started).toBeLessThan(60_000);
 });
@@ -31,11 +32,12 @@ test("Returning user logs a PR in five taps or fewer", async ({ page }) => {
   await submitLift(page, "200", "5");
   await expect(page.getByText("First lift logged")).toBeVisible();
   await page.getByRole("link", { name: "Continue" }).click();
-  await page.getByRole("button", { name: /Done, take me to my rankings/ }).click();
-  await expect(page).toHaveURL(/\/home/);
+  await page.getByRole("button", { name: /Done, take me to Training/ }).click();
+  await expect(page).toHaveURL(/\/training/);
 
-  // Tap 1: + (Add to leaderboard). Exercise, weight, reps and unit are remembered.
-  await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Submit lift" }).click();
+  // Taps 1–2: Boards → Submit lift. Exercise, weight, reps and unit are remembered.
+  await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Leaderboards" }).click();
+  await page.getByRole("link", { name: "Submit lift" }).click();
   await expect(page.getByLabel("Weight")).toHaveValue("200");
   await expect(page.getByLabel("Reps")).toHaveValue("5");
   // Taps 2–3: change the weight. Tap 4: submit.

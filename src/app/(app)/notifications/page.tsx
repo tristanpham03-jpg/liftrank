@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { timeAgo } from "@/components/feed/feed";
 import { Avatar } from "@/components/ui/avatar";
-import { EmptyState, PageHeader } from "@/components/ui/misc";
+import { EmptyState } from "@/components/ui/misc";
+import { SocialTabs } from "@/components/nav/social-tabs";
 import { cn } from "@/lib/cn";
 import { requireProfile, rpc } from "@/lib/data";
 import { formatLift } from "@/lib/scoring";
@@ -93,10 +94,13 @@ export default async function NotificationsPage() {
 
   return (
     <>
-      <PageHeader
-        title="Notifications"
-        action={unread ? <MarkAllRead /> : null}
-      />
+      <h1 className="sr-only">Notifications</h1>
+      <SocialTabs active="notifications" unread={unread} />
+      {unread ? (
+        <div className="-mt-2 mb-3 flex justify-end">
+          <MarkAllRead />
+        </div>
+      ) : null}
       {items.length ? (
         <div className="space-y-7">
           {[

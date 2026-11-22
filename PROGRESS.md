@@ -2,6 +2,61 @@
 
 _Last updated: 2026-10-15 · Done: Phases 1–7 + friend verification · **Deployed (unlisted) at https://liftrank-roan.vercel.app** · Finishing launch setup (see "Deployment status")_
 
+## 2026-11-22 Phase 1: training-first redesign (no migration; committed locally, not pushed)
+
+**Navigation and routing:**
+- **Tabs:** Progress | Boards | Training | Friends on phone and desktop (the desktop sidebar lists Training first). Home and the Submit (+) tab are gone.
+  - Training is emphasized with a soft pill behind its icon (bright when active), not an oversized button.
+  - The bell and avatar stay in the header, and the bell shows as active on Activity and Notifications.
+- **Training is the signed-in default:**
+  - Login, `safeNext` fallback, email confirm, OAuth, onboarding ("Done, take me to Training"), already-signed-in visits to `/login` and `/signup`, the PWA `start_url`, the logo and the 404 page all go there.
+  - `/home` redirects to `/progress`.
+  - Deep links are unchanged: exercise history, sessions, leaderboards, profiles, `/lift/new` (the Submit route is kept, under Boards).
+
+**Progress (`/progress`), from saved sets and completed sessions only; drafts never count:**
+- **A. Overview (last 30 days):** workouts (completed sessions), sets, training days, PRs (session PRs).
+- **B. Exercise progression:**
+  - A searchable exercise picker (exercises you've logged, most recent first).
+  - Metrics that fit the exercise: Top weight, Reps, Est. 1RM (1RM-ranked exercises only), Volume, and RIR (only if recorded; the average of recorded values).
+  - Left/right shown separately; 1M / 3M / 6M / All.
+  - Other exercises load on demand (`getProgressSets`), so the page never waits on them.
+  - Single points and empty ranges get plain messages.
+- **C. Recent improvements (`lib/progress.ts`, conservative):**
+  - For each exercise and side trained in the last 30 days, the latest day is compared with the previous 180 days.
+  - It reports, in order: more weight for the same reps and RIR; more reps at the same weight and RIR; or an est. 1RM rise of 2.5% or more (1RM-ranked exercises, ranked sets only).
+  - Same RIR means both recorded and equal, or both blank. A blank is never treated as 0.
+  - No comparisons across exercises or sides. Otherwise it shows a neutral message.
+- **D. Recent workouts:** the last 5 sessions, plus links to All sessions and Exercises (history, editing and deleting live there).
+- **E. Empty state:** an introduction and "Start training"; no sample numbers.
+
+**Leaderboards (rankings first):**
+- **New order:** heading with Submit lift and Groups → Friends / Groups / Gym / Nearby → a compact searchable exercise dropdown (no illustration) and All time / Month → Filters (distance for Nearby, Verified only, machine model; active ones are summarized on the Filters label) → rankings.
+- **Removed:** the "Your best" card, the rival line and the champion card.
+- **Kept:**
+  - "Ranked by…" and "Mixed machines · informal" / "Same machine" stay visible.
+  - Your row stays highlighted. If you're on another page of the list, a one-line "You're #N of M" links there.
+  - Record history and both share-card buttons (small, under the list).
+  - All scopes, privacy and eligibility unchanged. Rows are tighter.
+
+**Social:**
+- Behind the bell: **Activity | Notifications** tabs.
+- Activity has the friends-and-groups feed (`get_feed`) and "Check a friend's lift" (`get_proofs_to_check`), both moved from Home.
+- Notifications are unchanged (badge, read/unread, friend-request actions).
+- Home's rankings, rival and summary cards were removed (`components/home/home-sections.tsx` deleted). No data or notifications were touched.
+
+**Training:** unchanged.
+
+**Competitive submission:**
+- Boards → Submit lift.
+- Training history keeps its per-set Submit and the saved-session "Add to board". Nothing is published automatically.
+
+**Measured (local production build against the hosted DB; same harness as before):**
+- Day switch 2–4 ms.
+- Revisiting any tab or Training subpage 4–22 ms.
+- First visits 0.3–0.66 s, with feedback under 25 ms.
+- Progress cold: 0.52 s desktop, 0.66 s phone profile.
+- No regressions.
+
 ## 2026-11-18 Fast main tabs (no migration; committed locally, not pushed)
 
 **Cause:**

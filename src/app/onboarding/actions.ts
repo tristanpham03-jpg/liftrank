@@ -44,5 +44,5 @@ export async function finishOnboarding() {
     const supabase = await createClient();
     await track(supabase, userId, "onboarding_completed");
   }
-  redirect("/home");
+  redirect("/training");
 }

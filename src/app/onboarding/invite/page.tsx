@@ -29,7 +29,7 @@ export default function OnboardingInvitePage() {
         </Button>
         <form action={finishOnboarding}>
           <Button type="submit" variant="ghost" size="lg" block>
-            Done, take me to my rankings
+            Done, take me to Training
           </Button>
         </form>
       </div>

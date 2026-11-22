@@ -571,3 +571,108 @@ describe("routine persistence and alternative slots", () => {
     expect(parseDraft({ v: 1, blocks: [{ key: "a", exerciseId: "x", setCount: 2, values: {}, note: "", slot: 1, alts: [{ exerciseId: "x", setCount: 2 }] }] })!.blocks[0].alts).toBeUndefined();
   });
 });
+
+describe("Progress", () => {
+  let n = 0;
+  const s = (over: Partial<import("./progress").PSet> & { local_date: string }): import("./progress").PSet => ({
+    id: `s${++n}`,
+    exercise_id: "bench",
+    set_number: 1,
+    entered_weight: 100,
+    entered_unit: "kg",
+    weight_kg: 100,
+    reps: 5,
+    score: 116.67,
+    is_ranked: true,
+    side: null,
+    rir: null,
+    session_id: null,
+    ...over,
+  });
+  const methods = new Map<string, import("./types").RankingMethod>([["bench", "e1rm"], ["pullup", "max_reps"], ["supination", "none"]]);
+  const today = "2026-11-22";
+
+  it("overview counts completed sessions, saved sets, distinct days and session PRs in the window", async () => {
+    const { overview } = await import("./progress");
+    const sets = [s({ local_date: "2026-11-20" }), s({ local_date: "2026-11-20" }), s({ local_date: "2026-11-01" }), s({ local_date: "2026-09-01" })];
+    expect(overview(sets, [{ local_date: "2026-11-20", prs: 2 }, { local_date: "2026-08-01", prs: 5 }], "2026-10-24")).toEqual({ workouts: 1, sets: 3, days: 2, prs: 2 });
+  });
+
+  it("more weight for the same reps and RIR is an improvement; a blank RIR is never compared with a recorded one", async () => {
+    const { improvements } = await import("./progress");
+    const before = s({ local_date: "2026-11-10", weight_kg: 100, entered_weight: 100, reps: 5, rir: 2 });
+    const now = s({ local_date: "2026-11-20", weight_kg: 105, entered_weight: 105, reps: 5, rir: 2 });
+    const [w] = improvements([before, now], methods, today);
+    expect(w).toMatchObject({ kind: "weight", now: { weight_kg: 105 }, before: { weight_kg: 100 } });
+    // Same numbers but the old set had no RIR: not like for like (no weight/reps claim); only a clear e1RM jump could count.
+    const noRir = s({ local_date: "2026-11-10", weight_kg: 100, entered_weight: 100, reps: 5, rir: null, score: 116.67 });
+    const now2 = s({ local_date: "2026-11-20", weight_kg: 102, entered_weight: 102, reps: 5, rir: 2, score: 119 });
+    expect(improvements([noRir, now2], methods, today)).toEqual([]);
+  });
+
+  it("more reps at the same weight and RIR; bodyweight compares reps only", async () => {
+    const { improvements } = await import("./progress");
+    const r = improvements(
+      [
+        s({ local_date: "2026-11-10", reps: 6, rir: 1 }),
+        s({ local_date: "2026-11-21", reps: 8, rir: 1 }),
+        s({ exercise_id: "pullup", local_date: "2026-11-01", entered_weight: null, weight_kg: null, reps: 10, score: 10 }),
+        s({ exercise_id: "pullup", local_date: "2026-11-19", entered_weight: null, weight_kg: null, reps: 12, score: 12 }),
+      ],
+      methods,
+      today,
+    );
+    expect(r.map((x) => [x.exerciseId, x.kind, x.now.reps, x.before.reps])).toEqual([
+      ["bench", "reps", 8, 6],
+      ["pullup", "reps", 12, 10],
+    ]);
+  });
+
+  it("never compares left with right or both, and never another exercise", async () => {
+    const { improvements } = await import("./progress");
+    const r = improvements(
+      [
+        s({ local_date: "2026-11-10", side: "left", weight_kg: 20, entered_weight: 20 }),
+        s({ local_date: "2026-11-20", side: "right", weight_kg: 25, entered_weight: 25 }),
+        s({ local_date: "2026-11-10", exercise_id: "supination", weight_kg: 10, entered_weight: 10 }),
+        s({ local_date: "2026-11-20", exercise_id: "bench", weight_kg: 30, entered_weight: 30 }),
+      ],
+      methods,
+      today,
+    );
+    expect(r).toEqual([]);
+  });
+
+  it("estimated 1RM only for 1RM-ranked exercises, only ranked sets, and only a clear (2.5%+) rise", async () => {
+    const { improvements, metricsFor } = await import("./progress");
+    const prior = s({ local_date: "2026-11-10", reps: 3, weight_kg: 110, score: 121 });
+    expect(improvements([prior, s({ local_date: "2026-11-20", reps: 8, weight_kg: 95, score: 120.33 })], methods, today)).toEqual([]);
+    const up = improvements([prior, s({ local_date: "2026-11-20", reps: 8, weight_kg: 100, score: 126.67 })], methods, today);
+    expect(up[0]?.kind).toBe("e1rm");
+    expect(metricsFor("none", [{ rir: null, weight_kg: 10 }])).toEqual(["weight", "reps", "volume"]);
+    expect(metricsFor("max_reps", [{ rir: 1, weight_kg: null }])).toEqual(["reps", "volume", "rir"]);
+    expect(metricsFor("e1rm", [{ rir: null, weight_kg: 100 }])).toEqual(["weight", "reps", "e1rm", "volume"]);
+  });
+
+  it("nothing old, nothing new: no improvement claimed", async () => {
+    const { improvements } = await import("./progress");
+    expect(improvements([s({ local_date: "2026-11-20", weight_kg: 120 })], methods, today)).toEqual([]);
+    expect(improvements([s({ local_date: "2026-08-01" }), s({ local_date: "2026-09-01", weight_kg: 120 })], methods, today)).toEqual([]);
+  });
+
+  it("series: one point per day per side; RIR averages only recorded values; ranges filter by date", async () => {
+    const { series, inRange } = await import("./progress");
+    const sets = [
+      s({ local_date: "2026-11-01", weight_kg: 100, entered_weight: 100, reps: 5, rir: 2 }),
+      s({ local_date: "2026-11-01", weight_kg: 90, entered_weight: 90, reps: 8, rir: null }),
+      s({ local_date: "2026-11-08", weight_kg: 102.5, entered_weight: 102.5, reps: 4, rir: 1 }),
+      s({ local_date: "2026-11-08", side: "left", weight_kg: 500, entered_weight: 500, reps: 1 }),
+    ];
+    expect(series(sets, "e1rm", "kg", "weight", null)).toEqual([{ date: "2026-11-01", value: 100 }, { date: "2026-11-08", value: 102.5 }]);
+    expect(series(sets, "e1rm", "kg", "reps", null).map((p) => p.value)).toEqual([5, 4]);
+    expect(series(sets, "e1rm", "kg", "volume", null).map((p) => p.value)).toEqual([1220, 410]);
+    expect(series(sets, "e1rm", "kg", "rir", null).map((p) => p.value)).toEqual([2, 1]);
+    expect(series(sets, "e1rm", "kg", "weight", "left")).toEqual([{ date: "2026-11-08", value: 500 }]);
+    expect(inRange([{ date: "2026-01-01", value: 1 }, { date: "2026-11-01", value: 2 }], "1m", "2026-11-22")).toEqual([{ date: "2026-11-01", value: 2 }]);
+  });
+});

@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "SBLift",
     short_name: "SBLift",
     description: "Built by lifters. Driven by science.",
-    start_url: "/home",
+    start_url: "/training",
     scope: "/",
     display: "standalone",
     orientation: "portrait",
