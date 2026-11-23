@@ -9,6 +9,7 @@ import { cn } from "@/lib/cn";
 import { Logo } from "./logo";
 import { KeyboardFix } from "./keyboard-fix";
 import { NavSpeed } from "./nav-speed";
+import { NavHistory } from "./nav-history";
 import { OfflineBanner } from "./offline-banner";
 import { UploadProvider } from "@/components/recordings/upload-manager";
 
@@ -41,6 +42,7 @@ export function AppShell({ username, userId, displayName, avatarPath, unread, st
     <div className="relative isolate min-h-dvh md:grid md:grid-cols-[232px_1fr]">
       <AmbientBackground />
       <KeyboardFix />
+      <NavHistory />
       <NavSpeed userId={userId} stamp={stamp} tabs={["/training", "/progress", "/leaderboards", "/friends", profileHref]} />
 
       {/* Desktop: compact frosted sidebar */}

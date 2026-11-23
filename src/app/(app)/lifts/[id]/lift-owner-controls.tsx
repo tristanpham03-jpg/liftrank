@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import { deleteLift } from "@/app/(app)/lift/actions";
 import { Button } from "@/components/ui/button";
 import { FormMessage } from "@/components/ui/form";
+import { returnTo } from "@/components/nav/nav-history";
 
 /** Delete, set apart at the bottom of your own lift. Everything else is under Edit lift. */
 export function DeleteLift({ liftId }: { liftId: string }) {
@@ -27,7 +28,7 @@ export function DeleteLift({ liftId }: { liftId: string }) {
           if (!window.confirm("Delete this lift? It’s removed from your history and every leaderboard.")) return;
           start(async () => {
             const res = await deleteLift(liftId);
-            if (res.ok) router.push("/lifts");
+            if (res.ok) returnTo(router, "/lifts"); // the deleted lift leaves history
             else setError(res.error);
           });
         }}

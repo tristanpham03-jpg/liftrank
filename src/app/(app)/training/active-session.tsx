@@ -398,7 +398,7 @@ function SessionEditor({ session, routine, catalog, unit, recentIds, favoriteIds
       try {
         localStorage.removeItem(storageKey);
       } catch {}
-      router.push(`/training?saved=${session.id}`);
+      router.replace(`/training?saved=${session.id}`); // Back doesn't return to the ended logger
       router.refresh();
     });
 

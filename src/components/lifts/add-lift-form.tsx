@@ -30,6 +30,7 @@ import { MachineField, type MachineValue } from "./machine-field";
 import { LiftResult } from "./lift-result";
 import { localNoon, todayLocal } from "@/lib/dates";
 import { isRankable } from "@/lib/training";
+import { returnTo } from "@/components/nav/nav-history";
 
 const noSubscribe = () => () => {};
 
@@ -218,7 +219,7 @@ export function AddLiftForm({
           if (res.fieldErrors) setErrors(res.fieldErrors);
           return;
         }
-        router.push(`/lifts/${editing.liftId}?saved=1`);
+        returnTo(router, `/lifts/${editing.liftId}?saved=1`); // like closing a sheet: the edit form leaves history
         router.refresh();
         return;
       }

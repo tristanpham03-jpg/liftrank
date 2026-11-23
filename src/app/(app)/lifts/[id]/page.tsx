@@ -14,6 +14,7 @@ import { VerificationBadge } from "@/components/lifts/verification-badge";
 import { ReportButton } from "@/components/report-button";
 import { DeleteLift } from "./lift-owner-controls";
 import { ProofPanel } from "./proof-panel";
+import { BackButton } from "@/components/nav/back-button";
 import { formatDate } from "@/lib/dates";
 import { getTimeZone } from "@/lib/timezone";
 
@@ -55,6 +56,7 @@ export default async function LiftPage({
 
   return (
     <>
+      <BackButton fallback={isOwner || !owner?.username ? "/lifts" : `/u/${owner.username}`} />
       <Panel className="p-6">
         <p className="font-medium text-fg-2">{exercise.name}</p>
         <p className="num text-[56px] leading-none mt-1">{formatLift(lift, exercise.ranking_method, unit, false)}</p>

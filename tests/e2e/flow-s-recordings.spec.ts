@@ -213,10 +213,13 @@ test("Flow S: record during a workout and after it → private, quota-accounted,
   const usedBefore = (await b.rpc("get_recording_usage")).data.used_bytes as number;
   expect(usedBefore).toBe(3 * MB + 2 * MB + MB + MB);
   await expect(page.getByTestId("storage-used")).toHaveText("7.0 MB");
-  // Fill the allowance (a stand-in row for 495 MB of existing videos).
-  const filler = (await db().from("personal_recordings").insert({ user_id: uid, exercise_id: recs[0].exercise_id, object_key: `rec/${"f".repeat(32)}.mp4`, status: "ready", mime: "video/mp4", reserved_bytes: 100 * MB, bytes: 100 * MB, duration_s: 60, completed_at: new Date().toISOString(), expires_at: new Date().toISOString() }).select("id").single()).data!;
-  for (let i = 0; i < 3; i++) await db().from("personal_recordings").insert({ user_id: uid, exercise_id: recs[0].exercise_id, object_key: `rec/${String(i).repeat(32)}.mp4`, status: "ready", mime: "video/mp4", reserved_bytes: 100 * MB, bytes: 100 * MB, duration_s: 60, completed_at: new Date().toISOString(), expires_at: new Date().toISOString() });
-  await db().from("personal_recordings").insert({ user_id: uid, exercise_id: recs[0].exercise_id, object_key: `rec/${"e".repeat(32)}.mp4`, status: "ready", mime: "video/mp4", reserved_bytes: 95 * MB, bytes: 95 * MB, duration_s: 60, completed_at: new Date().toISOString(), expires_at: new Date().toISOString() });
+  // Fill the allowance exactly, whatever the plan says (250 MB since migration 0022), with stand-in rows of ≤100 MB.
+  const quota = (await b.rpc("get_recording_usage")).data.quota_bytes as number;
+  const quotaLabel = `${quota / MB} MB`;
+  const row = (key: string, bytes: number) => ({ user_id: uid, exercise_id: recs[0].exercise_id, object_key: `rec/${key.repeat(32)}.mp4`, status: "ready", mime: "video/mp4", reserved_bytes: bytes, bytes, duration_s: 60, completed_at: new Date().toISOString(), expires_at: new Date().toISOString() });
+  const filler = (await db().from("personal_recordings").insert(row("f", 100 * MB)).select("id").single()).data!;
+  for (let left = quota - usedBefore - 100 * MB, i = 0; left > 0; left -= 100 * MB, i++) await db().from("personal_recordings").insert(row(String(i), Math.min(left, 100 * MB)));
+  expect((await b.rpc("get_recording_usage")).data.used_bytes).toBe(quota);
   await page.goto("/training/exercise/barbell-bench-press");
   await page.getByRole("button", { name: "Add recording" }).click();
   await page.getByRole("dialog", { name: "Add recording" }).getByTestId("upload-input").setInputFiles(file("full.mp4", makeMp4({ seconds: 10, bytes: 2 * MB })));
@@ -225,10 +228,18 @@ test("Flow S: record during a workout and after it → private, quota-accounted,
   await tray(page).getByRole("button", { name: "Dismiss" }).click();
   await page.goto("/settings");
   await expect(page.getByText("Storage is full")).toBeVisible();
-  // Delete one to make room → the upload works.
+  await expect(page.getByText(`/ ${quotaLabel} used`)).toBeVisible();
+  // Over the allowance (as after the 500 → 250 MB change): everything kept, uploads paused, explained.
+  const extra = (await db().from("personal_recordings").insert(row("d", 10 * MB)).select("id").single()).data!;
+  await page.reload();
+  await expect(page.getByText(`You're over the ${quotaLabel} allowance`)).toBeVisible();
+  await expect(page.getByTestId("storage-used")).toHaveText(`${quota / MB + 10} MB`);
+  await db().from("personal_recordings").delete().eq("id", extra.id);
+  // Delete one in Settings to make room → the upload works.
+  await page.reload();
   await page.getByTestId("recording-item").first().getByRole("button", { name: "Delete recording" }).click();
   await page.getByRole("button", { name: "Delete recording" }).last().click();
-  await expect.poll(async () => (await b.rpc("get_recording_usage")).data.used_bytes as number).toBeLessThan(usedBefore + 495 * MB);
+  await expect.poll(async () => (await b.rpc("get_recording_usage")).data.used_bytes as number).toBeLessThan(quota);
   await db().from("personal_recordings").delete().eq("id", filler.id);
   await page.goto("/training/exercise/barbell-bench-press");
   await page.getByRole("button", { name: "Add recording" }).click();

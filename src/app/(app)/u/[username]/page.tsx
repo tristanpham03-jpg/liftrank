@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { BackButton } from "@/components/nav/back-button";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BadgeCheck, Crown, MapPin, Settings } from "lucide-react";
@@ -74,6 +75,7 @@ export default async function ProfilePage({
 
   return (
     <>
+      {isMe ? null : <BackButton fallback="/friends" />}
       <GlassCard glow="lavender" as="div" className="mb-8 animate-rise">
         <div className="p-5">
           <header className="flex items-start gap-4">

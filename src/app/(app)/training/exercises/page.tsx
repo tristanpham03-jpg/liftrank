@@ -35,7 +35,7 @@ export default async function MyExercisesPage() {
 
   return (
     <>
-      <PageHeader title="My Exercises" subtitle="What you've logged and your favorites · only you can see this" />
+      <PageHeader back="/training" title="My Exercises" subtitle="What you've logged and your favorites · only you can see this" />
       <MyExercisesList
         mine={mine}
         catalog={catalog}

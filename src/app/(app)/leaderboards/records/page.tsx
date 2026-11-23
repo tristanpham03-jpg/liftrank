@@ -81,7 +81,7 @@ export default async function RecordsPage({
 
   return (
     <>
-      <PageHeader
+      <PageHeader back="/leaderboards"
         title="Record history"
         subtitle={`${exercise.name} · ${place ?? (kind === "group" ? "Group" : "Gym")}`}
       />

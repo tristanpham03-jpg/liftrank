@@ -15,7 +15,7 @@ export default async function GroupsPage() {
   const groups = await rpc<GroupSummary[]>(supabase, "get_my_groups");
   return (
     <>
-      <PageHeader
+      <PageHeader back="/leaderboards"
         title="Groups"
         subtitle="Private leaderboards for the people you train with."
         action={<Button asChild size="sm"><Link href="/groups/new">New group</Link></Button>}

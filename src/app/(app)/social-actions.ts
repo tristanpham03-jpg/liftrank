@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
+import { redirect, RedirectType } from "next/navigation";
 import { getUserId, rpc, track } from "@/lib/data";
 import { AppError, GENERIC_ERROR } from "@/lib/errors";
 import { SITE_URL } from "@/lib/env";
@@ -86,7 +86,7 @@ export async function createGroup(_: GroupFormState, formData: FormData): Promis
   const me = await getUserId();
   if (me) await track(supabase, me, "group_created");
   revalidatePath("/", "layout");
-  redirect(`/groups/${id}?created=1`);
+  redirect(`/groups/${id}?created=1`, RedirectType.replace); // Back skips the finished form
 }
 
 export async function updateGroup(groupId: string, name: string, description: string) {

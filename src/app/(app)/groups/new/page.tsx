@@ -10,7 +10,7 @@ export default function NewGroupPage() {
   const [state, action, pending] = useActionState(createGroup, {});
   return (
     <>
-      <PageHeader title="New group" subtitle="Groups are private. People join with an invite link." />
+      <PageHeader back="/groups" title="New group" subtitle="Groups are private. People join with an invite link." />
       <form action={action} className="space-y-5" noValidate>
         <div>
           <Label htmlFor="name">Group name</Label>

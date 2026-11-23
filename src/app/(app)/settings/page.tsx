@@ -27,7 +27,7 @@ export default async function SettingsPage() {
   const recItems = (recPage.data ?? []) as unknown as Recording[];
   return (
     <>
-      <PageHeader title="Settings" />
+      <PageHeader back="/profile" title="Settings" />
       <div className="mb-6">
         <AvatarField userId={profile.id} name={profile.display_name || profile.username} path={profile.avatar_path} />
       </div>

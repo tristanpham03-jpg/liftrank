@@ -20,6 +20,10 @@ export const metadata: Metadata = {
     })),
   },
   formatDetection: { telephone: false },
+  // Next emits only the generic `mobile-web-app-capable` for `appleWebApp.capable`. iOS still keys
+  // home-screen launch images (apple-touch-startup-image) off the Apple-prefixed tag; without it an
+  // installed SBLift can start on a blank white screen instead of the dark launch image.
+  other: { "apple-mobile-web-app-capable": "yes" },
 };
 
 export const viewport: Viewport = {

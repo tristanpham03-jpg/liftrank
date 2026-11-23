@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { cn } from "@/lib/cn";
+import { BackButton } from "@/components/nav/back-button";
 
 export function Panel({ className, ...props }: React.ComponentProps<"section">) {
   return <section className={cn("glass rounded-[var(--radius-panel)]", className)} {...props} />;
@@ -14,15 +15,19 @@ export function SectionTitle({ children, action, className }: { children: React.
   );
 }
 
-export function PageHeader({ title, subtitle, action }: { title: React.ReactNode; subtitle?: React.ReactNode; action?: React.ReactNode }) {
+/** `back`: where Back goes when there's no app page behind this one (nested pages only). */
+export function PageHeader({ title, subtitle, action, back }: { title: React.ReactNode; subtitle?: React.ReactNode; action?: React.ReactNode; back?: string }) {
   return (
-    <header className="flex items-start justify-between gap-4 mb-7 pt-2">
+    <>
+    {back ? <BackButton fallback={back} /> : null}
+    <header className={cn("flex items-start justify-between gap-4 mb-7", back ? "pt-0" : "pt-2")}>
       <div className="min-w-0">
         <h1 className="text-[30px] leading-tight font-bold tracking-[-0.03em]">{title}</h1>
         {subtitle ? <p className="mt-1 text-fg-2">{subtitle}</p> : null}
       </div>
       {action ? <div className="shrink-0">{action}</div> : null}
     </header>
+    </>
   );
 }
 

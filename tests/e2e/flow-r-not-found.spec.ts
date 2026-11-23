@@ -52,4 +52,9 @@ test("Flow R: missing and hidden pages answer a real 404; real pages and the sta
   // The startup screen still streams first on a full load of Training.
   const html = await (await page.request.get("/training")).text();
   expect(html).toContain('aria-label="Loading SBLift"');
+  // Installed on an iPhone (start_url /training): iOS only uses the dark launch images with the
+  // Apple-prefixed capable tag; without it the app can open on a blank white screen.
+  expect(html).toContain('<meta name="apple-mobile-web-app-capable" content="yes"/>');
+  expect(html.match(/rel="apple-touch-startup-image"/g)?.length ?? 0).toBeGreaterThanOrEqual(12);
+  expect(html).toMatch(/<html[^>]*style="background-color:#0F131D/);
 });

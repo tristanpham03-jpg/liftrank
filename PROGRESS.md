@@ -2,6 +2,21 @@
 
 _Last updated: 2026-10-15 · Done: Phases 1–7 + friend verification · **Deployed (unlisted) at https://liftrank-roan.vercel.app** · Finishing launch setup (see "Deployment status")_
 
+## 2026-11-22 Back navigation, iPhone startup, Free storage 250 MB (branch `polish-nav-startup-quota`; NOT pushed; migration `…2200` NOT applied)
+
+**Back on nested pages** (`components/nav/back-button.tsx`, `nav-history.tsx`, `lib/nav-history.ts`):
+- One Back control (44 px, chevron + "Back") on all 17 nested pages, through `PageHeader`'s `back` prop or placed directly (lift, group, other people's profiles). Main tabs and your own profile have none.
+- Returns to the page you actually came from (history back: same URL and filters, the cached render, the server-saved active workout). Opened directly, it goes up to the page's parent and replaces itself, so it never bounces.
+- Per-tab in-app history in sessionStorage (survives reload; ignored if it no longer describes the tab). Scroll is remembered per entry (only scrolls you caused) and restored on back, cancelled the moment you touch.
+- Finished forms leave history: saving an edit and deleting a lift go back to the page behind (`returnTo`), creating a group and ending a workout replace instead of push.
+- Tests: `lib/nav-history.test.ts`; Flow T (Chromium and WebKit): workout state + scroll, direct open, URL filters, group form, lift edit ("Saved." then Back to the list), browser back, reload, delete.
+
+**iPhone home-screen startup:** production HTML had the 12 launch images (correct PNG sizes, dark, public) but not `apple-mobile-web-app-capable`: Next 16 emits only `mobile-web-app-capable` for `appleWebApp.capable`, and iOS uses launch images only with the Apple-prefixed tag. Added via `metadata.other`; Flow R asserts it. Separately, WebKit bug 311569 (open) can show a brief white frame between the launch image and first paint on iOS 26 in dark mode; not fixable from the page. iOS captures launch images when the app is added to the Home Screen: remove and re-add after deploying. Not verified on a device (no full Xcode here for the simulator).
+
+**Free video storage 500 → 250 MB** (`…2200_free_video_storage_250mb.sql`, awaiting approval): one row in `storage_plans`; Pro stays 5 GB. Rolled-back test `tests/sql/2200_*`: existing recordings kept for a user at 300 MB, uploads refused until the new file fits, reservations counted, Pro unchanged. Concurrent reservations against a 250 MB test plan: 4 × 100 MB at once → exactly 2; then 3 × 30 MB → exactly 1 (`scripts/check-quota-concurrency.mjs`). Settings explains being over the allowance. Flow S fills to whatever the plan says.
+
+**Results:** unit 83/83, lint, typecheck; full hosted suite 19/19 + Flow S + Flow T, 0 stalls; Flow T in WebKit; iPhone suites 8/8.
+
 ## 2026-11-22 Phase 3 deployed; @sblift reserved (migration `…2100` applied with the owner's approval)
 
 - **Deployed:** `phase-3-recordings` fast-forwarded into main with the SBLift rename (`c8f3c2e`); live ~60 s after push.

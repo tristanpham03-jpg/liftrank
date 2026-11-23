@@ -1,3 +1,4 @@
+import { BackButton } from "@/components/nav/back-button";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -63,6 +64,7 @@ export default async function GroupPage({
 
   return (
     <>
+      <BackButton fallback="/groups" />
       <GlassCard glow="lavender" as="div" className="mb-6 animate-rise">
         <header className="flex items-start gap-4 p-5">
           <Avatar name={group.name} seed={group.id} size={56} className="rounded-[16px] ring-1 ring-white/15" />

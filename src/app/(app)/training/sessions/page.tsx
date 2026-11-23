@@ -32,7 +32,7 @@ export default async function SessionsPage() {
     .sort((a, b) => a.name.localeCompare(b.name));
   return (
     <>
-      <PageHeader title="Sessions" subtitle="Completed training sessions · only you can see this" />
+      <PageHeader back="/training" title="Sessions" subtitle="Completed training sessions · only you can see this" />
       {sessions.length ? (
         <ul className="glass-flat divide-y divide-white/[0.06] overflow-hidden rounded-[18px]">
           {sessions.map((s) => {

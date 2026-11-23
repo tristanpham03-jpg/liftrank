@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft } from "lucide-react";
+import { BackButton } from "@/components/nav/back-button";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge, SectionTitle } from "@/components/ui/misc";
 import { requireProfile, rpc } from "@/lib/data";
@@ -25,10 +25,7 @@ export default async function ManageGroupPage({ params }: { params: Promise<{ id
 
   return (
     <>
-      <Link href={`/groups/${group.id}`} className="mb-4 inline-flex items-center gap-1 pt-2 text-sm text-fg-2 hover:text-fg">
-        <ChevronLeft size={16} aria-hidden />
-        {group.name}
-      </Link>
+      <BackButton fallback={`/groups/${group.id}`} />
       <h1 className="mb-7 text-[30px] font-bold leading-tight tracking-[-0.03em]">{isAdmin ? "Manage group" : "Group settings"}</h1>
 
       {isAdmin ? (

@@ -60,7 +60,7 @@ export default async function ExerciseHistoryPage({ params }: { params: Promise<
 
   return (
     <>
-      <PageHeader title={exercise.name} subtitle="Your history" action={lifts.length ? logAgain : undefined} />
+      <PageHeader back="/lifts" title={exercise.name} subtitle="Your history" action={lifts.length ? logAgain : undefined} />
       {lifts.length === 0 ? (
         <EmptyState
           title={`No ${exercise.name} logged yet.`}

@@ -20,7 +20,7 @@ export default async function AddLiftPage({ searchParams }: { searchParams: Prom
   const initial = exercise ? catalog.find((e) => e.slug === exercise || e.id === exercise)?.id : null;
   return (
     <>
-      <PageHeader title="Submit lift" subtitle="Put a lift on the leaderboards. Training stays private." />
+      <PageHeader back="/leaderboards" title="Submit lift" subtitle="Put a lift on the leaderboards. Training stays private." />
       <TabLinks
         className="mb-4"
         items={[

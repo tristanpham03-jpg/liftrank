@@ -18,6 +18,8 @@ export function VideoStorage({ initialUsage, initial }: { initialUsage: Recordin
   const quota = Number(usage.quota_bytes);
   const pct = quota ? Math.min(100, (used / quota) * 100) : 0;
   const full = used + Number(usage.reserved_bytes) >= quota * 0.98;
+  // Possible after an allowance shrinks: nothing is deleted, but uploads wait until there's room.
+  const over = used > quota;
   return (
     <section className="mt-8" aria-labelledby="video-storage">
       <h2 id="video-storage" className="px-1 text-[17px] font-semibold">
@@ -32,7 +34,9 @@ export function VideoStorage({ initialUsage, initial }: { initialUsage: Recordin
           <div className={full ? "h-full rounded-full bg-warning" : "h-full rounded-full bg-white/60"} style={{ width: `${pct}%` }} />
         </div>
         <p className="mt-2 text-[13px] text-fg-3">
-          {full
+          {over
+            ? `You're over the ${formatBytes(quota)} allowance, so new uploads are paused. Your recordings are kept; delete some to get under ${formatBytes(quota)} and make room for a new one.`
+            : full
             ? "Storage is full, so new uploads are paused. Delete recordings you no longer need to make room. Nothing is ever deleted automatically."
             : `${usage.count} recording${usage.count === 1 ? "" : "s"}. Private to you; nothing is ever deleted automatically.`}
         </p>

@@ -5,7 +5,7 @@
  */
 export const MAX_RECORDING_BYTES = 100 * 1024 * 1024; // 100 MB original file
 export const MAX_RECORDING_SECONDS = 90;
-export const FREE_QUOTA_BYTES = 500 * 1024 * 1024;
+export const FREE_QUOTA_BYTES = 250 * 1024 * 1024; // storage_plans 'free' (migration 0022); the database is the authority
 export const RECORDING_MIMES = ["video/mp4", "video/quicktime", "video/webm"] as const;
 export type RecordingMime = (typeof RECORDING_MIMES)[number];
 /** What the file pickers accept (iPhone camera roll and camera produce MOV or MP4). */

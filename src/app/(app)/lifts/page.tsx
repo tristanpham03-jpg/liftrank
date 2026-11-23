@@ -42,7 +42,7 @@ export default async function LiftHistoryPage({ searchParams }: { searchParams: 
 
   return (
     <>
-      <PageHeader title="Lift history" subtitle={count ? `${count} ${count === 1 ? "lift" : "lifts"} logged` : undefined} />
+      <PageHeader back="/profile" title="Lift history" subtitle={count ? `${count} ${count === 1 ? "lift" : "lifts"} logged` : undefined} />
       {lifts.length === 0 ? (
         <EmptyState title="Your first lift puts you on the board." action={<Button asChild><Link href="/lift/new">Add a lift</Link></Button>} />
       ) : (

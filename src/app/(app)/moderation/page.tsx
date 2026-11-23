@@ -19,7 +19,7 @@ export default async function ModerationPage() {
 
   return (
     <>
-      <PageHeader title="Moderation" subtitle="Approve only what you can confirm is real. Nothing here is ever made up." />
+      <PageHeader back="/settings" title="Moderation" subtitle="Approve only what you can confirm is real. Nothing here is ever made up." />
 
       <section className="mb-10">
         <SectionTitle>Reports ({reports.length})</SectionTitle>

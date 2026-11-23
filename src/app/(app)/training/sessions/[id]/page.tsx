@@ -33,7 +33,7 @@ export default async function SessionPage({ params }: { params: Promise<{ id: st
 
   return (
     <>
-      <PageHeader
+      <PageHeader back="/training/sessions"
         title={session.day_name}
         subtitle={`${formatDate(`${session.local_date}T12:00:00Z`, "UTC", { weekday: "long", month: "short", day: "numeric", year: "numeric" })}${minutes ? ` · ${minutes} min` : ""} · private`}
       />

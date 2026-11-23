@@ -34,6 +34,7 @@ export default async function EditLiftPage({ params }: { params: Promise<{ id: s
   return (
     <>
       <PageHeader
+        back={`/lifts/${id}`}
         title="Edit lift"
         action={
           <Link href={`/lifts/${id}`} className="tap text-sm text-fg-2 hover:text-fg">

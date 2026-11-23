@@ -80,7 +80,7 @@ export default async function TrainingHistoryPage({ params }: { params: Promise<
 
   return (
     <>
-      <PageHeader title={exercise.name} subtitle={`${exerciseMeta(exercise)} · only you can see your history`} />
+      <PageHeader back="/training" title={exercise.name} subtitle={`${exerciseMeta(exercise)} · only you can see your history`} />
       {/* Order: performance → Similar Exercises → Technique Reference → My Recordings → set history. */}
       {!sets.length ? (
         <>
