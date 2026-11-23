@@ -294,9 +294,9 @@ describe("verification wording", () => {
 describe("training templates", () => {
   it("only use exercises that exist in the catalog", async () => {
     const { TEMPLATES, FEATURED_SLUGS } = await import("./training");
-    const { EXERCISE_IMAGES } = await import("./exercise-images"); // one entry per catalog slug
-    for (const t of TEMPLATES) for (const d of t.days) for (const slug of d.exercises) expect(EXERCISE_IMAGES.has(slug), `${t.id}: ${slug}`).toBe(true);
-    for (const slug of FEATURED_SLUGS) expect(EXERCISE_IMAGES.has(slug), slug).toBe(true);
+    const { EXERCISE_MUSCLES } = await import("./exercise-muscles"); // one entry per catalog slug (tested below)
+    for (const t of TEMPLATES) for (const d of t.days) for (const slot of d.exercises) for (const slug of [slot.slug, ...(slot.alts ?? [])]) expect(EXERCISE_MUSCLES[slug], `${t.id}: ${slug}`).toBeDefined();
+    for (const slug of FEATURED_SLUGS) expect(EXERCISE_MUSCLES[slug], slug).toBeDefined();
   });
   it("frequency repeats the same days instead of copying them", async () => {
     const { TEMPLATES, rotationText } = await import("./training");
@@ -306,7 +306,50 @@ describe("training templates", () => {
     expect(rotationText(["Upper", "Lower"], "3x")).toBe("Upper → Lower → Upper → Lower → Upper → Lower");
     expect(rotationText(["Upper", "Lower"], "infinite")).toBe("Upper → Lower → repeat");
     expect(rotationText(["Full Body"], "infinite", "fbeod")).toBe("Full Body → rest → repeat");
-    expect(TEMPLATES.map((t) => t.id)).toEqual(["ul", "ppl", "ap", "arnold", "full_body", "fbeod", "custom"]);
+    // "Full Body Every Other Day" is folded into Full Body; saved fbeod splits still describe themselves.
+    expect(TEMPLATES.map((t) => t.id)).toEqual(["ul", "ppl", "ap", "arnold", "full_body", "custom"]);
+  });
+  it("follow the owner's programming rules", async () => {
+    const { TEMPLATES, templateDayEntries } = await import("./training");
+    const by = (id: string) => TEMPLATES.find((t) => t.id === id)!;
+    const slugs = (d: { exercises: { slug: string; alts?: string[] }[] }) => d.exercises.flatMap((s) => [s.slug, ...(s.alts ?? [])]);
+    const defaults = (d: { exercises: { slug: string }[] }) => d.exercises.map((s) => s.slug);
+    // Frequency choices.
+    expect(by("ul").rotations).toEqual(["2x", "3x", "infinite"]);
+    expect(by("ap").rotations).toEqual(["2x", "3x", "infinite"]);
+    // 2 sets everywhere; Full Body is one day, 1 set each, covering every group.
+    for (const t of TEMPLATES) expect(t.sets, t.id).toBe(t.id === "full_body" ? 1 : 2);
+    expect(by("full_body").days).toHaveLength(1);
+    const days = TEMPLATES.flatMap((t) => t.days.map((d) => ({ t: t.id, d })));
+    for (const { t, d } of days) {
+      const all = slugs(d), def = defaults(d);
+      const tag = `${t}/${d.name}`;
+      expect(all, tag).not.toContain("romanian-deadlift"); // SLDL is the hinge
+      expect(def, tag).not.toContain("preacher-curl");
+      expect(def, tag).not.toContain("triceps-pushdown");
+      // Back days: wide pulldown + wide/T-bar row + close row/pulldown, and Kelso instead of rear-delt flys.
+      if (all.includes("chest-supported-wide-grip-row")) {
+        expect(def, tag).toEqual(expect.arrayContaining(["lat-pulldown", "chest-supported-wide-grip-row", "chest-supported-close-grip-row", "kelso-shrug"]));
+        expect(all, tag).not.toContain("rear-delt-fly");
+      }
+      // Biceps days: recline curl + reverse cable curl. Triceps days: cable extension + JM press.
+      if (def.some((s) => /curl$/.test(s) && !/leg-curl/.test(s))) expect(def, tag).toEqual(expect.arrayContaining(["recline-curl", "reverse-cable-curl"]));
+      if (def.includes("cable-triceps-extension") || def.includes("jm-smith-press")) expect(def, tag).toEqual(expect.arrayContaining(["cable-triceps-extension", "jm-smith-press"]));
+    }
+    // A/P placement: triceps with the presses, biceps with the pulls.
+    const [ant, post] = by("ap").days;
+    expect(defaults(ant)).toEqual(expect.arrayContaining(["cable-triceps-extension", "jm-smith-press"]));
+    expect(defaults(post)).toEqual(expect.arrayContaining(["recline-curl", "reverse-cable-curl"]));
+    expect(defaults(ant)).not.toContain("recline-curl");
+    // Swap slots become alt groups (first = default); single exercises stay plain; unknown slugs are skipped.
+    const ids = (slug: string) => (slug === "missing" ? undefined : `id-${slug}`);
+    const entries = templateDayEntries({ name: "T", exercises: [{ slug: "a", alts: ["b", "missing"] }, { slug: "c" }, { slug: "missing" }] }, 2, ids);
+    expect(entries).toEqual([
+      { exercise_id: "id-a", set_count: 2, alt_group: 1 },
+      { exercise_id: "id-b", set_count: 2, alt_group: 1 },
+      { exercise_id: "id-c", set_count: 2 },
+    ]);
+    for (const t of TEMPLATES) for (const d of t.days) expect(templateDayEntries(d, t.sets, ids).length, `${t.id}/${d.name}`).toBeLessThanOrEqual(30);
   });
   it("suggests the day after the one you last trained, wrapping around", async () => {
     const { nextDayIndex } = await import("./training");
@@ -390,8 +433,17 @@ describe("exercise catalog and muscle search", () => {
     // Works both ways, close alternatives first.
     expect(similarTo("machine-lateral-raise").map((x) => x.slug)).toEqual(expect.arrayContaining(["cable-lateral-raise", "lateral-raise"]));
     const lat = similarTo("lat-pulldown");
-    expect(lat[0]).toMatchObject({ slug: "close-grip-lat-pulldown", type: "close" });
-    expect(lat.filter((x) => x.type === "related").map((x) => x.slug)).toEqual(["pull-up", "close-grip-lat-row"]);
+    // Wide vs close grip are different exercises (adduction vs extension), not swaps; the pull-up is the swap.
+    expect(lat[0]).toMatchObject({ slug: "pull-up", type: "close" });
+    expect(lat.filter((x) => x.type === "related").map((x) => x.slug)).toEqual(["close-grip-lat-pulldown", "close-grip-lat-row"]);
+    const wideRow = similarTo("chest-supported-wide-grip-row");
+    expect(wideRow.find((x) => x.slug === "chest-supported-close-grip-row")?.type).toBe("related");
+    expect(wideRow.find((x) => x.slug === "t-bar-row")?.type).toBe("close");
+    expect(similarTo("cable-triceps-extension").find((x) => x.slug === "jm-smith-press")?.type).toBe("related");
+    expect(similarTo("triceps-pushdown")[0].reason).toMatch(/arm at your side/i);
+    // No reused generic phrases: every pair has its own reason.
+    const reasons = RELATIONS.map((r) => r.reason);
+    for (const generic of ["Same movement, different grip", "Same movement, different angle", "Same muscle emphasis, different movement pattern"]) expect(reasons, generic).not.toContain(generic);
     expect(similarTo("preacher-curl").map((x) => x.slug)).toEqual(["machine-preacher-curl", "dumbbell-preacher-curl"]);
   });
 

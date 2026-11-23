@@ -4,31 +4,92 @@ import type { RankingMethod, WeightUnit } from "./types";
 export type Rotation = "1x" | "2x" | "3x" | "infinite";
 export type TemplateId = "ul" | "ppl" | "ap" | "arnold" | "full_body" | "fbeod" | "custom";
 
+/** One slot in a day: the default exercise, plus swap options for the same slot (chosen per session). */
+export type TemplateSlot = { slug: string; alts?: string[] };
+
 export type TrainingTemplate = {
   id: TemplateId;
   name: string;
   short: string;
   /** Rotations that make sense for this split; the first is the default. */
   rotations: Rotation[];
-  days: { name: string; exercises: string[] }[];
+  /** Working sets for every exercise (owner's rule: 2; Full Body: 1). */
+  sets: number;
+  /** Shown with the frequency choice. */
+  frequencyNote?: string;
+  days: { name: string; exercises: TemplateSlot[] }[];
 };
 
-const UPPER = ["barbell-bench-press", "lat-pulldown", "incline-dumbbell-bench-press", "chest-supported-row", "lateral-raise", "ez-bar-curl", "triceps-pushdown"];
-const LOWER = ["barbell-back-squat", "romanian-deadlift", "leg-extension", "seated-leg-curl", "calf-raise"];
-const LEGS = ["barbell-back-squat", "romanian-deadlift", "leg-press", "leg-extension", "seated-leg-curl", "calf-raise"];
-const FULL = ["barbell-back-squat", "barbell-bench-press", "lat-pulldown", "romanian-deadlift", "lateral-raise"];
+const x = (slug: string, ...alts: string[]): TemplateSlot => (alts.length ? { slug, alts } : { slug });
+
+// Owner's programming rules (docs/training-quality-review.md):
+// - every back day: a wide-grip (frontal-plane) lat pulldown, a wide-grip or T-bar row, and a close-grip row or pulldown;
+//   Kelso Shrug instead of rear-delt flys when there's a wide-grip row;
+// - triceps: a cable extension plus a JM press (overhead extension or dips as swaps), not pushdowns by default;
+// - biceps: a recline curl plus a reverse cable curl for the brachioradialis;
+// - hinge: stiff-leg deadlift.
+const WIDE_PULLDOWN = x("lat-pulldown", "pull-up");
+const WIDE_ROW = x("chest-supported-wide-grip-row", "t-bar-row");
+const CLOSE_ROW = x("chest-supported-close-grip-row", "close-grip-lat-pulldown", "close-grip-lat-row");
+const TRICEPS = [x("cable-triceps-extension"), x("jm-smith-press", "overhead-triceps-extension", "dip")];
+const BICEPS = [x("recline-curl"), x("reverse-cable-curl")];
+const BICEPS_PULL = [x("recline-curl"), x("reverse-cable-curl", "hammer-curl")];
+const LEGS: TemplateSlot[] = [
+  x("seated-leg-curl", "lying-leg-curl"),
+  x("hack-squat", "leg-press", "barbell-back-squat"),
+  x("stiff-leg-deadlift"),
+  x("leg-extension"),
+  x("hip-adduction"),
+  x("calf-raise"),
+  x("cable-crunch", "machine-ab-crunch"),
+];
 
 /** Starter routines. Every exercise is a catalog slug; users can change all of it. */
 export const TEMPLATES: TrainingTemplate[] = [
-  { id: "ul", name: "Upper / Lower", short: "U/L", rotations: ["2x", "1x", "3x", "infinite"], days: [{ name: "Upper", exercises: UPPER }, { name: "Lower", exercises: LOWER }] },
+  {
+    id: "ul",
+    name: "Upper / Lower",
+    short: "U/L",
+    rotations: ["2x", "3x", "infinite"],
+    sets: 2,
+    days: [
+      {
+        name: "Upper",
+        exercises: [
+          x("incline-smith-press", "incline-dumbbell-bench-press"),
+          WIDE_PULLDOWN,
+          WIDE_ROW,
+          CLOSE_ROW,
+          x("machine-shoulder-press", "dumbbell-shoulder-press"),
+          x("pec-deck", "cable-fly"),
+          x("cable-lateral-raise", "machine-lateral-raise"),
+          x("kelso-shrug"),
+          ...TRICEPS,
+          ...BICEPS,
+        ],
+      },
+      { name: "Lower", exercises: LEGS },
+    ],
+  },
   {
     id: "ppl",
     name: "Push / Pull / Legs",
     short: "PPL",
     rotations: ["1x", "2x", "infinite"],
+    sets: 2,
     days: [
-      { name: "Push", exercises: ["barbell-bench-press", "incline-dumbbell-bench-press", "dumbbell-shoulder-press", "lateral-raise", "triceps-pushdown"] },
-      { name: "Pull", exercises: ["pull-up", "chest-supported-row", "lat-pulldown", "rear-delt-fly", "preacher-curl", "hammer-curl"] },
+      {
+        name: "Push",
+        exercises: [
+          x("incline-smith-press", "incline-dumbbell-bench-press"),
+          x("machine-chest-press", "dumbbell-bench-press"),
+          x("machine-shoulder-press"),
+          x("pec-deck", "cable-fly"),
+          x("cable-lateral-raise"),
+          ...TRICEPS,
+        ],
+      },
+      { name: "Pull", exercises: [WIDE_PULLDOWN, WIDE_ROW, CLOSE_ROW, x("kelso-shrug"), ...BICEPS_PULL] },
       { name: "Legs", exercises: LEGS },
     ],
   },
@@ -36,10 +97,29 @@ export const TEMPLATES: TrainingTemplate[] = [
     id: "ap",
     name: "Anterior / Posterior",
     short: "A/P",
-    rotations: ["2x", "1x", "3x", "infinite"],
+    rotations: ["2x", "3x", "infinite"],
+    sets: 2,
+    // Owner's placement: pressing muscles and triceps on Anterior; pulling muscles and biceps on Posterior.
     days: [
-      { name: "Anterior", exercises: ["barbell-bench-press", "incline-dumbbell-bench-press", "lateral-raise", "triceps-pushdown", "barbell-back-squat", "leg-extension"] },
-      { name: "Posterior", exercises: ["pull-up", "chest-supported-row", "rear-delt-fly", "barbell-curl", "romanian-deadlift", "seated-leg-curl"] },
+      {
+        name: "Anterior",
+        exercises: [
+          x("incline-smith-press", "incline-dumbbell-bench-press"),
+          x("machine-chest-press"),
+          x("machine-shoulder-press"),
+          x("pec-deck"),
+          x("cable-lateral-raise"),
+          x("hack-squat", "leg-press"),
+          x("leg-extension"),
+          x("hip-adduction"),
+          ...TRICEPS,
+          x("cable-crunch"),
+        ],
+      },
+      {
+        name: "Posterior",
+        exercises: [WIDE_PULLDOWN, WIDE_ROW, CLOSE_ROW, x("kelso-shrug"), x("stiff-leg-deadlift"), x("seated-leg-curl"), ...BICEPS, x("calf-raise")],
+      },
     ],
   },
   {
@@ -47,21 +127,64 @@ export const TEMPLATES: TrainingTemplate[] = [
     name: "Arnold Split",
     short: "Arnold",
     rotations: ["2x", "1x", "infinite"],
+    sets: 2,
     days: [
-      { name: "Chest / Back", exercises: ["barbell-bench-press", "incline-dumbbell-bench-press", "pull-up", "chest-supported-row", "pec-deck"] },
-      { name: "Shoulders / Arms", exercises: ["dumbbell-shoulder-press", "lateral-raise", "rear-delt-fly", "preacher-curl", "hammer-curl", "triceps-pushdown"] },
+      {
+        name: "Chest / Back",
+        exercises: [
+          x("incline-smith-press"),
+          x("machine-chest-press"),
+          x("lat-pulldown"),
+          WIDE_ROW,
+          x("chest-supported-close-grip-row", "close-grip-lat-pulldown"),
+          x("pec-deck"),
+          x("kelso-shrug"),
+        ],
+      },
+      { name: "Shoulders / Arms", exercises: [x("machine-shoulder-press"), x("cable-lateral-raise"), ...TRICEPS, ...BICEPS_PULL] },
       { name: "Legs", exercises: LEGS },
     ],
   },
-  { id: "full_body", name: "Full Body", short: "Full Body", rotations: ["3x", "1x", "2x", "infinite"], days: [{ name: "Full Body", exercises: FULL }] },
-  { id: "fbeod", name: "Full Body Every Other Day", short: "FBEOD", rotations: ["infinite"], days: [{ name: "Full Body", exercises: FULL }] },
-  { id: "custom", name: "Custom Split", short: "Custom", rotations: ["infinite", "1x", "2x", "3x"], days: [{ name: "Day 1", exercises: [] }] },
+  {
+    // One day that covers every muscle group, 1 set each (replaces "Full Body" A/B and "Full Body Every Other Day").
+    id: "full_body",
+    name: "Full Body",
+    short: "Full Body",
+    rotations: ["3x", "2x", "infinite"],
+    sets: 1,
+    frequencyNote: "Repeat it 2–3 times a week, or every other day.",
+    days: [
+      {
+        name: "Full Body",
+        exercises: [
+          "hack-squat", "incline-smith-press", "lat-pulldown", "chest-supported-wide-grip-row", "chest-supported-close-grip-row",
+          "stiff-leg-deadlift", "machine-shoulder-press", "cable-lateral-raise", "kelso-shrug", "leg-extension", "seated-leg-curl",
+          "cable-triceps-extension", "jm-smith-press", "recline-curl", "reverse-cable-curl", "hip-adduction", "calf-raise", "cable-crunch",
+        ].map((slug) => x(slug)),
+      },
+    ],
+  },
+  { id: "custom", name: "Custom Split", short: "Custom", rotations: ["infinite", "1x", "2x", "3x"], sets: 2, days: [{ name: "Day 1", exercises: [] }] },
 ];
+// "fbeod" (Full Body Every Other Day) is no longer offered; existing saved splits with it keep working.
+
+/**
+ * A template day as routine entries: each slot's exercises share an alt_group (the first is the default);
+ * a slot without swaps is a plain exercise. Exercises missing from the catalog are skipped.
+ */
+export function templateDayEntries(day: TrainingTemplate["days"][number], sets: number, idOf: (slug: string) => string | undefined) {
+  const out: { exercise_id: string; set_count: number; alt_group?: number }[] = [];
+  day.exercises.forEach((slot, i) => {
+    const ids = [slot.slug, ...(slot.alts ?? [])].map(idOf).filter((id): id is string => Boolean(id));
+    if (!ids.length) return;
+    if (ids.length === 1) out.push({ exercise_id: ids[0], set_count: sets });
+    else for (const id of ids) out.push({ exercise_id: id, set_count: sets, alt_group: i + 1 });
+  });
+  return out;
+}
 
 export const ROTATION_LABEL: Record<Rotation, string> = { "1x": "1x", "2x": "2x", "3x": "3x", infinite: "Rotate" };
 
-/** Default working sets: 3 for the first lift of the day, 2 after. Easy to change. */
-export const defaultSetCount = (index: number) => (index === 0 ? 3 : 2);
 
 /** "Upper → Lower → Upper → Lower", or "Upper → Lower → repeat". Frequency repeats days; it never copies them. */
 export function rotationText(days: string[], rotation: Rotation, template?: TemplateId): string {

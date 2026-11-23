@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { devices, expect, test, type Page } from "@playwright/test";
 import { makeMp4 } from "../fixtures/video";
-import { hostedAdmin, signUp, username } from "./helpers";
+import { hostedAdmin, signUp, username, useTestRoutine } from "./helpers";
 
 /**
  * Flow U: training quality fixes. Split switching never duplicates; a dismissed tip stays dismissed
@@ -31,19 +31,9 @@ test("Flow U1: switching splits never duplicates; dismissed tips stay dismissed"
   const uid = await uidOf(name);
   const splits = async () => (await db().from("training_splits").select("id, template, is_active").eq("user_id", uid)).data ?? [];
   const days = async () => (await db().from("training_days").select("id").eq("user_id", uid)).data ?? [];
-  const idempotent = await has0023();
-
-  // Full Body has no incline press: Training Buddy says so. Imported with a double tap.
-  await page.goto("/training");
-  await pickTemplate(page, /^Full Body(?! Every)/);
-  const use = page.getByRole("button", { name: "Use Full Body" });
-  await use.dblclick();
-  await expect(page.getByTestId("training-header")).toBeVisible();
-  if (idempotent) {
-    expect(await splits()).toHaveLength(1);
-    expect(await days()).toHaveLength(1);
-  }
-  const base = (await splits()).length; // 1 with migration 0023; before it, a double tap may still make 2
+  // A routine without an incline press: Training Buddy says so.
+  await useTestRoutine(page, "full");
+  expect(await splits()).toHaveLength(1);
 
   // The tip, dismissed, stays gone across tab switches (cached pages) and a reload.
   const tip = page.getByTestId("buddy-tip");
@@ -60,12 +50,17 @@ test("Flow U1: switching splits never duplicates; dismissed tips stay dismissed"
   await expect(page.getByTestId("training-header")).toBeVisible();
   await expect(tip).toHaveCount(0);
 
-  // Change split → Upper / Lower: a new split; Full Body is kept, saved, and switchable.
+  // Change split → the Upper / Lower template (2×, 3× or rotate), imported with a double tap: exactly one new split.
+  const dayCount0 = (await days()).length;
   await page.goto("/training?change=1");
   await pickTemplate(page, /^Upper \/ Lower/);
-  await page.getByRole("button", { name: "Use U/L" }).click();
+  await expect(page.getByRole("radiogroup", { name: "Frequency" }).getByRole("radio")).toHaveText(["2x", "3x", "Rotate"]);
+  await page.getByRole("button", { name: "Use U/L" }).dblclick();
   await expect(page.getByTestId("split-name")).toContainText("Upper / Lower");
-  expect(await splits()).toHaveLength(base + 1);
+  expect(await splits()).toHaveLength(2);
+  expect(await days()).toHaveLength(dayCount0 + 2);
+  // The new Upper day: Incline Smith Press first, 2 sets.
+  await expect(page.locator("main li").filter({ hasText: "Incline Smith Press" }).first()).toContainText("2 sets");
 
   // Picking Full Body again offers the saved one first: switching creates nothing.
   await page.goto("/training?change=1");
@@ -74,15 +69,72 @@ test("Flow U1: switching splits never duplicates; dismissed tips stay dismissed"
   await expect(page.getByTestId("already-saved")).toBeVisible();
   await page.getByRole("button", { name: "Switch to your saved Full Body" }).click();
   await expect(page.getByTestId("split-name")).toContainText("Full Body");
-  expect(await splits()).toHaveLength(base + 1);
+  expect(await splits()).toHaveLength(2);
   expect((await splits()).filter((s) => s.is_active).map((s) => s.template)).toEqual(["full_body"]);
   // And back again, from the saved list: still two splits, no extra days.
   const dayCount = (await days()).length;
   await page.goto("/training?change=1");
   await page.getByRole("button", { name: "Switch to Upper / Lower" }).click();
   await expect(page.getByTestId("split-name")).toContainText("Upper / Lower");
-  expect(await splits()).toHaveLength(base + 1);
+  expect(await splits()).toHaveLength(2);
   expect(await days()).toHaveLength(dayCount);
+});
+
+test("Flow U4: the default templates import as approved (exercises, order, sets, swaps, frequency)", async ({ page }) => {
+  test.skip(!hostedAdmin(), "Needs the hosted database.");
+  test.setTimeout(180_000);
+  const name = username("trqt");
+  await signUp(page, name);
+  const uid = await uidOf(name);
+  // A day's routine as [slug, sets, swap group] in order.
+  const dayRoutine = async (day: string) => {
+    const d = (await db().from("training_days").select("id, split_id, training_splits!inner(is_active)").eq("user_id", uid).eq("name", day).eq("training_splits.is_active", true).single()).data!;
+    const rows = (await db().from("training_day_exercises").select("set_count, alt_group, exercises(slug)").eq("day_id", d.id).order("position")).data ?? [];
+    return rows.map((r) => [(r.exercises as unknown as { slug: string }).slug, r.set_count, r.alt_group]);
+  };
+  const use = async (template: RegExp, button: string, frequency: string[]) => {
+    await page.goto("/training?change=1");
+    await pickTemplate(page, template);
+    await expect(page.getByRole("radiogroup", { name: "Frequency" }).getByRole("radio")).toHaveText(frequency);
+    await page.getByRole("button", { name: button }).click();
+    await expect(page.getByTestId("training-header")).toBeVisible();
+  };
+
+  // Full Body: one day, every group, 1 set each, no swaps.
+  await use(/^Full Body(?! Every)/, "Use Full Body", ["3x", "2x", "Rotate"]);
+  const full = await dayRoutine("Full Body");
+  expect(full.map((r) => r[0])).toEqual([
+    "hack-squat", "incline-smith-press", "lat-pulldown", "chest-supported-wide-grip-row", "chest-supported-close-grip-row",
+    "stiff-leg-deadlift", "machine-shoulder-press", "cable-lateral-raise", "kelso-shrug", "leg-extension", "seated-leg-curl",
+    "cable-triceps-extension", "jm-smith-press", "recline-curl", "reverse-cable-curl", "hip-adduction", "calf-raise", "cable-crunch",
+  ]);
+  expect(full.every((r) => r[1] === 1 && r[2] === null)).toBe(true);
+  await expect(page.getByRole("list", { name: "Templates" }).getByRole("button", { name: /Every Other Day/ })).toHaveCount(0);
+
+  // Anterior / Posterior: triceps with the presses, biceps with the pulls; 2 sets; swaps as slots.
+  await use(/^Anterior \/ Posterior/, "Use A/P", ["2x", "3x", "Rotate"]);
+  const ant = await dayRoutine("Anterior");
+  const post = await dayRoutine("Posterior");
+  expect(ant.every((r) => r[1] === 2) && post.every((r) => r[1] === 2)).toBe(true);
+  const defaults = (rows: unknown[][]) => rows.filter((r, i) => r[2] === null || rows.findIndex((x) => x[2] === r[2]) === i).map((r) => r[0]);
+  expect(defaults(ant)).toEqual([
+    "incline-smith-press", "machine-chest-press", "machine-shoulder-press", "pec-deck", "cable-lateral-raise", "hack-squat",
+    "leg-extension", "hip-adduction", "cable-triceps-extension", "jm-smith-press", "cable-crunch",
+  ]);
+  expect(defaults(post)).toEqual([
+    "lat-pulldown", "chest-supported-wide-grip-row", "chest-supported-close-grip-row", "kelso-shrug", "stiff-leg-deadlift",
+    "seated-leg-curl", "recline-curl", "reverse-cable-curl", "calf-raise",
+  ]);
+  // The close-grip slot offers the close-grip pulldown and cable row as swaps; the wide row offers the T-bar row.
+  const slot = (rows: unknown[][], slug: string) => rows.filter((r) => r[2] !== null && r[2] === rows.find((x) => x[0] === slug)?.[2]).map((r) => r[0]);
+  expect(slot(post, "chest-supported-close-grip-row")).toEqual(["chest-supported-close-grip-row", "close-grip-lat-pulldown", "close-grip-lat-row"]);
+  expect(slot(post, "chest-supported-wide-grip-row")).toEqual(["chest-supported-wide-grip-row", "t-bar-row"]);
+  expect(slot(ant, "jm-smith-press")).toEqual(["jm-smith-press", "overhead-triceps-extension", "dip"]);
+  // In a session, a swap slot is one row with a choice (the default selected).
+  await page.getByRole("navigation", { name: "Training days" }).getByRole("link", { name: /^Posterior/ }).click();
+  await page.getByRole("button", { name: "Start Posterior" }).first().click();
+  await expect(page.getByTestId("active-session")).toBeVisible();
+  await expect(page.getByRole("radiogroup", { name: "Choose one" }).first()).toBeVisible();
 });
 
 test.describe("iPhone SE", () => {
@@ -132,9 +184,7 @@ test("Flow U3: deleting a completed workout: recordings kept or deleted by choic
   };
 
   // Two workouts of bench: 185 × 5, then 205 × 5 (with a recording and a leaderboard entry).
-  await page.goto("/training");
-  await pickTemplate(page, /^Upper \/ Lower/);
-  await page.getByRole("button", { name: "Use U/L" }).click();
+  await useTestRoutine(page, "ul");
   const workout = async (weight: string) => {
     // Always the Upper day (after End, the rotation moves on to Lower, which has no bench).
     await page.goto("/training");

@@ -5,7 +5,7 @@ import { getCatalog, getUserId, rpc, track } from "@/lib/data";
 import { AppError, GENERIC_ERROR } from "@/lib/errors";
 import { createClient } from "@/lib/supabase/server";
 import { MAX_RIR, newBlock, routineToDraft, type Draft, type SessionSet } from "@/lib/session";
-import { TEMPLATES, defaultSetCount, type Rotation, type Side, type TemplateId } from "@/lib/training";
+import { TEMPLATES, templateDayEntries, type Rotation, type Side, type TemplateId } from "@/lib/training";
 import { previousFor, type Previous } from "@/lib/training-previous";
 import { deleteObjects, recordingsEnabled } from "@/lib/recordings/r2";
 import type { ActionResult, LiftVisibility, SubmitResult, WeightUnit } from "@/lib/types";
@@ -48,7 +48,7 @@ export async function importSplit(templateId: TemplateId, rotation: Rotation, re
   const bySlug = new Map((await getCatalog()).map((e) => [e.slug, e.id]));
   const days = template.days.map((d) => ({
     name: d.name,
-    exercises: d.exercises.flatMap((slug, i) => (bySlug.has(slug) ? [{ exercise_id: bySlug.get(slug), set_count: defaultSetCount(i) }] : [])),
+    exercises: templateDayEntries(d, template.sets, (slug) => bySlug.get(slug)),
   }));
   if (requestId !== undefined && !UUID.test(requestId)) return { ok: false, error: "Pick a split." };
   const args = { p_name: template.name, p_template: template.id, p_rotation: rotation, p_days: days };

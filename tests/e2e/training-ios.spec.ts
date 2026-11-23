@@ -1,5 +1,5 @@
 import { devices, expect, test } from "@playwright/test";
-import { hostedAdmin, signUp, username } from "./helpers";
+import { hostedAdmin, signUp, username, useTestRoutine } from "./helpers";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const { defaultBrowserType, ...se } = devices["iPhone SE"];
@@ -16,8 +16,7 @@ test("My Training fits a 320 px iPhone", async ({ page }) => {
   test.skip(!admin || Boolean((await admin.from("training_sessions").select("id").limit(1)).error), "Needs migration 0018.");
   await signUp(page, username("trse"));
   await page.goto("/training");
-  await page.getByRole("button", { name: /Push \/ Pull \/ Legs/ }).click();
-  await page.getByRole("button", { name: "Use PPL" }).click();
+  await useTestRoutine(page, "ppl");
   await page.getByRole("button", { name: "Start Push" }).click();
   await expect(page.getByTestId("active-session")).toBeVisible();
   await expect(page.getByLabel("Set 1 reps").first()).toBeVisible();

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { hostedAdmin, signUp, username } from "./helpers";
+import { hostedAdmin, signUp, username, useTestRoutine } from "./helpers";
 
 /** Phase 2: text-first exercises, curated Similar Exercises, technique links, and a dark, splash-free start. */
 const db = () => hostedAdmin()!;
@@ -31,20 +31,20 @@ test("Flow Q: no exercise pictures, curated similar exercises, technique links, 
   await page.goto("/training/exercise/cable-lateral-raise");
   const similar = page.getByRole("region", { name: "Similar exercises" });
   const close = similar.getByRole("group", { name: "Close alternatives" });
-  await expect(close.getByRole("link", { name: /Machine Lateral Raise/ })).toContainText("Same primary target, different equipment");
-  await expect(close.getByRole("link", { name: /Behind-the-Back Cable Lateral Raise/ })).toContainText("Similar movement, different setup");
+  await expect(close.getByRole("link", { name: /Machine Lateral Raise/ })).toContainText("Lateral raise; the machine fixes the path");
+  await expect(close.getByRole("link", { name: /Behind-the-Back Cable Lateral Raise/ })).toContainText("more tension at the bottom");
   // Its technique video is catalogued but not yet reviewed by the owner: hidden until approved.
   await expect(page.getByRole("region", { name: "Technique reference" })).toHaveCount(0);
   if (process.env.E2E_SHOTS) await page.screenshot({ path: `${process.env.E2E_SHOTS}/exercise-page-390.png`, fullPage: true });
   await page.goto("/training/exercise/lat-pulldown");
-  await expect(page.getByRole("group", { name: "Related exercises" }).getByRole("link", { name: /Pull-Up/ })).toBeVisible();
+  // Pull-up is the swap; the close-grip pulldown is a different exercise (pulls in front, not from the side).
+  await expect(page.getByRole("group", { name: "Close alternatives" }).getByRole("link", { name: /Pull-Up/ })).toBeVisible();
+  await expect(page.getByRole("group", { name: "Related exercises" }).getByRole("link", { name: /Close-Grip Lat Pulldown/ })).toContainText("Train both");
   await expect(page.getByRole("region", { name: "Technique reference" })).toHaveCount(0); // none verified: nothing shown
 
   // 3. Training: Swap shows curated suggestions first and stays session-only; "Add alternative to routine" persists.
   await page.goto("/training");
-  await page.getByRole("button", { name: /Upper \/ Lower/ }).click();
-  await page.getByRole("radio", { name: "Rotate" }).click();
-  await page.getByRole("button", { name: "Use U/L" }).click();
+  await useTestRoutine(page, "ul");
   const upperId = async () => (await db().from("training_days").select("id").eq("user_id", uid).eq("name", "Upper").single()).data!.id as string;
   const routine = async () =>
     ((await db().from("training_day_exercises").select("alt_group, exercises(slug)").eq("day_id", await upperId()).order("position")).data ?? []).map((r) => [

@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { devices, expect, test, type Locator, type Page } from "@playwright/test";
 import { makeMp4 } from "../fixtures/video";
-import { hostedAdmin, signUp, username } from "./helpers";
+import { hostedAdmin, signUp, username, useTestRoutine } from "./helpers";
 
 /**
  * My Recordings on iPhones (WebKit), run on demand with the recordings stand-in:
@@ -79,9 +79,7 @@ for (const [tag, device] of Object.entries(DEVICES)) {
 
       // 1. Logger → ⋯ → Add recording…: a bottom sheet that fits, with big Record / Upload buttons.
       await page.goto("/training");
-      await page.getByRole("button", { name: /Upper \/ Lower/ }).click();
-      await page.getByRole("radio", { name: "Rotate" }).click();
-      await page.getByRole("button", { name: "Use U/L" }).click();
+      await useTestRoutine(page, "ul");
       await page.getByRole("button", { name: "Start Upper" }).click();
       await expect(page.getByTestId("active-session")).toBeVisible();
       const bench = block(page, "Barbell Bench Press");

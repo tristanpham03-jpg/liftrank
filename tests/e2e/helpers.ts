@@ -57,7 +57,11 @@ export async function createConfirmedAndSignIn(page: Page, name: string) {
 }
 
 /** Creates an account, picks a username and skips the gym step. Leaves the page on /onboarding/lift. */
+/** Which test user each page signed up as (for helpers that act as that user). */
+const signedUpAs = new WeakMap<Page, string>();
+
 export async function signUp(page: Page, name: string, opts: { from?: "landing" | "signup" } = {}) {
+  signedUpAs.set(page, name);
   await createAccount(page, name, opts);
   await page.getByLabel("Username").fill(name);
   await page.getByRole("button", { name: "Continue" }).click();
@@ -194,4 +198,48 @@ export async function signIn(page: Page, name: string) {
   await page.getByLabel("Password").fill(PASSWORD);
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).not.toHaveURL(/\/login/);
+}
+
+/**
+ * A fixed routine for tests that exercise sessions, recordings, Back and so on, rather than the default templates
+ * (which change as the programming is refined). Imported through the real import_training_split, as the
+ * signed-up user, then Training is opened. "ul": Upper (Bench first, 3 sets) / Lower; "ppl": Push / Pull / Legs;
+ * "full": one day with no incline press (triggers Training Buddy's split observation).
+ */
+const TEST_ROUTINES = {
+  ul: {
+    name: "Upper / Lower", template: "ul",
+    days: [
+      { name: "Upper", exercises: ["barbell-bench-press", "lat-pulldown", "incline-dumbbell-bench-press", "chest-supported-row", "lateral-raise", "ez-bar-curl", "triceps-pushdown"] },
+      { name: "Lower", exercises: ["barbell-back-squat", "romanian-deadlift", "leg-extension", "seated-leg-curl", "calf-raise"] },
+    ],
+  },
+  ppl: {
+    name: "Push / Pull / Legs", template: "ppl",
+    days: [
+      { name: "Push", exercises: ["barbell-bench-press", "incline-dumbbell-bench-press", "dumbbell-shoulder-press", "lateral-raise", "triceps-pushdown"] },
+      { name: "Pull", exercises: ["pull-up", "chest-supported-row", "lat-pulldown", "rear-delt-fly", "preacher-curl", "hammer-curl"] },
+      { name: "Legs", exercises: ["barbell-back-squat", "romanian-deadlift", "leg-press", "leg-extension", "seated-leg-curl", "calf-raise"] },
+    ],
+  },
+  full: {
+    name: "Full Body", template: "full_body",
+    days: [{ name: "Full Body", exercises: ["barbell-back-squat", "barbell-bench-press", "lat-pulldown", "romanian-deadlift", "lateral-raise"] }],
+  },
+} as const;
+
+export async function useTestRoutine(page: Page, kind: keyof typeof TEST_ROUTINES = "ul") {
+  const name = signedUpAs.get(page);
+  if (!name) throw new Error("useTestRoutine: sign up first (signUp)");
+  const admin = hostedAdmin();
+  if (!admin) throw new Error("useTestRoutine needs the hosted database");
+  const r = TEST_ROUTINES[kind];
+  const slugs = [...new Set(r.days.flatMap((d) => d.exercises as readonly string[]))];
+  const ids = new Map(((await admin.from("exercises").select("id, slug").in("slug", slugs)).data ?? []).map((e) => [e.slug as string, e.id as string]));
+  const days = r.days.map((d) => ({ name: d.name, exercises: d.exercises.map((slug, i) => ({ exercise_id: ids.get(slug), set_count: i === 0 ? 3 : 2 })) }));
+  const client = await signedInClient(name);
+  const { error } = await client.rpc("import_training_split", { p_name: r.name, p_template: r.template, p_rotation: "infinite", p_days: days, p_request_id: crypto.randomUUID() });
+  if (error) throw new Error(`useTestRoutine: ${error.message}`);
+  await page.goto("/training");
+  await expect(page.getByTestId("training-header")).toBeVisible();
 }

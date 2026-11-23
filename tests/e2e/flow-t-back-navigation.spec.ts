@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { signUp, submitLift, username } from "./helpers";
+import { signUp, submitLift, username, useTestRoutine } from "./helpers";
 
 /**
  * Flow T: Back on nested pages returns to the page you actually came from:
@@ -18,9 +18,7 @@ test("Flow T: Back returns to the real previous page with its state", async ({ p
 
   // 1. A workout in progress: scroll down the logger, type, open an exercise's history, Back.
   await page.goto("/training");
-  await page.getByRole("button", { name: /Upper \/ Lower/ }).click();
-  await page.getByRole("radio", { name: "Rotate" }).click();
-  await page.getByRole("button", { name: "Use U/L" }).click();
+  await useTestRoutine(page, "ul");
   await page.getByRole("button", { name: "Start Upper" }).click();
   await expect(page.getByTestId("active-session")).toBeVisible();
   const blocks = page.locator("main section").filter({ has: page.getByLabel("Set 1 reps") });

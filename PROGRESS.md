@@ -2,6 +2,30 @@
 
 _Last updated: 2026-10-15 · Done: Phases 1–7 + friend verification · **Deployed (unlisted) at https://liftrank-roan.vercel.app** · Finishing launch setup (see "Deployment status")_
 
+## 2026-11-23 Approved default templates and Similar Exercises corrections (branch `training-quality`; NOT pushed)
+
+- **Templates** (`src/lib/training.ts`), following the owner's rules (`docs/training-quality-review.md`):
+  - **Rules applied:** every back day has a wide-grip (frontal) lat pulldown, a wide-grip or T-bar row, and a close-grip row or pulldown, with Kelso instead of rear-delt flys. Triceps are a cable extension plus a JM press. Biceps are a recline curl plus a reverse cable curl. The hinge is the stiff-leg deadlift.
+  - **Sets:** 2 per exercise everywhere.
+  - **Full Body:** one day, every muscle group, 1 set each. "Full Body Every Other Day" is folded in; saved fbeod splits keep working.
+  - **Frequency:** U/L and A/P offer 2×, 3× or rotate.
+  - **A/P placement:** triceps on Anterior, biceps on Posterior (the owner's arrangement).
+  - **Swaps:** become routine slots (`templateDayEntries`). All 35 slugs were checked active in the live catalog.
+- **Similar Exercises** (`src/lib/exercise-relations.ts`):
+  - every pair has its own short reason (the generic phrases are gone);
+  - wide vs close-grip pulldowns and rows, pull-up vs chin-up, and triceps extension vs JM press are "related" (train both), not swaps;
+  - pulldown ↔ pull-up, wide row ↔ T-bar, close row ↔ close pulldown ↔ close lat row and hammer ↔ reverse cable curl are close;
+  - the pushdown note is corrected.
+  - Pending (needs a catalog row, i.e. a migration): Seated Calf Raise.
+- **Owner's unused duplicate A/P split deleted:**
+  - **Checks:** inactive, 0 workouts, 0 sets.
+  - **Removal:** one guarded transaction.
+  - **After:** the active split (2 days, 25 exercises), 15 workouts and 388 sets are unchanged.
+- **Tests:**
+  - **Rule unit tests:** they check every template against the rules above and prove the 30-entry day limit holds.
+  - **Session-focused flows** use a fixed test routine (`useTestRoutine`), so they no longer depend on template contents.
+  - **Flow U4:** imports the new templates through the chooser and checks the exact exercises, order, sets, swap slots and frequency options.
+
 ## 2026-11-23 Training quality update (branch `training-quality`; NOT pushed; migration `…2300` APPLIED with the owner's approval)
 
 - **0023 applied:**

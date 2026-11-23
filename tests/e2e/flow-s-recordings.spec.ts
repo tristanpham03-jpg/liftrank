@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 import { makeMp4 } from "../fixtures/video";
-import { hostedAdmin, signedInClient, signUp, username } from "./helpers";
+import { hostedAdmin, signedInClient, signUp, username, useTestRoutine } from "./helpers";
 
 /**
  * Flow S: My Recordings (private set videos). Needs migration 0020 on the
@@ -49,9 +49,7 @@ test("Flow S: record during a workout and after it → private, quota-accounted,
   const rows = async () => (await db().from("personal_recordings").select("*").eq("user_id", uid).order("created_at")).data ?? [];
 
   await page.goto("/training");
-  await page.getByRole("button", { name: /Upper \/ Lower/ }).click();
-  await page.getByRole("radio", { name: "Rotate" }).click();
-  await page.getByRole("button", { name: "Use U/L" }).click();
+  await useTestRoutine(page, "ul");
   await page.getByRole("button", { name: "Start Upper" }).click();
   await expect(page.getByTestId("active-session")).toBeVisible();
   const bench = block(page, "Barbell Bench Press");

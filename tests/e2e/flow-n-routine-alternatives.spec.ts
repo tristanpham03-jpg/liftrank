@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { hostedAdmin, signUp, username } from "./helpers";
+import { hostedAdmin, signUp, username, useTestRoutine } from "./helpers";
 
 /** Hosted only, and only once migration 0019 (alternative slots) is applied. */
 async function ready() {
@@ -36,9 +36,7 @@ test("Flow N: session-only vs saved-to-routine, alternative slots, My Exercises"
   };
 
   await page.goto("/training");
-  await page.getByRole("button", { name: /Upper \/ Lower/ }).click();
-  await page.getByRole("radio", { name: "Rotate" }).click();
-  await page.getByRole("button", { name: "Use U/L" }).click();
+  await useTestRoutine(page, "ul");
   await expect(page.getByRole("button", { name: "Start Upper" })).toBeVisible();
   const upperBefore = await routineOf("Upper");
 

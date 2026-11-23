@@ -1,6 +1,6 @@
 import { readFileSync, statSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
-import { hostedAdmin, signUp, username } from "./helpers";
+import { hostedAdmin, signUp, username, useTestRoutine } from "./helpers";
 
 /**
  * Navigation timing (opt-in: E2E_PERF=1, against a local production build with
@@ -69,9 +69,7 @@ for (const mode of ["desktop", "mobile"] as const) {
     }
     await signUp(page, username(mode === "desktop" ? "perf" : "perfm"));
     await page.goto("/training");
-    await page.getByRole("button", { name: /Push \/ Pull \/ Legs/ }).click();
-    await page.getByRole("radio", { name: "Rotate" }).click();
-    await page.getByRole("button", { name: "Use PPL" }).click();
+    await useTestRoutine(page, "ppl");
     await expect(page.getByRole("button", { name: /^Start / }).first()).toBeVisible();
     await page.waitForTimeout(1500);
     await page.evaluate(() => ((window as unknown as { __perfMark?: boolean }).__perfMark = true));
@@ -128,9 +126,7 @@ for (const mode of ["desktop", "mobile"] as const) {
     }
     await signUp(page, username(mode === "desktop" ? "perft" : "perftm"));
     await page.goto("/training");
-    await page.getByRole("button", { name: /Push \/ Pull \/ Legs/ }).click();
-    await page.getByRole("radio", { name: "Rotate" }).click();
-    await page.getByRole("button", { name: "Use PPL" }).click();
+    await useTestRoutine(page, "ppl");
     await expect(page.getByRole("button", { name: /^Start / }).first()).toBeVisible();
     await page.goto("/progress");
     await page.waitForTimeout(1500);

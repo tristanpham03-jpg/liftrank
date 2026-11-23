@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { hostedAdmin, signIn, signUp, username } from "./helpers";
+import { hostedAdmin, signIn, signUp, username, useTestRoutine } from "./helpers";
 
 /** Hosted only, and only once migration 0018 (training_sessions) is applied. */
 async function ready() {
@@ -30,9 +30,7 @@ test("Flow M: Start → log freely (RIR, notes, quick changes) → survive leavi
   const setRows = async () => (await db().from("training_sets").select("exercise_id, side, entered_weight, reps, rir, session_id").eq("user_id", uid)).data ?? [];
 
   await page.goto("/training");
-  await page.getByRole("button", { name: /Upper \/ Lower/ }).click();
-  await page.getByRole("radio", { name: "Rotate" }).click();
-  await page.getByRole("button", { name: "Use U/L" }).click();
+  await useTestRoutine(page, "ul");
 
   // Opening a day saves nothing and starts nothing.
   await expect(page.getByRole("button", { name: "Start Upper" })).toBeVisible();

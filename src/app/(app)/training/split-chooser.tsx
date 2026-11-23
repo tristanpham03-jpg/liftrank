@@ -132,7 +132,7 @@ export function SplitChooser({ saved }: { saved: Saved[] }) {
             </div>
           ) : null}
           <p className="px-1 text-sm text-fg-2">
-            {rotationText(template.days.map((d) => d.name), rotation, template.id)}. No fixed weekdays: train the next day whenever you train.
+            {rotationText(template.days.map((d) => d.name), rotation, template.id)}. {template.frequencyNote ?? "No fixed weekdays: train the next day whenever you train."}
           </p>
           <FormMessage>{error}</FormMessage>
           {sameTemplate.length ? (

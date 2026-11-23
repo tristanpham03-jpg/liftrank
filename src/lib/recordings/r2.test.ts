@@ -119,7 +119,8 @@ describe("R2 storage (against the signing stand-in)", () => {
   });
 
   it("deletes (missing objects count as gone)", async () => {
-    expect(await r2.deleteObjects([KEY, `rec/${"c".repeat(32)}.mov`, "not-a-key"])).toEqual([KEY, `rec/${"c".repeat(32)}.mov`]);
+    // Deleted in parallel: compare as a set.
+    expect((await r2.deleteObjects([KEY, `rec/${"c".repeat(32)}.mov`, "not-a-key"])).sort()).toEqual([KEY, `rec/${"c".repeat(32)}.mov`].sort());
     expect(await r2.headObject(KEY)).toBeNull();
   });
 });

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { PASSWORD, emailOf, hostedAdmin, signUp, username } from "./helpers";
+import { PASSWORD, emailOf, hostedAdmin, signUp, username, useTestRoutine } from "./helpers";
 
 /**
  * Main tabs with the client cache: every tab renders, revisits are served
@@ -24,9 +24,7 @@ test("Flow O: five main tabs, instant revisits, fresh data, no cross-account lea
 
   // A's training split, so Training has something only A should ever see.
   await page.goto("/training");
-  await page.getByRole("button", { name: /Push \/ Pull \/ Legs/ }).click();
-  await page.getByRole("radio", { name: "Rotate" }).click();
-  await page.getByRole("button", { name: "Use PPL" }).click();
+  await useTestRoutine(page, "ppl");
   await expect(page.getByRole("button", { name: "Start Push" })).toBeVisible();
 
   // 1. Every main tab renders (Profile goes straight to /u/<username>).
