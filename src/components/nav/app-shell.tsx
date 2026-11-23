@@ -10,8 +10,9 @@ import { Logo } from "./logo";
 import { KeyboardFix } from "./keyboard-fix";
 import { NavSpeed } from "./nav-speed";
 import { OfflineBanner } from "./offline-banner";
+import { UploadProvider } from "@/components/recordings/upload-manager";
 
-type Props = { username: string; userId: string; displayName: string | null; avatarPath: string | null; unread: number; stamp: string; children: React.ReactNode };
+type Props = { username: string; userId: string; displayName: string | null; avatarPath: string | null; unread: number; stamp: string; recordings?: boolean; children: React.ReactNode };
 
 // Training-first: Training | Progress | Boards | Friends. Training (the default
 // landing page) is the emphasized tab. Competition is one tab, Boards, which
@@ -31,7 +32,7 @@ function isActive(pathname: string, match: string[]) {
   return match.some((m) => pathname === m || pathname.startsWith(m.endsWith("/") ? m : `${m}/`));
 }
 
-export function AppShell({ username, userId, displayName, avatarPath, unread, stamp, children }: Props) {
+export function AppShell({ username, userId, displayName, avatarPath, unread, stamp, recordings = false, children }: Props) {
   const pathname = usePathname();
   // Straight to your profile page (/profile would redirect there: one extra round trip on every visit).
   const profileHref = `/u/${encodeURIComponent(username)}`;
@@ -92,7 +93,9 @@ export function AppShell({ username, userId, displayName, avatarPath, unread, st
             </Link>
           </div>
         </header>
-        <main className="mx-auto w-full max-w-[600px] px-4 pb-nav md:pb-16 md:pt-10">{children}</main>
+        <main className="mx-auto w-full max-w-[600px] px-4 pb-nav md:pb-16 md:pt-10">
+          <UploadProvider enabled={recordings}>{children}</UploadProvider>
+        </main>
       </div>
 
       {/* Mobile: floating frosted tab bar */}

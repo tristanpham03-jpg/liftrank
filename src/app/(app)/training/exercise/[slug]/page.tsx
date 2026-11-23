@@ -14,6 +14,9 @@ import { exerciseMeta } from "@/lib/exercise-labels";
 import { similarTo } from "@/lib/exercise-relations";
 import { techniqueVideoFor } from "@/lib/technique-videos";
 import type { Exercise } from "@/lib/types";
+import { MyRecordings } from "@/components/recordings/recording-list";
+import { recordingsEnabled } from "@/lib/recordings/r2";
+import { RECORDING_COLUMNS, type Recording } from "@/lib/recordings/types";
 import { HistoryRow } from "./history-row";
 
 export const metadata: Metadata = { title: "Training history" };
@@ -31,14 +34,28 @@ export default async function TrainingHistoryPage({ params }: { params: Promise<
   const method = exercise.ranking_method;
 
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("training_sets")
-    .select("*") // includes `side` once migration 0017 exists
-    .eq("user_id", profile.id)
-    .eq("exercise_id", exercise.id)
-    .order("local_date", { ascending: false })
-    .order("set_number")
-    .limit(500);
+  const recordings = recordingsEnabled();
+  // In parallel: the sets, and (when recordings are on) the newest 12 recordings' metadata plus which sets have one. No video is fetched.
+  const [{ data }, recPage, recMarks] = await Promise.all([
+    supabase
+      .from("training_sets")
+      .select("*") // includes `side` once migration 0017 exists
+      .eq("user_id", profile.id)
+      .eq("exercise_id", exercise.id)
+      .order("local_date", { ascending: false })
+      .order("set_number")
+      .limit(500),
+    recordings
+      ? supabase.from("personal_recordings").select(RECORDING_COLUMNS).eq("user_id", profile.id).eq("exercise_id", exercise.id).order("created_at", { ascending: false }).limit(13)
+      : Promise.resolve({ data: null }),
+    recordings
+      ? supabase.from("personal_recordings").select("id, training_set_id").eq("user_id", profile.id).eq("exercise_id", exercise.id).not("training_set_id", "is", null).limit(1000)
+      : Promise.resolve({ data: null }),
+  ]);
+  const recItems = (recPage.data ?? []) as unknown as Recording[];
+  const myRecordings = recordings ? <MyRecordings exercise={{ id: exercise.id, name: exercise.name }} initial={{ items: recItems.slice(0, 12), more: recItems.length > 12 }} /> : null;
+  const recordingsBySet = new Map<string, string[]>();
+  for (const r of (recMarks.data ?? []) as { id: string; training_set_id: string }[]) recordingsBySet.set(r.training_set_id, [...(recordingsBySet.get(r.training_set_id) ?? []), r.id]);
   const sets = (data ?? []) as TrainingSet[];
   const { data: linked } = sets.length
     ? await supabase.from("lifts").select("id, training_set_id").eq("user_id", profile.id).is("deleted_at", null).in("training_set_id", sets.map((s) => s.id))
@@ -64,13 +81,14 @@ export default async function TrainingHistoryPage({ params }: { params: Promise<
   return (
     <>
       <PageHeader title={exercise.name} subtitle={`${exerciseMeta(exercise)} · only you can see your history`} />
-      {/* Order: performance → Similar Exercises → Technique Reference → (Phase 3: My Recordings) → set history. */}
+      {/* Order: performance → Similar Exercises → Technique Reference → My Recordings → set history. */}
       {!sets.length ? (
         <>
           <EmptyState title={`No ${exercise.name} sets logged yet.`} body="Log sets from My Training and they show up here." />
           <div className="mt-6 space-y-6">
             <SimilarExercises exercise={exercise} catalog={catalog} />
             <TechniqueReference slug={exercise.slug} />
+            {myRecordings}
           </div>
         </>
       ) : (
@@ -97,13 +115,14 @@ export default async function TrainingHistoryPage({ params }: { params: Promise<
           )}
           <SimilarExercises exercise={exercise} catalog={catalog} />
           <TechniqueReference slug={exercise.slug} />
+          {myRecordings}
           <h2 className="px-1 text-[17px] font-semibold">History</h2>
           {[...byDate.entries()].map(([date, list]) => (
             <section key={date} aria-label={dayLabel(date)}>
               <h2 className="mb-2 px-1 text-sm font-medium text-fg-2">{dayLabel(date)}</h2>
               <ul className="glass-flat divide-y divide-white/[0.06] overflow-hidden rounded-[18px]">
                 {list.map((s) => (
-                  <HistoryRow key={s.id} set={s} exercise={exercise} unit={unit} isBest={bestIds.has(s.id)} boardLiftId={boardLift.get(s.id) ?? null} />
+                  <HistoryRow key={s.id} set={s} exercise={exercise} unit={unit} isBest={bestIds.has(s.id)} boardLiftId={boardLift.get(s.id) ?? null} recordingIds={recordingsBySet.get(s.id)} />
                 ))}
               </ul>
             </section>

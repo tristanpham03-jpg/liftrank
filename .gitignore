@@ -60,3 +60,4 @@ next-env.d.ts
 CLAUDE.md
 AGENTS.md
 LIFTRANK_BUILD_PROMPT.md
+/.e2e-r2.log

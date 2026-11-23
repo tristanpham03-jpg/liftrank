@@ -47,11 +47,16 @@ export type SessionSet = {
   unit: WeightUnit | null;
   reps: number;
   rir: number | null;
+  /** "<block key>/<row key>": lets End attach a recording made during the workout to this saved set. */
+  ref?: string;
 };
 
 export type RowError = { blockKey: string; rowKey: string; message: string };
 
 export const MAX_RIR = 10;
+
+/** How a recording made during a workout points at a draft row until End saves it as a set. */
+export const draftRowRef = (blockKey: string, rowKey: string) => `${blockKey}/${rowKey}`.slice(0, 120);
 export const EMPTY_ROW: RowValues = { w: "", r: "", rir: "" };
 
 export function rowKey(n: number, side: Side | null): string {
@@ -147,7 +152,7 @@ export function draftToSets(
         err(`RIR is a whole number from 0 to ${MAX_RIR}.`);
         continue;
       }
-      sets.push({ exercise_id: block.exerciseId, side: row.side, weight, unit: bodyweight ? null : unit, reps, rir });
+      sets.push({ exercise_id: block.exerciseId, side: row.side, weight, unit: bodyweight ? null : unit, reps, rir, ref: draftRowRef(block.key, row.key) });
     }
   }
   return { sets, errors };

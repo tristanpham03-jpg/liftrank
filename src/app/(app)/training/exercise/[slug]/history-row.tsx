@@ -3,7 +3,10 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { Video } from "lucide-react";
+import { deleteRecording } from "@/app/(app)/recordings/actions";
 import { Badge } from "@/components/ui/misc";
+import { useConfirm } from "@/components/ui/confirm";
 import { Button } from "@/components/ui/button";
 import { localNoon, todayLocal } from "@/lib/dates";
 import { formatEstimatedMax, formatNumber } from "@/lib/scoring";
@@ -14,8 +17,24 @@ import { deleteSet, updateSet } from "../../actions";
 const field = "h-11 w-full min-w-0 rounded-[10px] border border-white/10 bg-white/[0.05] px-2 text-center text-base tabular outline-none focus:border-white/40";
 
 /** One logged set: correct it, move its date, delete it, or put it on the boards. */
-export function HistoryRow({ set, exercise, unit, isBest, boardLiftId }: { set: TrainingSet; exercise: Exercise; unit: WeightUnit; isBest: boolean; boardLiftId: string | null }) {
+export function HistoryRow({
+  set,
+  exercise,
+  unit,
+  isBest,
+  boardLiftId,
+  recordingIds = [],
+}: {
+  set: TrainingSet;
+  exercise: Exercise;
+  unit: WeightUnit;
+  isBest: boolean;
+  boardLiftId: string | null;
+  /** Your recordings of this set (shown as a small camera mark; deleting the set asks what to do with them). */
+  recordingIds?: string[];
+}) {
   const router = useRouter();
+  const [dialog, ask] = useConfirm();
   const bodyweight = exercise.ranking_method === "max_reps";
   const w = setWeight(set, unit);
   const [editing, setEditing] = useState(false);
@@ -40,6 +59,11 @@ export function HistoryRow({ set, exercise, unit, isBest, boardLiftId }: { set: 
           {set.side ? <span className="ml-0.5 text-[11px] font-medium">{set.side === "left" ? "L" : "R"}</span> : null}
         </span>
         <span className="min-w-0 flex-1">
+          {recordingIds.length ? (
+            <span className="float-right mt-1 text-fg-3" title="Recorded" aria-label={`${recordingIds.length} recording${recordingIds.length === 1 ? "" : "s"}`} data-testid="set-recorded">
+              <Video size={14} aria-hidden />
+            </span>
+          ) : null}
           <span className="num block text-lg leading-tight">{formatSet(set, exercise.ranking_method, unit, { withUnit: true, convention: exercise.weight_convention })}</span>
           <span className="text-[13px] text-fg-2">
             {[e1rm && set.is_ranked ? `est. 1RM ${e1rm}` : null, set.rir != null ? `${set.rir} RIR` : null].filter(Boolean).join(" · ")}
@@ -65,6 +89,7 @@ export function HistoryRow({ set, exercise, unit, isBest, boardLiftId }: { set: 
 
   return (
     <li className="space-y-2 px-4 py-3">
+      {dialog}
       <div className="grid grid-cols-3 gap-2">
         {bodyweight ? (
           <span className="flex flex-col justify-end text-sm text-fg-3">
@@ -143,12 +168,30 @@ export function HistoryRow({ set, exercise, unit, isBest, boardLiftId }: { set: 
           variant="ghost"
           className="ml-auto text-danger"
           disabled={pending}
-          onClick={() => {
+          onClick={async () => {
             const msg = boardLiftId
               ? "Delete this set from your training history? Its leaderboard entry stays as it is."
               : "Delete this set from your training history?";
-            if (!window.confirm(msg)) return;
+            let withRecordings = false;
+            if (recordingIds.length) {
+              // Never delete a recording silently: keep it on the exercise, or delete it too.
+              const answer = await ask({
+                title: "Delete this set?",
+                body: `${msg} It has ${recordingIds.length === 1 ? "a recording" : `${recordingIds.length} recordings`}.`,
+                confirm: "Delete set, keep recording",
+                alt: "Delete set and recording",
+                danger: true,
+              });
+              if (!answer) return;
+              withRecordings = answer === "alt";
+            } else if (!window.confirm(msg)) return;
             start(async () => {
+              if (withRecordings) {
+                for (const id of recordingIds) {
+                  const r = await deleteRecording(id);
+                  if (!r.ok) return setError(r.error);
+                }
+              }
               const res = await deleteSet(set.id);
               if (!res.ok) return setError(res.error);
               router.refresh();

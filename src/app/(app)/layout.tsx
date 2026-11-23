@@ -1,6 +1,7 @@
 import { AppShell } from "@/components/nav/app-shell";
 import { getUserId, rpc, requireProfile } from "@/lib/data";
 import { freshnessStamp } from "@/lib/freshness";
+import { recordingsEnabled } from "@/lib/recordings/r2";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -14,7 +15,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     userId ? freshnessStamp(supabase, userId).catch(() => "") : Promise.resolve(""),
   ]);
   return (
-    <AppShell username={profile.username} userId={profile.id} displayName={profile.display_name} avatarPath={profile.avatar_path} unread={unread} stamp={stamp}>
+    <AppShell username={profile.username} userId={profile.id} displayName={profile.display_name} avatarPath={profile.avatar_path} unread={unread} stamp={stamp} recordings={recordingsEnabled()}>
       {children}
     </AppShell>
   );

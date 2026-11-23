@@ -14,10 +14,20 @@ logged npx playwright install chromium || { echo "STATUS: FAILED playwright inst
 echo "▶ Building LiftRank for testing"
 NEXT_DIST_DIR=.next-e2e NEXT_PUBLIC_SITE_URL=http://127.0.0.1:3210 logged npx next build || { echo "STATUS: FAILED build" >> "$LOG"; exit 1; }
 
+# My Recordings (Flow S): E2E_RECORDINGS=1 points the app at the local R2 stand-in (scripts/r2-standin.mjs),
+# which checks signatures like R2. Never a real bucket. Needs migration 0020 on the database.
+STANDIN=""
+if [ "${E2E_RECORDINGS:-}" = "1" ]; then
+  export R2_ACCESS_KEY_ID=standin-access R2_SECRET_ACCESS_KEY=standin-secret R2_BUCKET=sblift-recordings-test R2_ENDPOINT=http://127.0.0.1:3211
+  echo "▶ Starting the R2 stand-in on port 3211"
+  R2_STANDIN_PORT=3211 node scripts/r2-standin.mjs > .e2e-r2.log 2>&1 &
+  STANDIN=$!
+fi
+
 echo "▶ Starting the test server on port 3210"
 LR_NET_DEBUG=1 NEXT_DIST_DIR=.next-e2e npx next start -p 3210 -H 127.0.0.1 > .e2e-server.log 2>&1 &
 SERVER=$!
-trap 'kill $SERVER 2>/dev/null' EXIT
+trap 'kill $SERVER $STANDIN 2>/dev/null' EXIT
 for _ in $(seq 1 60); do curl -s -o /dev/null http://127.0.0.1:3210 && break; sleep 1; done
 
 echo "▶ Running the browser flows"

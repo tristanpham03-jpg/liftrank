@@ -6,6 +6,8 @@ import { getCatalog, requireProfile } from "@/lib/data";
 import { formatDate } from "@/lib/dates";
 import { createClient } from "@/lib/supabase/server";
 import { formatSet, type TrainingSet } from "@/lib/training";
+import { SessionAddRecording } from "@/components/recordings/session-add-recording";
+import { recordingsEnabled } from "@/lib/recordings/r2";
 
 export const metadata: Metadata = { title: "Session" };
 
@@ -47,7 +49,15 @@ export default async function SessionPage({ params }: { params: Promise<{ id: st
                 <Link href={`/training/exercise/${ex.slug}`} className="font-semibold hover:underline underline-offset-4">
                   {ex.name}
                 </Link>
-                <span className="text-xs text-fg-3">Edit in history</span>
+                {recordingsEnabled() ? (
+                  <SessionAddRecording
+                    exercise={{ id: ex.id, name: ex.name }}
+                    sessionId={session.id}
+                    sets={mine.map((s) => ({ id: s.id, local_date: s.local_date, set_number: s.set_number, side: s.side ?? null, entered_weight: s.entered_weight, entered_unit: s.entered_unit, reps: s.reps, rir: s.rir ?? null }))}
+                  />
+                ) : (
+                  <span className="text-xs text-fg-3">Edit in history</span>
+                )}
               </div>
               {notes[exId] ? <p className="whitespace-pre-wrap px-3.5 pb-1 text-[13px] text-fg-2">{notes[exId]}</p> : null}
               <ol className="divide-y divide-white/[0.05]">

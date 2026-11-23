@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { deleteObjects, recordingsEnabled } from "@/lib/recordings/r2";
 
 /**
  * Daily maintenance, called by Vercel Cron (vercel.json), which sends
@@ -7,6 +8,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
  *     has closed (close_monthly_records; idempotent, catches up 3 months).
  *  2. Removes proof videos nobody uses any more (proof_orphans decides which).
  *  3. Removes profile pictures nobody uses any more (avatar_orphans).
+ *  4. My Recordings: drops lapsed upload reservations and removes queued files
+ *     from R2 (cancelled, failed, deleted, or their account deleted). Never a
+ *     recording someone still has: only keys whose database row is gone.
  */
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET;
@@ -36,5 +40,19 @@ export async function GET(request: Request) {
     const res = await admin.storage.from("avatars").remove(stale.slice(i, i + 100));
     if (res.error) return Response.json({ ok: false, step: "avatars", error: res.error.message }, { status: 500 });
   }
-  return Response.json({ ok: true, monthly_champions: months.data ?? 0, proofs_removed: removed, avatars_removed: stale.length });
+  let recordingsRemoved = 0;
+  if (recordingsEnabled()) {
+    for (let round = 0; round < 5; round++) {
+      const queued = await admin.rpc("recording_maintenance");
+      if (queued.error) return Response.json({ ok: false, step: "recordings", error: queued.error.message }, { status: 500 });
+      const keys = (queued.data ?? []) as string[];
+      if (!keys.length) break;
+      const gone = await deleteObjects(keys);
+      const done = await admin.rpc("recording_objects_removed", { p_keys: gone });
+      if (done.error) return Response.json({ ok: false, step: "recordings", error: done.error.message }, { status: 500 });
+      recordingsRemoved += gone.length;
+      if (gone.length < keys.length) break; // R2 refused some: try again tomorrow
+    }
+  }
+  return Response.json({ ok: true, monthly_champions: months.data ?? 0, proofs_removed: removed, avatars_removed: stale.length, recordings_removed: recordingsRemoved });
 }

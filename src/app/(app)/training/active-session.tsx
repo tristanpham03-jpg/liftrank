@@ -4,7 +4,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { DropdownMenu } from "radix-ui";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, useTransition } from "react";
-import { ChevronRight, MoreHorizontal, Plus, Minus, Split, StickyNote } from "lucide-react";
+import { ChevronRight, MoreHorizontal, Plus, Minus, Split, StickyNote, Video } from "lucide-react";
+import { deleteRecording, listRecordings, updateRecording } from "@/app/(app)/recordings/actions";
+import { AddRecordingDialog, type TargetOption } from "@/components/recordings/add-recording";
+import { useUploads } from "@/components/recordings/upload-manager";
+import type { Recording } from "@/lib/recordings/types";
 import { toggleFavorite } from "@/app/(app)/lift/actions";
 import { ExercisePicker } from "@/components/lifts/exercise-picker";
 import { Button } from "@/components/ui/button";
@@ -18,6 +22,7 @@ import {
   blockHasInput,
   blockRows,
   differsFromRoutine,
+  draftRowRef,
   draftToRoutine,
   draftToSets,
   normalizeRoutine,
@@ -102,6 +107,66 @@ function SessionEditor({ session, routine, catalog, unit, recentIds, favoriteIds
   const [finishError, setFinishError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [pending, start] = useTransition();
+
+  // ───── Recordings made during this workout (optional; never blocks logging) ─────
+  const uploads = useUploads();
+  const [sessionRecs, setSessionRecs] = useState<Recording[]>([]);
+  const [recordingFor, setRecordingFor] = useState<DraftBlock | null>(null);
+  useEffect(() => {
+    if (!uploads.enabled) return;
+    let live = true;
+    void listRecordings({ sessionId: session.id }).then((res) => live && res.ok && setSessionRecs(res.data.items));
+    const off = uploads.subscribe((e) => {
+      if (e.type === "removed") setSessionRecs((all) => all.filter((r) => r.id !== e.id));
+      else if (e.upload.recording?.session_id === session.id) setSessionRecs((all) => [e.upload.recording!, ...all.filter((r) => r.id !== e.upload.recording!.id)]);
+    });
+    return () => {
+      live = false;
+      off();
+    };
+  }, [uploads.enabled, uploads.subscribe, session.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Draft row ref → recordings (saved, or still uploading) attached to it.
+  const recRefs = useMemo(() => {
+    const m = new Map<string, { ids: string[]; uploading: string[] }>();
+    const at = (ref: string) => m.get(ref) ?? m.set(ref, { ids: [], uploading: [] }).get(ref)!;
+    for (const r of sessionRecs) if (r.draft_ref) at(r.draft_ref).ids.push(r.id);
+    for (const u of uploads.uploads)
+      if (u.target.sessionId === session.id && u.target.draftRef && ["checking", "uploading", "verifying"].includes(u.status)) at(u.target.draftRef).uploading.push(u.localId);
+    return m;
+  }, [sessionRecs, uploads.uploads, session.id]);
+  const recordedRows = (block: DraftBlock) => new Set(blockRows(block).filter((r) => recRefs.has(draftRowRef(block.key, r.key))).map((r) => r.key));
+
+  /**
+   * Rows (or a whole workout) are going away: never delete their recordings
+   * silently. Asks keep-on-the-exercise or delete; false = cancelled.
+   */
+  const settleRecordings = async (refs: string[] | "all", what: string): Promise<boolean> => {
+    const hit = refs === "all" ? [...recRefs.values()] : refs.map((r) => recRefs.get(r)).filter((x): x is { ids: string[]; uploading: string[] } => Boolean(x));
+    const ids = [...new Set([...hit.flatMap((h) => h.ids), ...(refs === "all" ? sessionRecs.filter((r) => !r.draft_ref).map((r) => r.id) : [])])];
+    const inFlight = hit.flatMap((h) => h.uploading);
+    if (!ids.length && !inFlight.length) return true;
+    const n = ids.length + inFlight.length;
+    const answer = await ask({
+      title: `Keep ${n === 1 ? "the recording" : `the ${n} recordings`}?`,
+      body: `${what} ${n === 1 ? "has a recording" : `has ${n} recordings`}. Keep ${n === 1 ? "it" : "them"} on the exercise (in My Recordings), or delete ${n === 1 ? "it" : "them"}?`,
+      confirm: "Keep recording" + (n === 1 ? "" : "s"),
+      alt: "Delete recording" + (n === 1 ? "" : "s"),
+    });
+    if (!answer) return false;
+    if (answer === "alt") {
+      for (const localId of inFlight) uploads.cancel(localId);
+      for (const id of ids) {
+        const res = await deleteRecording(id);
+        if (res.ok) uploads.emit({ type: "removed", id });
+      }
+      setSessionRecs((all) => all.filter((r) => !ids.includes(r.id)));
+    } else if (refs !== "all") {
+      // Kept: on the exercise now, no longer waiting for that set. (A whole workout's are released when it ends.)
+      for (const r of sessionRecs.filter((x) => ids.includes(x.id))) await updateRecording(r.id, { title: r.title ?? "", note: r.note ?? "", setId: null });
+      setSessionRecs((all) => all.map((r) => (ids.includes(r.id) ? { ...r, draft_ref: null } : r)));
+    }
+    return true;
+  };
 
   const store = (d: Draft, dirty: boolean) => {
     try {
@@ -256,6 +321,7 @@ function SessionEditor({ session, routine, catalog, unit, recentIds, favoriteIds
     const name = byId.get(block.exerciseId)?.name ?? "this exercise";
     if (blockHasInput(block) && !(await ask({ title: `Remove ${name}?`, body: "The numbers you entered for it in this session will be cleared.", confirm: "Remove", danger: true })))
       return;
+    if (!(await settleRecordings(blockRows(block).map((r) => draftRowRef(block.key, r.key)), name))) return;
     update((d) => ({ ...d, blocks: d.blocks.filter((b) => b.key !== block.key) }));
   };
   const move = (i: number, by: number) =>
@@ -340,6 +406,7 @@ function SessionEditor({ session, routine, catalog, unit, recentIds, favoriteIds
   const discard = async () => {
     if (!(await ask({ title: "Discard this session?", body: "Everything you entered since you pressed Start will be deleted. Your history and routine don't change.", confirm: "Discard session", danger: true })))
       return;
+    if (!(await settleRecordings("all", "This workout"))) return;
     start(async () => {
       const res = await discardSession(session.id);
       if (!res.ok) return setFinishError(res.error);
@@ -429,10 +496,28 @@ function SessionEditor({ session, routine, catalog, unit, recentIds, favoriteIds
               onAddAlternative={routine ? (e) => void addAlternativeToRoutine(block, e) : undefined}
               onRemove={() => void remove(block)}
               onMove={(by) => move(i, by)}
+              recordedRows={uploads.enabled ? recordedRows(block) : undefined}
+              onAddRecording={uploads.enabled ? () => setRecordingFor(block) : undefined}
+              settleRecordings={settleRecordings}
             />
           );
         })}
       </div>
+
+      {recordingFor && byId.get(recordingFor.exerciseId) ? (
+        <AddRecordingDialog
+          open
+          onOpenChange={(o) => (o ? null : setRecordingFor(null))}
+          exercise={{ id: recordingFor.exerciseId, name: byId.get(recordingFor.exerciseId)!.name }}
+          sessionId={session.id}
+          options={blockRows(recordingFor).map((r): TargetOption => {
+            const v = recordingFor.values[r.key];
+            const typed = rowHasInput(v) ? ` · ${v!.w ? `${v!.w} × ` : ""}${v!.r || "–"}${v!.rir ? ` · RIR ${v!.rir}` : ""}` : "";
+            const name = `Set ${r.n}${r.side ? ` ${r.side === "left" ? "L" : "R"}` : ""}`;
+            return { key: r.key, label: `${name}${typed}`, target: { sessionId: session.id, draftRef: draftRowRef(recordingFor.key, r.key), label: name } };
+          })}
+        />
+      ) : null}
 
       <ExercisePicker
         catalog={catalog}
@@ -501,6 +586,9 @@ function SessionBlock({
   onChoose,
   onAlso,
   onAddAlternative,
+  recordedRows,
+  onAddRecording,
+  settleRecordings,
 }: {
   block: DraftBlock;
   exercise: Exercise;
@@ -526,6 +614,10 @@ function SessionBlock({
   onAlso: (id: string) => void;
   /** Saves a suggestion as a permanent alternative in the routine (absent in a quick session). */
   onAddAlternative?: (e: Exercise) => void;
+  /** Rows with a recording attached (absent when recordings are off). */
+  recordedRows?: Set<string>;
+  onAddRecording?: () => void;
+  settleRecordings: (refs: string[], what: string) => Promise<boolean>;
 }) {
   const [swapOpen, setSwapOpen] = useState(false);
   const [altOpen, setAltOpen] = useState(false);
@@ -574,6 +666,7 @@ function SessionBlock({
     const lastRows = rows.filter((r) => r.n === block.setCount);
     if (lastRows.some((r) => rowHasInput(block.values[r.key])) && !(await ask({ title: `Clear set ${block.setCount}?`, body: "The numbers you entered for it will be removed.", confirm: "Remove set" })))
       return;
+    if (!(await settleRecordings(lastRows.map((r) => draftRowRef(block.key, r.key)), `Set ${block.setCount}`))) return;
     onChange((b) => {
       const values = { ...b.values };
       for (const r of lastRows) delete values[r.key];
@@ -643,6 +736,11 @@ function SessionBlock({
                 {onAddAlternative ? (
                   <DropdownMenu.Item className={item} onSelect={() => setAltOpen(true)}>
                     Add alternative to routine…
+                  </DropdownMenu.Item>
+                ) : null}
+                {onAddRecording ? (
+                  <DropdownMenu.Item className={item} onSelect={onAddRecording}>
+                    Add recording…
                   </DropdownMenu.Item>
                 ) : null}
                 <DropdownMenu.Item asChild className={item}>
@@ -781,6 +879,7 @@ function SessionBlock({
             focusKey={`${block.key}-${r.key}`}
             nextFocusKey={rows[idx + 1] ? `${block.key}-${rows[idx + 1].key}` : null}
             onValue={(field, value) => setValue(r.key, field, value)}
+            recorded={recordedRows?.has(r.key) ?? false}
           />
         ))}
       </ol>
@@ -824,6 +923,7 @@ function SessionRow({
   focusKey,
   nextFocusKey,
   onValue,
+  recorded = false,
 }: {
   exercise: Exercise;
   n: number;
@@ -836,6 +936,8 @@ function SessionRow({
   focusKey: string;
   nextFocusKey: string | null;
   onValue: (field: keyof RowValues, value: string) => void;
+  /** A recording is attached to this row (a small camera mark; no thumbnails in the logger). */
+  recorded?: boolean;
 }) {
   const bodyweight = exercise.ranking_method === "max_reps";
   const prevWeight = previous ? setWeight(previous, unit) : null;
@@ -852,6 +954,7 @@ function SessionRow({
         <span className="text-center text-sm font-semibold tabular text-fg-2 @max-3xs:hidden">
           {side === "right" ? "" : n}
           {side ? <span className="ml-0.5 text-[11px] font-medium text-fg-3">{side === "left" ? "L" : "R"}</span> : null}
+          {recorded ? <Video size={10} aria-label={`${label} has a recording`} className="mx-auto block text-fg-3" data-testid="row-recorded" /> : null}
         </span>
         {bodyweight ? (
           <span className="text-center text-sm text-fg-3">BW</span>

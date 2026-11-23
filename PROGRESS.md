@@ -2,6 +2,22 @@
 
 _Last updated: 2026-10-15 · Done: Phases 1–7 + friend verification · **Deployed (unlisted) at https://liftrank-roan.vercel.app** · Finishing launch setup (see "Deployment status")_
 
+## 2026-11-22 Phase 3: My Recordings (branch `phase-3-recordings`; NOT pushed, NOT deployed; migration NOT applied)
+
+Private personal set videos on Cloudflare R2. Full design, security model and test list: `docs/recordings-plan.md`.
+
+**Built (hidden until `R2_*` env vars exist):**
+- Migration `20261011002000_personal_recordings.sql` (awaiting approval): `personal_recordings`, `storage_plans` (free 500 MB, pro 5 GB), `video_storage_accounts`, `recording_object_deletions`; `begin_recording` (validates, locks, reserves, random key), `finalize_recording` (service_role only), `cancel_/delete_/update_recording`, `get_recording_usage`, `my_recording_keys`, cleanup RPCs; `finish_training_session` redefined to link a workout's recording to its saved set; triggers queue R2 deletions and release draft links when a workout ends.
+- Server: `lib/recordings/r2.ts` (SigV4 presign via `aws4fetch`, HEAD/range/delete), `lib/recordings/video-probe.ts` (real container, duration, resolution from the stored bytes), `app/(app)/recordings/actions.ts`.
+- Client: `UploadProvider` in the app shell (progress, cancel, retries, upload tray, leave warning), Add Recording dialog (Record video / Upload video, optional set with date/weight/reps/RIR), My Recordings on the exercise page, "+ Recording" on completed sessions, ⋯ → "Add recording…" and row marks in the workout logger, keep-or-delete prompts (remove set/exercise, discard, delete set in history), Settings → Video storage.
+- Cron: R2 cleanup from the queue. Account deletion: removes R2 files.
+
+**Verified so far:**
+- Rolled-back run of the migration + `tests/sql/2000_personal_recordings.test.sql` on the hosted DB: all 12 groups pass; a deliberate failure surfaces; nothing applied (`to_regclass` null afterwards).
+- Unit: 75/75 (video probe, R2 signing against `scripts/r2-standin.mjs`: exact size/type, tampering, unsigned access and expiry refused).
+- Typecheck, lint, production build pass. Existing flows on this branch with recordings off: see the final report.
+- **Not yet run:** Flow S (`tests/e2e/flow-s-recordings.spec.ts`) and iPhone checks of the new screens. They need the migration applied (`E2E_RECORDINGS=1 bash scripts/e2e-supabase.sh` then runs them against the R2 stand-in).
+
 ## 2026-11-22 Phase 2 cleanup: real 404s for missing and hidden pages (no migration)
 
 **Problem:** the dark startup screen (`app/loading.tsx`) streams the response before a page can call `notFound()`, so a missing page showed the not-found UI with HTTP 200 (plus `noindex`). Next 16's docs confirm a streamed response can't change status, and recommend deciding a request-time 404 in the proxy.

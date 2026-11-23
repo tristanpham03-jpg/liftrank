@@ -1,5 +1,6 @@
 "use server";
 
+import { deleteObjects, recordingsEnabled } from "@/lib/recordings/r2";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getUserId, rpc } from "@/lib/data";
@@ -90,6 +91,11 @@ export async function deleteAccount(confirmUsername: string): Promise<ActionResu
     // Same for your profile pictures (your own folder in the avatars bucket).
     const avatars = await rpc<string[]>(supabase, "my_avatar_paths");
     if (avatars.length) await supabase.storage.from("avatars").remove(avatars);
+    // Personal recordings: removed from R2 now; deleting the account queues them again as a backstop for the daily job.
+    if (recordingsEnabled()) {
+      const keys = await rpc<string[]>(supabase, "my_recording_keys").catch(() => [] as string[]);
+      if (keys.length) await deleteObjects(keys).catch(() => []);
+    }
   } catch (e) {
     return { ok: false, error: e instanceof AppError ? e.message : GENERIC_ERROR };
   }
