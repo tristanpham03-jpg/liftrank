@@ -99,7 +99,7 @@ Exercises are listed in order. Brackets are swap options in the same slot (choos
   7. Cable Crunch
 
 **Anterior / Posterior** (2 days; frequency 2×, 3× or rotate)
-- Placement follows the common convention: chest, front and side delts, quads, adductors, biceps and abs on Anterior; back, upper back, hamstrings, triceps and calves on Posterior.
+- Placement (owner's choice): pressing muscles and **triceps** on Anterior; pulling muscles and **biceps** on Posterior. Some lifters split it the other way; this matches how the owner trains.
 - Anterior (2 sets each):
   1. Incline Smith Press [Incline DB Press]
   2. Machine Chest Press
@@ -109,8 +109,8 @@ Exercises are listed in order. Brackets are swap options in the same slot (choos
   6. Hack Squat [Leg Press]
   7. Leg Extension
   8. Hip Adduction
-  9. Recline Curl
-  10. Reverse Cable Curl
+  9. Cable Triceps Extension
+  10. Smith Machine JM Press [Overhead Triceps Extension · Dip]
   11. Cable Crunch
 - Posterior (2 sets each):
   1. Lat Pulldown, wide grip [Pull-Up]
@@ -119,8 +119,8 @@ Exercises are listed in order. Brackets are swap options in the same slot (choos
   4. Kelso Shrug
   5. Stiff-Leg Deadlift
   6. Seated Leg Curl
-  7. Cable Triceps Extension
-  8. Smith Machine JM Press [Overhead Triceps Extension · Dip]
+  7. Recline Curl
+  8. Reverse Cable Curl
   9. Calf Raise (straight-knee)
 
 **Full Body** (one day; every muscle group, 1 set each; repeat 2×, 3× or every other day)
