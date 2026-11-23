@@ -118,7 +118,7 @@ test("Flow U4: the default templates import as approved (exercises, order, sets,
   expect(ant.every((r) => r[1] === 2) && post.every((r) => r[1] === 2)).toBe(true);
   const defaults = (rows: unknown[][]) => rows.filter((r, i) => r[2] === null || rows.findIndex((x) => x[2] === r[2]) === i).map((r) => r[0]);
   expect(defaults(ant)).toEqual([
-    "incline-smith-press", "machine-chest-press", "machine-shoulder-press", "pec-deck", "cable-lateral-raise", "hack-squat",
+    "incline-smith-press", "pec-deck", "machine-shoulder-press", "cable-lateral-raise", "hack-squat",
     "leg-extension", "hip-adduction", "cable-triceps-extension", "jm-smith-press", "cable-crunch",
   ]);
   expect(defaults(post)).toEqual([
@@ -130,6 +130,8 @@ test("Flow U4: the default templates import as approved (exercises, order, sets,
   expect(slot(post, "chest-supported-close-grip-row")).toEqual(["chest-supported-close-grip-row", "close-grip-lat-pulldown", "close-grip-lat-row"]);
   expect(slot(post, "chest-supported-wide-grip-row")).toEqual(["chest-supported-wide-grip-row", "t-bar-row"]);
   expect(slot(ant, "jm-smith-press")).toEqual(["jm-smith-press", "overhead-triceps-extension", "dip"]);
+  // One sternal-chest slot: pec deck by default, flat presses and the fly as swaps (never both on the day).
+  expect(slot(ant, "pec-deck")).toEqual(["pec-deck", "machine-chest-press", "dumbbell-bench-press", "cable-fly"]);
   // In a session, a swap slot is one row with a choice (the default selected).
   await page.getByRole("navigation", { name: "Training days" }).getByRole("link", { name: /^Posterior/ }).click();
   await page.getByRole("button", { name: "Start Posterior" }).first().click();

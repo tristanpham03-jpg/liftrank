@@ -44,6 +44,7 @@ Every exercise gets 3 sets if it's first in the day, else 2 (`defaultSetCount`).
 - **Kelso Shrug instead of Rear-Delt Fly** when the day already has a wide-grip row.
 - **Triceps are a combination:** a cable triceps extension plus a JM press, with overhead extension or dips as swaps. Pushdowns aren't a default: with the arm at your side the long head is short, so the lateral and medial heads do most of the work, and letting the upper arm drift (rotate in) shifts it further.
 - **Hinge:** the stiff-leg deadlift (SLDL) is the default instead of the RDL.
+- **Chest:** one sternal-head (horizontal-adduction) exercise per day. A flat press and a pec deck together are redundant, so the slot is Pec Deck with Machine Chest Press, DB Bench or Cable Fly as swaps. Incline pressing (clavicular head) is separate.
 - **Biceps days:** a Recline Curl (not a preacher curl), plus a Reverse Cable Curl for the brachioradialis. Where a Hammer Curl was listed, the Reverse Cable Curl takes its slot (both mainly train the brachioradialis) and the Hammer Curl becomes its swap.
 - **No weights are suggested.** These are editable starting points, not "optimal" programs.
 

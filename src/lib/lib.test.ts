@@ -327,6 +327,10 @@ describe("training templates", () => {
       expect(all, tag).not.toContain("romanian-deadlift"); // SLDL is the hinge
       expect(def, tag).not.toContain("preacher-curl");
       expect(def, tag).not.toContain("triceps-pushdown");
+      // One sternal-chest exercise per day: never a flat press and a pec deck/fly as defaults together.
+      const flat = ["barbell-bench-press", "dumbbell-bench-press", "machine-chest-press", "smith-machine-bench-press"];
+      const fly = ["pec-deck", "cable-fly"];
+      expect(def.some((s) => flat.includes(s)) && def.some((s) => fly.includes(s)), `${tag}: flat press + fly`).toBe(false);
       // Back days: wide pulldown + wide/T-bar row + close row/pulldown, and Kelso instead of rear-delt flys.
       if (all.includes("chest-supported-wide-grip-row")) {
         expect(def, tag).toEqual(expect.arrayContaining(["lat-pulldown", "chest-supported-wide-grip-row", "chest-supported-close-grip-row", "kelso-shrug"]));

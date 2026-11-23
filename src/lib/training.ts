@@ -27,12 +27,15 @@ const x = (slug: string, ...alts: string[]): TemplateSlot => (alts.length ? { sl
 //   Kelso Shrug instead of rear-delt flys when there's a wide-grip row;
 // - triceps: a cable extension plus a JM press (overhead extension or dips as swaps), not pushdowns by default;
 // - biceps: a recline curl plus a reverse cable curl for the brachioradialis;
-// - hinge: stiff-leg deadlift.
+// - hinge: stiff-leg deadlift;
+// - chest: one sternal (horizontal-adduction) exercise per day: a flat press and a pec deck/fly together are redundant.
+//   Incline pressing (clavicular head) is separate.
 const WIDE_PULLDOWN = x("lat-pulldown", "pull-up");
 const WIDE_ROW = x("chest-supported-wide-grip-row", "t-bar-row");
 const CLOSE_ROW = x("chest-supported-close-grip-row", "close-grip-lat-pulldown", "close-grip-lat-row");
 const TRICEPS = [x("cable-triceps-extension"), x("jm-smith-press", "overhead-triceps-extension", "dip")];
 const BICEPS = [x("recline-curl"), x("reverse-cable-curl")];
+const STERNAL_CHEST = x("pec-deck", "machine-chest-press", "dumbbell-bench-press", "cable-fly");
 const BICEPS_PULL = [x("recline-curl"), x("reverse-cable-curl", "hammer-curl")];
 const LEGS: TemplateSlot[] = [
   x("seated-leg-curl", "lying-leg-curl"),
@@ -61,7 +64,7 @@ export const TEMPLATES: TrainingTemplate[] = [
           WIDE_ROW,
           CLOSE_ROW,
           x("machine-shoulder-press", "dumbbell-shoulder-press"),
-          x("pec-deck", "cable-fly"),
+          STERNAL_CHEST,
           x("cable-lateral-raise", "machine-lateral-raise"),
           x("kelso-shrug"),
           ...TRICEPS,
@@ -82,9 +85,8 @@ export const TEMPLATES: TrainingTemplate[] = [
         name: "Push",
         exercises: [
           x("incline-smith-press", "incline-dumbbell-bench-press"),
-          x("machine-chest-press", "dumbbell-bench-press"),
+          STERNAL_CHEST,
           x("machine-shoulder-press"),
-          x("pec-deck", "cable-fly"),
           x("cable-lateral-raise"),
           ...TRICEPS,
         ],
@@ -105,9 +107,8 @@ export const TEMPLATES: TrainingTemplate[] = [
         name: "Anterior",
         exercises: [
           x("incline-smith-press", "incline-dumbbell-bench-press"),
-          x("machine-chest-press"),
+          STERNAL_CHEST,
           x("machine-shoulder-press"),
-          x("pec-deck"),
           x("cable-lateral-raise"),
           x("hack-squat", "leg-press"),
           x("leg-extension"),
@@ -133,11 +134,10 @@ export const TEMPLATES: TrainingTemplate[] = [
         name: "Chest / Back",
         exercises: [
           x("incline-smith-press"),
-          x("machine-chest-press"),
+          STERNAL_CHEST,
           x("lat-pulldown"),
           WIDE_ROW,
           x("chest-supported-close-grip-row", "close-grip-lat-pulldown"),
-          x("pec-deck"),
           x("kelso-shrug"),
         ],
       },
