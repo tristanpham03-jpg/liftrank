@@ -32,9 +32,12 @@ test("Flow D: a private lift never reaches another user, even a friend", async (
   await expect(a.getByRole("heading", { name: "Your friends" })).toBeVisible();
   await expect(a.getByText(`@${other}`)).toBeVisible();
 
-  // Direct URL → not found.
-  await b.goto(liftPath);
+  // Direct URL → not found, with a real 404 status, the same answer as a lift that never existed.
+  const direct = await b.goto(liftPath);
+  expect(direct?.status()).toBe(404);
   await expect(b.getByText(/doesn’t exist, or you can’t see it/)).toBeVisible();
+  expect((await b.request.get("/lifts/00000000-0000-4000-8000-000000000000")).status()).toBe(404);
+  expect((await a.request.get(liftPath)).status()).toBe(200);
 
   // Share image → only the owner can render it.
   const mine = await a.request.get(`${liftPath}/share-image`);

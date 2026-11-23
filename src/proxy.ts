@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { supabaseConfig } from "@/lib/env";
+import { isDocumentRequest, resourceVisible } from "@/lib/route-guard";
 
 const PROTECTED = [
   "/home", "/progress", "/leaderboards", "/lift", "/lifts", "/profile", "/u", "/groups",
@@ -55,7 +56,22 @@ export async function proxy(request: NextRequest) {
     url.search = "";
     return redirectWithCookies(url, response);
   }
+  // Detail pages (a lift, profile, group, session, exercise) that don't exist or that this viewer
+  // can't see: a real 404 on a full page load, decided before the startup screen streams a 200.
+  // In-app navigations skip this; the page's own notFound() handles them.
+  if (signedIn && isDocumentRequest(request.headers, request.method)) {
+    const visible = await resourceVisible(supabase, pathname, String(data!.claims.sub));
+    if (visible === false) return notFoundWithCookies(request, response);
+  }
   return response;
+}
+
+/** Renders the app's not-found page with a 404 status (a rewrite to a path no route matches). */
+function notFoundWithCookies(request: NextRequest, from: NextResponse) {
+  const res = NextResponse.rewrite(new URL("/_not-found", request.url), { status: 404 });
+  for (const cookie of from.cookies.getAll()) res.cookies.set(cookie);
+  res.headers.set("x-robots-tag", "noindex");
+  return res;
 }
 
 function redirectWithCookies(url: URL, from: NextResponse) {

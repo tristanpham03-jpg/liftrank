@@ -713,3 +713,30 @@ describe("Progress", () => {
     expect(inRange([{ date: "2026-01-01", value: 1 }, { date: "2026-11-01", value: 2 }], "1m", "2026-11-22")).toEqual([{ date: "2026-11-01", value: 2 }]);
   });
 });
+
+import { guardFor, isDocumentRequest } from "./route-guard";
+
+describe("route guard (real 404s on full page loads)", () => {
+  it("matches only detail routes", () => {
+    expect(guardFor("/lifts/abc")?.param).toBe("abc");
+    expect(guardFor("/lifts/abc/edit")?.param).toBe("abc");
+    expect(guardFor("/lifts/exercise/deadlift")?.param).toBe("deadlift");
+    expect(guardFor("/groups/new")).toBeNull();
+    expect(guardFor("/groups")).toBeNull();
+    expect(guardFor("/training")).toBeNull();
+    expect(guardFor("/training/sessions")).toBeNull();
+    expect(guardFor("/training/exercise/x")?.param).toBe("x");
+    expect(guardFor("/u/someone")?.param).toBe("someone");
+    expect(guardFor("/moderation")).not.toBeNull();
+    expect(guardFor("/lifts/abc/share-image")).toBeNull();
+  });
+  it("skips in-app navigations, prefetches and server actions", () => {
+    expect(isDocumentRequest(new Headers({ "sec-fetch-dest": "document" }), "GET")).toBe(true);
+    expect(isDocumentRequest(new Headers(), "GET")).toBe(true);
+    expect(isDocumentRequest(new Headers({ rsc: "1" }), "GET")).toBe(false);
+    expect(isDocumentRequest(new Headers({ "next-router-prefetch": "1" }), "GET")).toBe(false);
+    expect(isDocumentRequest(new Headers({ "next-action": "x" }), "POST")).toBe(false);
+    expect(isDocumentRequest(new Headers({ "sec-fetch-dest": "empty" }), "GET")).toBe(false);
+  });
+});
+

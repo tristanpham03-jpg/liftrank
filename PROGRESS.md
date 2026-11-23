@@ -2,6 +2,25 @@
 
 _Last updated: 2026-10-15 · Done: Phases 1–7 + friend verification · **Deployed (unlisted) at https://liftrank-roan.vercel.app** · Finishing launch setup (see "Deployment status")_
 
+## 2026-11-22 Phase 2 cleanup: real 404s for missing and hidden pages (no migration)
+
+**Problem:** the dark startup screen (`app/loading.tsx`) streams the response before a page can call `notFound()`, so a missing page showed the not-found UI with HTTP 200 (plus `noindex`). Next 16's docs confirm a streamed response can't change status, and recommend deciding a request-time 404 in the proxy.
+
+**Fix (`src/lib/route-guard.ts`, called from `src/proxy.ts`):**
+- On a **full page load** of a detail route, the proxy checks first and answers a real **404** with the app's normal not-found page (a rewrite to an unmatched path with status 404, plus `X-Robots-Tag: noindex`).
+- Routes: `/lifts/[id]`, `/lifts/[id]/edit`, `/lifts/exercise/[slug]`, `/training/exercise/[slug]`, `/training/sessions/[id]`, `/groups/[id]` (and `/manage`), `/u/[username]`, `/moderation`.
+- Each check mirrors the page's own condition and runs **as the viewer** (RLS on `lifts` = `_can_view_lift`, or the same RPC the page uses: `get_group`, `get_profile`, `get_my_profile`). "Doesn't exist" and "you can't see it" give the identical 404, so nothing reveals whether someone's private record exists.
+- Malformed ids return 404 without a database call. On a database error the page decides as before (fail open to the page's own `notFound()`).
+- **Cost:** one small indexed query, only on full page loads of those routes. In-app navigations, prefetches and server actions (`RSC`, `Next-Router-Prefetch`, `Next-Action` headers, non-GET) skip it entirely. No change to the startup screen, tab caching or prefetching.
+- Signed out: protected routes still redirect to sign-in (a 404 there would hint at what exists).
+
+**Tests:**
+- New Flow R: 11 missing/hidden paths return 404 with the not-found UI and `noindex`; real pages (own lift, edit, exercises, profile, Training, New group) return 200; signed-out visitors are sent to sign-in; the startup screen still streams on `/training`.
+- Flow D now also asserts a friend's direct load of a private lift is a real 404, identical to a lift that never existed.
+- Unit tests for route matching and the document-request check.
+
+**Remaining limitation:** `/leaderboards/records` (a complex query string) and any route not listed above still use the streamed `notFound()` (200 + `noindex`). None of them reveals private data.
+
 ## 2026-11-22 Phase 2: exercise experience and loading screen (no migration; committed locally, not pushed)
 
 **Illustrations removed from the UI:**
