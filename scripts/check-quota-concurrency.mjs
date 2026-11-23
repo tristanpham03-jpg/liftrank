@@ -5,26 +5,30 @@
  * per-user lock lets through only what fits, then deletes the user and the plan.
  * Writes nothing to R2 (begin_recording only reserves).
  *   node --env-file=.env.local scripts/check-quota-concurrency.mjs [quota MB, default 250]
+ *   node --env-file=.env.local scripts/check-quota-concurrency.mjs --free   (the real Free plan; expects 250 MB)
  */
 import { createClient } from "@supabase/supabase-js";
 import { randomBytes } from "node:crypto";
 
 const MB = 1048576;
-const QUOTA = Number(process.argv[2] ?? 250) * MB;
+const REAL_FREE = process.argv[2] === "--free";
+const QUOTA = (REAL_FREE ? 250 : Number(process.argv[2] ?? 250)) * MB;
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL, anon = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, secret = process.env.SUPABASE_SECRET_KEY;
 if (!url || !anon || !secret) throw new Error("needs NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, SUPABASE_SECRET_KEY");
 const opts = { auth: { persistSession: false, autoRefreshToken: false } };
 const admin = createClient(url, secret, opts);
 const suffix = randomBytes(3).toString("hex");
 const email = `recq_${suffix}@example.com`, password = randomBytes(18).toString("base64url");
-const plan = `tq${suffix.replace(/[^a-z]/g, "") || "x"}conc`.slice(0, 20);
+const plan = REAL_FREE ? "free" : `tq${suffix.replace(/[^a-z]/g, "") || "x"}conc`.slice(0, 20);
 let uid = null;
 const ok = [];
 const check = (name, pass, detail) => { ok.push(pass); console.log(`${pass ? "PASS" : "FAIL"}  ${name}  (${detail})`); };
 
 try {
-  const { error: pe } = await admin.from("storage_plans").insert({ id: plan, label: "Concurrency test", quota_bytes: QUOTA });
-  if (pe) throw new Error(`plan: ${pe.message}`);
+  if (!REAL_FREE) {
+    const { error: pe } = await admin.from("storage_plans").insert({ id: plan, label: "Concurrency test", quota_bytes: QUOTA });
+    if (pe) throw new Error(`plan: ${pe.message}`);
+  }
   const { data: created, error: ce } = await admin.auth.admin.createUser({ email, password, email_confirm: true });
   if (ce) throw new Error(`user: ${ce.message}`);
   uid = created.user.id;
@@ -56,9 +60,10 @@ try {
   check("total stays within the quota", Number(u.used_bytes) + Number(u.reserved_bytes) <= QUOTA, `${(Number(u.used_bytes) + Number(u.reserved_bytes)) / MB} of ${QUOTA / MB} MB`);
 } finally {
   if (uid) await admin.auth.admin.deleteUser(uid);  // cascades to the account and its pending rows
-  await admin.from("storage_plans").delete().eq("id", plan);
-  const left = (await admin.from("storage_plans").select("id").eq("id", plan)).data?.length ?? -1;
-  check("cleaned up (test user and plan removed)", left === 0, `plan rows left: ${left}`);
+  if (!REAL_FREE) await admin.from("storage_plans").delete().eq("id", plan);
+  const left = REAL_FREE ? 0 : ((await admin.from("storage_plans").select("id").eq("id", plan)).data?.length ?? -1);
+  const users = uid ? ((await admin.from("profiles").select("id").eq("id", uid)).data?.length ?? -1) : 0;
+  check("cleaned up (test user removed" + (REAL_FREE ? ")" : " and test plan removed)"), left === 0 && users === 0, `plan rows left: ${left}, user rows left: ${users}`);
 }
 console.log(ok.every(Boolean) ? "ALL PASS" : "SOME FAILED");
 process.exit(ok.every(Boolean) ? 0 : 1);

@@ -2,7 +2,10 @@
 
 _Last updated: 2026-10-15 · Done: Phases 1–7 + friend verification · **Deployed (unlisted) at https://liftrank-roan.vercel.app** · Finishing launch setup (see "Deployment status")_
 
-## 2026-11-22 Back navigation, iPhone startup, Free storage 250 MB (branch `polish-nav-startup-quota`; NOT pushed; migration `…2200` NOT applied)
+## 2026-11-22 Back navigation, iPhone startup, Free storage 250 MB (migration `…2200` applied with the owner's approval; deployed)
+
+- **0022 applied:** dry run (only 0022 pending) → fingerprints of all 44 tables, function grants, recordings, storage accounts, the R2 cleanup queue and the Pro plan → push → only `storage_plans.free` changed (524288000 → 262144000). Concurrency rerun on the real Free plan (`--free`): 4 × 100 MB at once → 2; then 3 × 30 MB → 1 (230/250 MB). Flow S passes against 250 MB.
+
 
 **Back on nested pages** (`components/nav/back-button.tsx`, `nav-history.tsx`, `lib/nav-history.ts`):
 - One Back control (44 px, chevron + "Back") on all 17 nested pages, through `PageHeader`'s `back` prop or placed directly (lift, group, other people's profiles). Main tabs and your own profile have none.
