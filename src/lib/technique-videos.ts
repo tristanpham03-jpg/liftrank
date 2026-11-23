@@ -7,7 +7,8 @@
  *
  * `verified` records how: "oembed" = title and channel confirmed through
  * YouTube's public oEmbed lookup (scripts/check-technique-videos.mjs re-checks
- * every link). `reviewed` = someone watched it and confirmed the form.
+ * every link). `reviewed` = the owner watched it and approved the form.
+ * Users only ever see reviewed videos; unreviewed ones stay here, hidden.
  */
 export type TechniqueVideo = {
   slug: string;
@@ -54,7 +55,10 @@ export const TECHNIQUE_VIDEOS: TechniqueVideo[] = [
   },
 ];
 
-/** The primary reference for an exercise, or null. */
+/** The primary reference users see for an exercise: only manually reviewed videos, else null. */
 export function techniqueVideoFor(slug: string): TechniqueVideo | null {
-  return TECHNIQUE_VIDEOS.find((v) => v.slug === slug) ?? null;
+  return TECHNIQUE_VIDEOS.find((v) => v.slug === slug && v.verified.reviewed) ?? null;
 }
+
+/** Videos waiting for the owner's review (not shown to users). */
+export const pendingTechniqueVideos = () => TECHNIQUE_VIDEOS.filter((v) => !v.verified.reviewed);

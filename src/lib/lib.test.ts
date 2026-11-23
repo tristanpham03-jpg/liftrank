@@ -397,7 +397,9 @@ describe("exercise catalog and muscle search", () => {
       expect(v.creator.trim().length).toBeGreaterThan(1);
       expect(v.verified.method).toBe("oembed");
     }
-    expect(techniqueVideoFor("kelso-shrug")?.creator).toBe("All Strength Training");
+    // Unreviewed videos are kept in the catalog but never shown.
+    expect(TECHNIQUE_VIDEOS.find((v) => v.slug === "kelso-shrug")?.creator).toBe("All Strength Training");
+    for (const v of TECHNIQUE_VIDEOS.filter((x) => !x.verified.reviewed)) expect(techniqueVideoFor(v.slug), v.slug).toBeNull();
     expect(techniqueVideoFor("barbell-bench-press")).toBeNull();
   });
 

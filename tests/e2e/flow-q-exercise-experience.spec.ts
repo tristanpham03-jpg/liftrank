@@ -33,11 +33,8 @@ test("Flow Q: no exercise pictures, curated similar exercises, technique links, 
   const close = similar.getByRole("group", { name: "Close alternatives" });
   await expect(close.getByRole("link", { name: /Machine Lateral Raise/ })).toContainText("Same primary target, different equipment");
   await expect(close.getByRole("link", { name: /Behind-the-Back Cable Lateral Raise/ })).toContainText("Similar movement, different setup");
-  const technique = page.getByRole("region", { name: "Technique reference" });
-  await expect(technique).toContainText("Demonstration by Jacob Garcia on YouTube");
-  const watch = technique.getByRole("link", { name: /Watch on YouTube/ });
-  await expect(watch).toHaveAttribute("href", "https://www.youtube.com/watch?v=-CAGLnWUkWA");
-  await expect(watch).toHaveAttribute("target", "_blank");
+  // Its technique video is catalogued but not yet reviewed by the owner: hidden until approved.
+  await expect(page.getByRole("region", { name: "Technique reference" })).toHaveCount(0);
   if (process.env.E2E_SHOTS) await page.screenshot({ path: `${process.env.E2E_SHOTS}/exercise-page-390.png`, fullPage: true });
   await page.goto("/training/exercise/lat-pulldown");
   await expect(page.getByRole("group", { name: "Related exercises" }).getByRole("link", { name: /Pull-Up/ })).toBeVisible();
@@ -77,6 +74,26 @@ test("Flow Q: no exercise pictures, curated similar exercises, technique links, 
   await expect(block(page, "Barbell Bench Press").getByRole("radiogroup", { name: "Choose one" })).toBeVisible();
   // Nothing logged moved between exercises.
   expect((await db().from("training_sets").select("id").eq("user_id", uid)).data).toHaveLength(0);
+
+  // 3b. The active workout survives tab switches (cache + background check) and a full reload (startup screen).
+  const bench = block(page, "Barbell Bench Press");
+  await bench.getByLabel("Set 1 weight (lb)").fill("185");
+  await bench.getByLabel("Set 1 reps").fill("8");
+  await bench.getByLabel("Set 1 RIR (optional)").fill("2");
+  await expect(page.getByTestId("sync-status")).toHaveText("Saved", { timeout: 15_000 });
+  // The tab bar hides while a field has focus (keyboard up); dismiss it first, as a lifter would.
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  for (const href of ["/progress", "/leaderboards", "/training"]) await page.locator(`nav.mobile-tabs a[href="${href}"]`).click();
+  await expect(bench.getByLabel("Set 1 weight (lb)")).toHaveValue("185");
+  await bench.getByLabel("Set 1 reps").fill("9"); // an unsynced edit, then straight to a full reload
+  await page.reload();
+  await expect(page.getByTestId("active-session")).toBeVisible();
+  await expect(page.locator('[aria-label="Loading SBLift"]')).toHaveCount(0);
+  await expect(bench.getByLabel("Set 1 weight (lb)")).toHaveValue("185");
+  await expect(bench.getByLabel("Set 1 reps")).toHaveValue("9");
+  await expect(bench.getByLabel("Set 1 RIR (optional)")).toHaveValue("2");
+  await expect(block(page, "Cable Lateral Raise")).toBeVisible(); // the session-only swap is still there
+  expect((await db().from("training_sets").select("id").eq("user_id", uid)).data).toHaveLength(0); // nothing saved until End
 
   // 4. Navigating between tabs never shows the startup screen.
   await page.evaluate(() => {

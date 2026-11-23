@@ -31,6 +31,7 @@ _Last updated: 2026-10-15 · Done: Phases 1–7 + friend verification · **Deplo
   - Cable Lateral Raise: Jacob Garcia
 - No verified links were found from TNF, Jeff Nippard, Toosa, Bigpro or YO Talks for these exercises.
 - `scripts/check-technique-videos.mjs` re-checks every link.
+- **Hidden until reviewed** (owner, 2026-11-22): users only see videos marked `reviewed: true`. All four are catalogued but unreviewed, so none are shown yet. To approve one, set `reviewed: true` after watching it.
 - Exercises without a verified video show nothing. "Not affiliated with SBLift" is shown under the link.
 
 **White screen at startup:**
@@ -43,6 +44,8 @@ _Last updated: 2026-10-15 · Done: Phases 1–7 + friend verification · **Deplo
   - iPhone launch images for 12 device sizes (`/splash/<w>x<h>`, the existing wordmark on navy, prerendered at build).
   - A root `app/loading.tsx`: the wordmark and a small sweep bar, streamed immediately on a fresh load, with no timers or minimum duration. Tab navigation never shows it (asserted in Flow Q); cached pages render immediately; session drafts are unaffected.
 - Manifest and theme colors were already dark.
+
+**Phase 3 decisions** recorded in `docs/recordings-plan.md` (R2, 500 MB, 90 s, 100 MB, private, block at limit, proof videos separate). Not implemented.
 
 **Phase 3 prep:** the exercise page order is performance → Similar exercises → Technique reference → (My Recordings) → History. Plan in `docs/recordings-plan.md`.
 

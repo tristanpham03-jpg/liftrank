@@ -25,8 +25,15 @@ The exercise page (`/training/exercise/[slug]`) is laid out as: performance (bes
 - Record or pick a video from the set row's ⋯ menu ("Add recording"). The upload resumes in the background and never blocks logging or End; drafts are unaffected.
 - No transcoding at first: accept H.264/HEVC MP4/MOV from iPhone and play with `<video playsinline>`. Consider a poster frame generated client-side.
 
-## Decisions needed before Phase 3
-1. R2 or Supabase Storage.
-2. Whether Pro exists yet (billing), or everyone gets 500 MB until it does.
-3. Clip length and size limits.
-4. Whether a recording can be attached to a competitive lift as its proof (reuse), or the two stay separate.
+## Owner decisions (2026-11-22)
+- **Storage:** Cloudflare R2, private bucket.
+- **Quota:** 500 MB per user for now; 5 GB planned for Pro. No subscription system yet, so everyone is on 500 MB.
+- **Limits:** 90 seconds maximum per recording; 100 MB maximum original upload.
+- **Capture:** record directly or upload from the camera roll.
+- **Attach to:** an individual set, or the exercise.
+- **Shown in:** exercise history (the My Recordings section on the exercise page).
+- **Privacy:** private by default.
+- **At the limit:** further uploads are blocked. Recordings are never deleted automatically.
+- **Proof videos:** leaderboard proof videos stay separate for now.
+
+Not implemented yet. The owner reviews the Phase 2 deployment first.
