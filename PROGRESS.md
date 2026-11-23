@@ -2,6 +2,13 @@
 
 _Last updated: 2026-10-15 · Done: Phases 1–7 + friend verification · **Deployed (unlisted) at https://liftrank-roan.vercel.app** · Finishing launch setup (see "Deployment status")_
 
+## 2026-11-22 Phase 3 deployed; @sblift reserved (migration `…2100` applied with the owner's approval)
+
+- **Deployed:** `phase-3-recordings` fast-forwarded into main with the SBLift rename (`c8f3c2e`); live ~60 s after push.
+- **Production checks:** build serves the new code; signed-out redirects, real 404s, dark startup background and splash images intact. Signed in (owner's session, read-only): Settings → Video storage shows "0 KB / 500 MB" (so Vercel's `R2_*` config is valid), My Recordings on the exercise page, Training / Progress / Boards via the tab bar, no console errors. Real bucket: unsigned GET/PUT/DELETE refused, token can't list account buckets, CORS only for the site and localhost, bucket empty. Quota: rolled-back check on production refused a 6 MB upload at 495 MB used, allowed 5 MB, then refused 1 byte.
+- **Rename:** user-facing text, docs, scripts, package name now say SBLift ("SBLift boards"). Kept: applied migrations, the `liftrank-roan.vercel.app` domain, the GitHub repo name, "liftrank" as a reserved username. The Vercel project stays `liftrank` for now (Vercel doesn't document that the `*.vercel.app` production domain survives a rename); a dedicated SBLift domain may come later.
+- **`…2100_reserve_sblift_username.sql`:** adds "sblift" to `is_reserved_username` (same function, grants kept). Rolled-back test `tests/sql/2100_*`; applied after dry run; all 44 tables and function grants identical before/after; "sblift" refused in any case, near-misses allowed, no existing username affected. Client list and its parity test (now reads the latest migration) updated.
+
 ## 2026-11-22 Phase 3: My Recordings (branch `phase-3-recordings`; migration APPLIED; NOT merged, pushed or deployed)
 
 Private personal set videos on Cloudflare R2. Full design, security model, R2 setup and test list: `docs/recordings-plan.md`.

@@ -2,9 +2,9 @@ import { z } from "zod";
 import { MAX_RANKED_REPS, toKg } from "./scoring";
 import type { RankingMethod, WeightUnit } from "./types";
 
-// Mirrors public.is_reserved_username (parity-tested against the migration).
+// Mirrors public.is_reserved_username (parity-tested against its latest migration).
 export const RESERVED_USERNAMES = [
-  "admin", "administrator", "liftrank", "settings", "support", "help", "api", "auth",
+  "admin", "administrator", "liftrank", "sblift", "settings", "support", "help", "api", "auth",
   "login", "logout", "signin", "signup", "onboarding", "home", "profile", "groups", "group",
   "friends", "notifications", "leaderboard", "leaderboards", "lift", "lifts", "invite",
   "me", "root", "system", "moderator", "mod", "staff", "official", "null", "undefined",

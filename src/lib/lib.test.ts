@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import type { Exercise } from "./types";
@@ -179,12 +179,19 @@ describe("validation", () => {
     expect(usernameSchema.safeParse("ab").success).toBe(false);
     expect(usernameSchema.safeParse("no spaces").success).toBe(false);
     expect(usernameSchema.safeParse("admin").success).toBe(false);
+    expect(usernameSchema.safeParse("sblift").success).toBe(false);
+    expect(usernameSchema.safeParse("liftrank").success).toBe(false);
     expect(usernameSchema.safeParse("a".repeat(21)).success).toBe(false);
   });
 
   it("keeps the reserved list identical to the database", () => {
-    const sql = readFileSync(path.resolve(__dirname, "../../supabase/migrations/20261011000100_foundation.sql"), "utf8");
-    const block = sql.slice(sql.indexOf("array["), sql.indexOf("])"));
+    // The latest migration that (re)defines the function is the one in force.
+    const dir = path.resolve(__dirname, "../../supabase/migrations");
+    const latest = readdirSync(dir).filter((f) => f.endsWith(".sql")).sort()
+      .filter((f) => /function public\.is_reserved_username/.test(readFileSync(path.join(dir, f), "utf8"))).at(-1)!;
+    const sql = readFileSync(path.join(dir, latest), "utf8");
+    const def = sql.slice(sql.search(/function public\.is_reserved_username/));
+    const block = def.slice(def.indexOf("array["), def.indexOf("])"));
     const fromSql = [...block.matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
     expect([...RESERVED_USERNAMES].sort()).toEqual(fromSql.sort());
   });
