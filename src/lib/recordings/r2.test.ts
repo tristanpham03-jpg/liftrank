@@ -43,6 +43,19 @@ describe("R2 storage (against the signing stand-in)", () => {
     expect(r2.recordingsEnabled()).toBe(true);
   });
 
+  it("reads R2_ACCOUNT_ID as the bare ID or Cloudflare's endpoint URL, nothing else", () => {
+    const id = "0123456789abcdef0123456789abcdef";
+    const want = `https://${id}.r2.cloudflarestorage.com`;
+    expect(r2.r2Endpoint(id)).toBe(want);
+    expect(r2.r2Endpoint(` ${id}\n`)).toBe(want);
+    expect(r2.r2Endpoint(want)).toBe(want);
+    expect(r2.r2Endpoint(`${want}/`)).toBe(want);
+    expect(r2.r2Endpoint(`https://${id}.eu.r2.cloudflarestorage.com`)).toBe(`https://${id}.eu.r2.cloudflarestorage.com`);
+    for (const bad of [undefined, "", "abc", `http://${id}.r2.cloudflarestorage.com`, `https://${id}.r2.cloudflarestorage.com/bucket`, `https://${id}.evil.com`, `https://evil.com/${id}.r2.cloudflarestorage.com`]) {
+      expect(r2.r2Endpoint(bad)).toBeNull();
+    }
+  });
+
   it("refuses keys that didn't come from the database's format", async () => {
     await expect(r2.presignUpload("u/someone/../../x.mp4", 10, "video/mp4")).rejects.toThrow();
     await expect(r2.presignPlayback("rec/short.mp4", "video/mp4")).rejects.toThrow();

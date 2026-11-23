@@ -255,6 +255,8 @@ function UploadTray() {
     return () => clearTimeout(t);
   }, [done, running.length, failed.length, dismiss]);
 
+  // An emptied tray starts collapsed next time (otherwise the next upload would pop its details open unasked).
+  if (!visible.length && open) setOpen(false);
   if (!visible.length) return null;
   const total = running.reduce((n, u) => n + u.bytes, 0);
   const loaded = running.reduce((n, u) => n + u.loaded, 0);
@@ -323,7 +325,7 @@ function UploadTray() {
         onClick={() => setOpen(!open)}
         aria-expanded={open}
         className={cn(
-          "tap ml-auto flex items-center gap-2 rounded-full border border-white/10 bg-[#161b28]/90 px-3.5 py-2 text-sm shadow-lg backdrop-blur-xl",
+          "tap ml-auto flex min-h-11 items-center gap-2 rounded-full border border-white/10 bg-[#161b28]/90 px-3.5 py-2 text-sm shadow-lg backdrop-blur-xl",
           failed.length && !running.length && "text-danger",
         )}
       >

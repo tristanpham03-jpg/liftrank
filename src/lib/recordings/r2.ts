@@ -17,12 +17,24 @@ export const PLAYBACK_URL_SECONDS = 10 * 60;
 
 type Config = { endpoint: string; bucket: string; accessKeyId: string; secretAccessKey: string };
 
+/**
+ * The R2 S3 endpoint from R2_ACCOUNT_ID. Accepts the bare 32-hex account ID or
+ * the endpoint Cloudflare shows next to it (https://<id>.r2.cloudflarestorage.com,
+ * optionally with a jurisdiction such as .eu.). Anything else → null, so a
+ * mistyped value turns recordings off instead of half-working.
+ */
+export function r2Endpoint(account: string | undefined): string | null {
+  const v = (account ?? "").trim().replace(/\/+$/, "");
+  if (/^[0-9a-f]{32}$/.test(v)) return `https://${v}.r2.cloudflarestorage.com`;
+  const m = /^https:\/\/([0-9a-f]{32})\.((?:[a-z]+\.)?r2\.cloudflarestorage\.com)$/.exec(v);
+  return m ? `https://${m[1]}.${m[2]}` : null;
+}
+
 function config(): Config | null {
-  const accessKeyId = process.env.R2_ACCESS_KEY_ID;
-  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
-  const bucket = process.env.R2_BUCKET;
-  const account = process.env.R2_ACCOUNT_ID;
-  const endpoint = (process.env.R2_ENDPOINT || (account ? `https://${account}.r2.cloudflarestorage.com` : "")).replace(/\/$/, "");
+  const accessKeyId = process.env.R2_ACCESS_KEY_ID?.trim();
+  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY?.trim();
+  const bucket = process.env.R2_BUCKET?.trim();
+  const endpoint = process.env.R2_ENDPOINT ? process.env.R2_ENDPOINT.replace(/\/$/, "") : r2Endpoint(process.env.R2_ACCOUNT_ID);
   if (!accessKeyId || !secretAccessKey || !bucket || !endpoint) return null;
   return { endpoint, bucket, accessKeyId, secretAccessKey };
 }

@@ -236,10 +236,21 @@ test("Flow S: record during a workout and after it → private, quota-accounted,
   await expect(tray(page)).toContainText("saved", { timeout: 30_000 });
 
   // 13. Deleting a set asks about its recording; "keep" keeps it on the exercise.
+  const before = await rows();
+  const linkedBefore = before.filter((r) => r.training_set_id);
   const setRow = page.locator("li").filter({ has: page.getByTestId("set-recorded") }).first();
   await setRow.getByRole("button", { name: "Edit" }).click();
   await page.getByRole("button", { name: "Delete", exact: true }).click();
   await page.getByRole("button", { name: "Delete set, keep recording" }).click();
-  await expect.poll(async () => (await rows()).filter((r) => r.training_set_id).length).toBe(2);
-  expect((await rows()).find((r) => r.title === "Top set")).toBeTruthy();
+  await expect.poll(async () => (await rows()).filter((r) => r.training_set_id).length).toBeLessThan(linkedBefore.length);
+  const afterDel = await rows();
+  // No recording was deleted; the deleted set's recordings (all of them) moved to the exercise; every other link is untouched.
+  expect(afterDel.map((r) => r.id).sort()).toEqual(before.map((r) => r.id).sort());
+  const liveSets = new Set(((await db().from("training_sets").select("id").eq("user_id", uid)).data ?? []).map((s) => s.id as string));
+  const goneSet = linkedBefore.find((r) => !liveSets.has(r.training_set_id))!.training_set_id;
+  for (const r of before) {
+    const now = afterDel.find((x) => x.id === r.id)!;
+    expect(now.training_set_id).toBe(r.training_set_id === goneSet ? null : r.training_set_id);
+  }
+  expect(afterDel.find((r) => r.title === "Top set")).toBeTruthy();
 });

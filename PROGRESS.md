@@ -2,21 +2,32 @@
 
 _Last updated: 2026-10-15 · Done: Phases 1–7 + friend verification · **Deployed (unlisted) at https://liftrank-roan.vercel.app** · Finishing launch setup (see "Deployment status")_
 
-## 2026-11-22 Phase 3: My Recordings (branch `phase-3-recordings`; NOT pushed, NOT deployed; migration NOT applied)
+## 2026-11-22 Phase 3: My Recordings (branch `phase-3-recordings`; migration APPLIED; NOT merged, pushed or deployed)
 
-Private personal set videos on Cloudflare R2. Full design, security model and test list: `docs/recordings-plan.md`.
+Private personal set videos on Cloudflare R2. Full design, security model, R2 setup and test list: `docs/recordings-plan.md`.
 
-**Built (hidden until `R2_*` env vars exist):**
-- Migration `20261011002000_personal_recordings.sql` (awaiting approval): `personal_recordings`, `storage_plans` (free 500 MB, pro 5 GB), `video_storage_accounts`, `recording_object_deletions`; `begin_recording` (validates, locks, reserves, random key), `finalize_recording` (service_role only), `cancel_/delete_/update_recording`, `get_recording_usage`, `my_recording_keys`, cleanup RPCs; `finish_training_session` redefined to link a workout's recording to its saved set; triggers queue R2 deletions and release draft links when a workout ends.
-- Server: `lib/recordings/r2.ts` (SigV4 presign via `aws4fetch`, HEAD/range/delete), `lib/recordings/video-probe.ts` (real container, duration, resolution from the stored bytes), `app/(app)/recordings/actions.ts`.
-- Client: `UploadProvider` in the app shell (progress, cancel, retries, upload tray, leave warning), Add Recording dialog (Record video / Upload video, optional set with date/weight/reps/RIR), My Recordings on the exercise page, "+ Recording" on completed sessions, ⋯ → "Add recording…" and row marks in the workout logger, keep-or-delete prompts (remove set/exercise, discard, delete set in history), Settings → Video storage.
-- Cron: R2 cleanup from the queue. Account deletion: removes R2 files.
+**Built (hidden on any deployment without `R2_*` env vars):**
+- Migration `20261011002000_personal_recordings.sql`: `personal_recordings`, `storage_plans` (free 500 MB, pro 5 GB), `video_storage_accounts`, `recording_object_deletions`; `begin_recording` (validates, locks, reserves, random key), `finalize_recording` (service_role only), `cancel_/delete_/update_recording`, `get_recording_usage`, `my_recording_keys`, cleanup RPCs; `finish_training_session` redefined to link a workout's recording to its saved set; triggers queue R2 deletions and release draft links when a workout ends.
+- Server: `lib/recordings/r2.ts` (SigV4 presign via `aws4fetch`, HEAD/range/delete; `R2_ACCOUNT_ID` accepted as the bare ID or Cloudflare's endpoint URL, anything else → recordings off), `lib/recordings/video-probe.ts`, `app/(app)/recordings/actions.ts`.
+- Client: `UploadProvider` (progress, cancel, retries, upload tray, leave warning), Add recording sheet (Record / Upload, optional set), My Recordings on the exercise page, "+ Recording" on completed sessions, ⋯ → "Add recording…" and row marks in the logger, keep-or-delete prompts, Settings → Video storage.
+- Cron: R2 cleanup from the queue. Account deletion removes R2 files.
 
-**Verified so far:**
-- Rolled-back run of the migration + `tests/sql/2000_personal_recordings.test.sql` on the hosted DB: all 12 groups pass; a deliberate failure surfaces; nothing applied (`to_regclass` null afterwards).
-- Unit: 75/75 (video probe, R2 signing against `scripts/r2-standin.mjs`: exact size/type, tampering, unsigned access and expiry refused).
-- Typecheck, lint, production build pass. Existing flows on this branch with recordings off: see the final report.
-- **Not yet run:** Flow S (`tests/e2e/flow-s-recordings.spec.ts`) and iPhone checks of the new screens. They need the migration applied (`E2E_RECORDINGS=1 bash scripts/e2e-supabase.sh` then runs them against the R2 stand-in).
+**Migration 0020 applied (owner-approved, 2026-11-22):**
+- Review: the only change to `finish_training_session` vs the live definition is `returning id into v_set_id` + the guarded recording link. A rolled-back old-vs-new run of the same no-recording workouts (with and without the new `ref` field) gave identical sets, scores, PR results, session rows and idempotent replays; all 149 existing functions kept identical grants.
+- Process: dry run (only 0020 pending) → row-count + content-hash fingerprint of all 44 existing tables (incl. `auth.users`) → `db push` → fingerprint again: **all 44 identical**. New tables have RLS; `authenticated` has no insert/update; `finalize_recording` is service_role only; all 155 SECURITY DEFINER functions have `search_path=""`.
+
+**Fixes found by the new tests:**
+- Upload tray kept its expanded state after emptying, so the next upload's details popped open unasked (first tap then hid them). Now starts collapsed.
+- Set-choice rows in the Add recording sheet (42.5 px) and the tray pill (38 px) raised to 44 px.
+- A "can't play" message appeared below the whole list (on iPhone, next to the tab bar); it now sits under the recording it belongs to.
+
+**Verified (all on the final code):**
+- Unit 76/76; typecheck, lint pass.
+- Full hosted suite with recordings on (R2 stand-in): **19/19 incl. Flow S, 0 stalls**.
+- iPhone (WebKit): **8/8** incl. new `recordings-ios` (SE 320 px + iPhone 15: sheet, tray while typing, row mark, list, player, edit dialog, Settings), 0 stalls.
+- **Real bucket:** probe (credentials work; token can't list account buckets; unsigned GET/PUT/DELETE refused; CORS allows only the site and localhost, refuses other origins) and `r2-real-smoke` on a production build at `localhost:3000` (upload → server-verified → signed playback of the exact bytes → unsigned refused → another user sees nothing → delete frees usage and removes the R2 object). Bucket empty afterwards; no test rows left.
+
+**Before deploying:** owner approval to merge `phase-3-recordings` into main and push (Vercel Production already has `R2_*`). After deploy: confirm the feature appears, and run one upload/play/delete on production with a real phone video.
 
 ## 2026-11-22 Phase 2 cleanup: real 404s for missing and hidden pages (no migration)
 

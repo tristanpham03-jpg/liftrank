@@ -36,7 +36,7 @@ export function RecordingList({
   const { uploads, subscribe, emit } = useUploads();
   const [items, setItems] = useState(initial.items);
   const [more, setMore] = useState(initial.more);
-  const [playing, setPlaying] = useState<{ id: string; url: string } | null>(null);
+  const [playing, setPlaying] = useState<{ id: string; url: string; failed?: boolean } | null>(null);
   const [editing, setEditing] = useState<Recording | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, startLoading] = useTransition();
@@ -150,8 +150,13 @@ export function RecordingList({
                   preload="metadata"
                   className="mt-3 max-h-[60dvh] w-full rounded-[12px] bg-black"
                   data-testid="recording-player"
-                  onError={() => setError("This video can't play in this browser. MP4 (H.264) plays everywhere; HEVC needs Safari or a recent iPhone.")}
+                  onError={() => setPlaying((p) => (p && p.url === playing.url ? { ...p, failed: true } : p))}
                 />
+              ) : null}
+              {playing?.id === r.id && playing.failed ? (
+                <p className="mt-2 text-sm text-danger" role="alert">
+                  This video can&apos;t play in this browser. MP4 (H.264) plays everywhere; HEVC needs Safari or a recent iPhone.
+                </p>
               ) : null}
               {showExercise && r.exercise?.slug ? (
                 <Link href={`/training/exercise/${r.exercise.slug}`} className="mt-1 inline-block text-[13px] text-fg-3 underline-offset-4 hover:underline">
