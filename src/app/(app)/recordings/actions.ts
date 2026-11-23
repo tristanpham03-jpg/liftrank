@@ -1,11 +1,12 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { getUserId } from "@/lib/data";
 import { GENERIC_ERROR } from "@/lib/errors";
 import { RECORDING_ERRORS, MAX_RECORDING_SECONDS } from "@/lib/recordings/limits";
-import { deleteObjects, headObject, presignPlayback, presignUpload, readRange, recordingsEnabled } from "@/lib/recordings/r2";
+import { deleteObjects, presignPlayback, presignUpload, readRange, readStart, recordingsEnabled } from "@/lib/recordings/r2";
 import { RECORDING_COLUMNS, type Recording, type RecordingSet, type RecordingUsage } from "@/lib/recordings/types";
-import { containerMatches, probeVideo } from "@/lib/recordings/video-probe";
+import { containerMatches, probeVideo, PROBE_HEAD_BYTES } from "@/lib/recordings/video-probe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import type { ActionResult } from "@/lib/types";
@@ -111,18 +112,20 @@ export async function finishRecordingUpload(id: string): Promise<ActionResult<Re
       await deleteObjects([row.object_key]).catch(() => {});
       return { ok: false as const, error: RECORDING_ERRORS[code] ?? GENERIC_ERROR, code };
     };
+    // One request for the real stored size and the file's first bytes (what the probe reads first).
     let head;
     try {
-      head = await headObject(row.object_key);
+      head = await readStart(row.object_key, PROBE_HEAD_BYTES);
     } catch {
       return { ok: false, error: GENERIC_ERROR, retry: true };
     }
     // Not there (yet): the upload can be retried while the reservation lasts.
     if (!head) return { ok: false, error: RECORDING_ERRORS.upload_missing, code: "upload_missing", retry: true };
     if (!(head.size > 0) || head.size > Number(row.reserved_bytes)) return reject("upload_size_mismatch");
+    const first = head.bytes;
     let probe;
     try {
-      probe = await probeVideo((s, e) => readRange(row.object_key, s, e), head.size);
+      probe = await probeVideo((s, e) => (s === 0 && e <= first.length ? Promise.resolve(first.subarray(0, e)) : readRange(row.object_key, s, e)), head.size);
     } catch {
       return { ok: false, error: GENERIC_ERROR, retry: true };
     }
@@ -168,6 +171,8 @@ export async function deleteRecording(id: string): Promise<ActionResult> {
   if (error) return explain(error);
   // Removed now; the daily job retries from the queue if this fails.
   if (recordingsEnabled()) await deleteObjects([key as string]).catch(() => {});
+  // Cached pages (exercise history, sessions) still show its camera mark: drop them.
+  revalidatePath("/", "layout");
   return { ok: true, data: undefined };
 }
 
@@ -193,6 +198,8 @@ export async function updateRecording(
     return explain(error);
   }
   const { data } = await me.supabase.from("personal_recordings").select(RECORDING_COLUMNS).eq("id", id).single();
+  // It may have moved to another set: cached pages' camera marks are stale.
+  if (changes.setId !== undefined) revalidatePath("/", "layout");
   return { ok: true, data: data as unknown as Recording };
 }
 

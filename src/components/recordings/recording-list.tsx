@@ -47,6 +47,7 @@ export function RecordingList({
     () =>
       subscribe((e) => {
         if (e.type === "removed") setItems((all) => all.filter((r) => r.id !== e.id));
+        else if (e.type === "updated") setItems((all) => all.map((x) => (x.id === e.recording.id ? { ...x, ...e.recording, exercise: x.exercise } : x)));
         else if (e.upload.recording && (!exercise || e.upload.recording.exercise_id === exercise.id)) {
           const rec = { ...e.upload.recording, exercise: e.upload.recording.exercise ?? (exercise ? null : { name: e.upload.target.exerciseName, slug: "" }) };
           setItems((all) => [rec, ...all.filter((r) => r.id !== rec.id)]);
@@ -179,6 +180,7 @@ export function RecordingList({
           onClose={() => setEditing(null)}
           onSaved={(r) => {
             setItems((all) => all.map((x) => (x.id === r.id ? { ...x, ...r, exercise: x.exercise } : x)));
+            emit({ type: "updated", recording: r });
             setEditing(null);
           }}
         />

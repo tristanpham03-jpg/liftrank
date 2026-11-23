@@ -9,10 +9,15 @@ import { dismissTip, setTrainingTips } from "./actions";
  * Training Buddy: one small, dismissible tip from your own data. The icon is a
  * placeholder until an approved mascot illustration exists.
  */
+// Dismissed in this app session: a cached or prefetched copy of Training rendered before the
+// server knew must not show the tip again (the server list is the lasting record).
+const dismissedHere = new Set<string>();
+let tipsOffHere = false;
+
 export function BuddyTip({ tip }: { tip: Tip }) {
-  const [hidden, setHidden] = useState(false);
+  const [hidden, setHidden] = useState(() => tipsOffHere || dismissedHere.has(tip.key));
   const [, start] = useTransition();
-  if (hidden) return null;
+  if (hidden || tipsOffHere || dismissedHere.has(tip.key)) return null;
   return (
     <aside className="glass-flat mb-4 flex items-start gap-3 rounded-[16px] px-3.5 py-3" aria-label="Training Buddy" data-testid="buddy-tip">
       <span aria-hidden className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/[0.07] text-fg-2">
@@ -24,6 +29,7 @@ export function BuddyTip({ tip }: { tip: Tip }) {
         <button
           type="button"
           onClick={() => {
+            tipsOffHere = true;
             setHidden(true);
             start(async () => void (await setTrainingTips(false)));
           }}
@@ -36,6 +42,7 @@ export function BuddyTip({ tip }: { tip: Tip }) {
         type="button"
         aria-label="Dismiss tip"
         onClick={() => {
+          dismissedHere.add(tip.key);
           setHidden(true);
           start(async () => void (await dismissTip(tip.key)));
         }}

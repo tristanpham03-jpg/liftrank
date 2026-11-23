@@ -76,6 +76,12 @@ describe("R2 storage (against the signing stand-in)", () => {
     expect(await r2.headObject(KEY)).toEqual({ size: video.length, type: "video/mp4" });
     const head = await r2.readRange(KEY, 0, 16);
     expect(head.length).toBe(16);
+    // Size and first bytes in one request (what verification uses).
+    const start = await r2.readStart(KEY, 64 * 1024);
+    expect(start!.size).toBe(video.length);
+    expect(start!.bytes.length).toBe(Math.min(video.length, 64 * 1024));
+    expect(Buffer.from(start!.bytes.subarray(0, 16)).equals(Buffer.from(head))).toBe(true);
+    expect(await r2.readStart(`rec/${"d".repeat(32)}.mp4`, 16)).toBeNull();
   });
 
   it("no public access: unsigned reads and writes are refused", async () => {

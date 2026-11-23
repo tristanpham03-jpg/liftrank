@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/server";
 import { formatSet, type TrainingSet } from "@/lib/training";
 import { SessionAddRecording } from "@/components/recordings/session-add-recording";
 import { recordingsEnabled } from "@/lib/recordings/r2";
+import { DeleteSession } from "./delete-session";
 
 export const metadata: Metadata = { title: "Session" };
 
@@ -25,6 +26,13 @@ export default async function SessionPage({ params }: { params: Promise<{ id: st
   if (!session || session.status !== "completed") notFound();
   const { data } = await supabase.from("training_sets").select("*").eq("session_id", id).order("created_at").order("set_number");
   const sets = (data ?? []) as TrainingSet[];
+  // For the delete confirmation: recordings linked to this workout (by session or set) and leaderboard entries made from it.
+  const setIds = sets.map((s) => s.id);
+  const [{ data: recRows }, { data: liftRows }] = await Promise.all([
+    supabase.from("personal_recordings").select("id, session_id, training_set_id").eq("user_id", profile.id)
+      .or(`session_id.eq.${id}${setIds.length ? `,training_set_id.in.(${setIds.join(",")})` : ""}`),
+    setIds.length ? supabase.from("lifts").select("id").eq("user_id", profile.id).is("deleted_at", null).in("training_set_id", setIds) : Promise.resolve({ data: [] }),
+  ]);
   const byId = new Map(catalog.map((e) => [e.id, e]));
   const order = [...new Set(sets.map((s) => s.exercise_id))];
   const notes = (session.exercise_notes ?? {}) as Record<string, string>;
@@ -76,6 +84,14 @@ export default async function SessionPage({ params }: { params: Promise<{ id: st
           );
         })}
       </div>
+      <DeleteSession
+        sessionId={session.id}
+        label={`${session.day_name}, ${formatDate(`${session.local_date}T12:00:00Z`, "UTC", { month: "short", day: "numeric" })}`}
+        sets={sets.length}
+        exercises={order.length}
+        recordingIds={(recRows ?? []).map((r) => r.id as string)}
+        submitted={(liftRows ?? []).length}
+      />
     </>
   );
 }

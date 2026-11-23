@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState, useTransition, useRef } from "react";
 import { DropdownMenu } from "radix-ui";
 import { ArrowDown, ArrowUp, ChevronRight, History, Minus, MoreHorizontal, Pencil, Play, Plus, Repeat, Split, StickyNote, Trash2, Unlink, X } from "lucide-react";
 import { toggleFavorite } from "@/app/(app)/lift/actions";
@@ -99,15 +99,17 @@ export function TrainingDay(props: Props) {
 
   return (
     <>
-      <header className="mb-4 flex items-start justify-between gap-3 pt-2">
+      {/* Phones: title and split name get the full width (the name wraps, up to 40 characters, never cut
+          mid-word at the top), and the links sit on their own row. Wider screens: side by side. */}
+      <header className="mb-4 flex flex-col gap-2 pt-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3" data-testid="training-header">
         <div className="min-w-0">
           <h1 className="text-[28px] font-bold leading-tight tracking-[-0.03em]">My Training</h1>
-          <p className="truncate text-sm text-fg-2">
-            {split.name} · {ROTATION_LABEL[split.rotation]}
+          <p className="line-clamp-2 break-words text-sm text-fg-2" data-testid="split-name">
+            {split.name} <span className="whitespace-nowrap">· {ROTATION_LABEL[split.rotation]}</span>
             <span className="sr-only">: {rotationText(days.map((d) => d.name), split.rotation, split.template)}</span>
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-3 pt-2 text-sm">
+        <div className="-ml-0.5 flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1 text-sm sm:ml-0 sm:gap-x-3 sm:pt-2">
           <Link href="/training/sessions" className="tap inline-flex items-center gap-1 text-fg-2 hover:text-fg">
             <History size={15} aria-hidden /> Sessions
           </Link>
@@ -144,7 +146,7 @@ export function TrainingDay(props: Props) {
               )}
             >
               {d.name}
-              {d.id === nextDayId ? <span className={cn("text-[11px] font-medium", on ? "text-accent-ink/70" : "text-fg-3")}>Next</span> : null}
+              {d.id === nextDayId ? <span className={cn("text-[11px] font-medium", on ? "text-accent-ink/70" : "text-ice")}>Next</span> : null}
             </Link>
           );
         })}
@@ -225,18 +227,26 @@ function PreviewRow({ e, unit }: { e: DayExercise; unit: WeightUnit }) {
   return (
     <li className="flex items-center gap-2 py-2.5 pl-3.5 pr-1.5">
       <span className="min-w-0 flex-1">
-        <span className="flex items-center gap-1.5">
-          <Link href={`/training/exercise/${e.exercise.slug}`} className="truncate font-medium hover:underline underline-offset-4">
+        <span className="flex items-start gap-1.5">
+          {/* Full names, two lines at most: "Incline Dumbbell Bench Press" isn't cut to "…Bench Pr…" on a small phone. */}
+          <Link href={`/training/exercise/${e.exercise.slug}`} className="line-clamp-2 font-medium leading-snug hover:underline underline-offset-4">
             {e.exercise.name}
           </Link>
-          {e.note ? <StickyNote size={13} className="shrink-0 text-fg-3" aria-label="Has a routine note" /> : null}
+          {e.note ? <StickyNote size={13} className="mt-1 shrink-0 text-fg-3" aria-label="Has a routine note" /> : null}
         </span>
-        <span className="block truncate text-[13px] text-fg-2">
+        <span className="block text-[13px] text-fg-2">
           {e.setCount} {e.setCount === 1 ? "set" : "sets"}
           {e.unilateral ? " · left/right" : ""}
-          {top && e.previous.date
-            ? ` · last ${formatSet(top, e.exercise.ranking_method, unit, { withUnit: true, convention: e.exercise.weight_convention })} on ${shortDay(e.previous.date)}`
-            : " · first time"}
+          {top && e.previous.date ? (
+            <>
+              {" · last "}
+              {/* Past performance reads in lavender everywhere (here, and Best / ghost values in the logger). */}
+              <span className="text-lavender">{formatSet(top, e.exercise.ranking_method, unit, { withUnit: true, convention: e.exercise.weight_convention })}</span>
+              {` on ${shortDay(e.previous.date)}`}
+            </>
+          ) : (
+            " · first time"
+          )}
         </span>
       </span>
       <Link
@@ -485,15 +495,19 @@ function DayEditor({
 function AddDayButton({ splitId }: { splitId: string }) {
   const router = useRouter();
   const [pending, start] = useTransition();
+  const busy = useRef(false); // one day per tap, even if tapped twice before React re-renders
   return (
     <button
       type="button"
       disabled={pending}
       onClick={() => {
+        if (busy.current) return;
         const name = window.prompt("Name the new day", "New day")?.trim();
         if (!name) return;
+        busy.current = true;
         start(async () => {
           const res = await addDay(splitId, name);
+          busy.current = false;
           if (res.ok) router.push(`/training?day=${res.data}`);
           else window.alert(res.error);
           router.refresh();

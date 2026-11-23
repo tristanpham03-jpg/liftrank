@@ -77,7 +77,8 @@ export function trainingTips(input: TipInput): Tip[] {
   const week = weekStart(today);
   const days = new Set(input.sessions.filter((s) => s.local_date >= week && s.local_date <= today).map((s) => s.local_date));
   if (days.size >= 3) {
-    tips.push({ key: `consistency:${week}:${days.size}`, kind: "consistency", text: `You've completed training sessions on ${days.size} different days this week.` });
+    // One per week: dismissing it means "not this week", even as the count grows.
+    tips.push({ key: `consistency:${week}`, kind: "consistency", text: `You've completed training sessions on ${days.size} different days this week.` });
   }
 
   // 4. Split observations (what the split contains, nothing more). Only for splits with 4+ exercises.

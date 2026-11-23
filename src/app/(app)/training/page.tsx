@@ -104,8 +104,7 @@ export default async function TrainingPage({ searchParams }: { searchParams: Pro
       <>
         <PageHeader title="My Training" subtitle={active ? "Change split. Your logged sets stay." : "Pick a split to start. You can change everything later."} />
         <SplitChooser
-          current={active ? { id: active.id, template: active.template as TemplateId } : null}
-          older={splits.filter((s) => !s.is_active).map((s) => ({ id: s.id, name: s.name, rotation: s.rotation as Rotation }))}
+          saved={splits.map((s) => ({ id: s.id, name: s.name, rotation: s.rotation as Rotation, template: s.template as TemplateId, active: Boolean(s.is_active), days: (s.training_days ?? []).length }))}
         />
       </>
     );

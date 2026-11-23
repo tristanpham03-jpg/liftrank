@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { MAX_RIR, newBlock, routineToDraft, type Draft, type SessionSet } from "@/lib/session";
 import { TEMPLATES, defaultSetCount, type Rotation, type Side, type TemplateId } from "@/lib/training";
 import { previousFor, type Previous } from "@/lib/training-previous";
+import { deleteObjects, recordingsEnabled } from "@/lib/recordings/r2";
 import type { ActionResult, LiftVisibility, SubmitResult, WeightUnit } from "@/lib/types";
 
 const fail = (e: unknown): { ok: false; error: string } => ({ ok: false, error: e instanceof AppError ? e.message : GENERIC_ERROR });
@@ -25,8 +26,23 @@ async function call<T>(fn: string, args: Record<string, unknown>): Promise<Actio
   }
 }
 
-/** Imports a starter split (exercises looked up by slug) and makes it the active one. */
-export async function importSplit(templateId: TemplateId, rotation: Rotation): Promise<ActionResult<string>> {
+let requestIdSupported: boolean | null = null;
+/** Whether the database's import_training_split takes p_request_id (migration 0023). Asked once per server instance. */
+async function importTakesRequestId(): Promise<boolean> {
+  if (requestIdSupported !== null) return requestIdSupported;
+  const supabase = await createClient();
+  // A call that fails validation inside the new function ("invalid_name") proves it exists; "function not found" means the old one.
+  const { error } = await supabase.rpc("import_training_split", { p_name: "", p_template: "custom", p_rotation: "1x", p_days: [], p_request_id: null });
+  requestIdSupported = !(error && (error.code === "PGRST202" || /could not find the function/i.test(error.message)));
+  return requestIdSupported;
+}
+
+/**
+ * Imports a starter split (exercises looked up by slug) and makes it the active one. `requestId` is made
+ * once per choice on the device: repeating it (double tap, retry, leaving mid-import) returns the split
+ * that request already created instead of a copy.
+ */
+export async function importSplit(templateId: TemplateId, rotation: Rotation, requestId?: string): Promise<ActionResult<string>> {
   const template = TEMPLATES.find((t) => t.id === templateId);
   if (!template || !template.rotations.includes(rotation)) return { ok: false, error: "Pick a split." };
   const bySlug = new Map((await getCatalog()).map((e) => [e.slug, e.id]));
@@ -34,7 +50,12 @@ export async function importSplit(templateId: TemplateId, rotation: Rotation): P
     name: d.name,
     exercises: d.exercises.flatMap((slug, i) => (bySlug.has(slug) ? [{ exercise_id: bySlug.get(slug), set_count: defaultSetCount(i) }] : [])),
   }));
-  const res = await call<string>("import_training_split", { p_name: template.name, p_template: template.id, p_rotation: rotation, p_days: days });
+  if (requestId !== undefined && !UUID.test(requestId)) return { ok: false, error: "Pick a split." };
+  const args = { p_name: template.name, p_template: template.id, p_rotation: rotation, p_days: days };
+  let res = await call<string>("import_training_split", { ...args, p_request_id: requestId ?? null });
+  // Before migration 0023 the database only has the 4-argument import (no request id): still import, just
+  // without the duplicate guard. Lets this code ship before or after the migration.
+  if (!res.ok && (await importTakesRequestId()) === false) res = await call<string>("import_training_split", args);
   if (res.ok) {
     const userId = (await getUserId())!;
     await track(await createClient(), userId, "training_split_imported", { template: template.id, rotation });
@@ -237,6 +258,21 @@ export async function finishSession(
   return res;
 }
 
+/**
+ * Delete a completed workout you own: its sets leave your history, graphs and records (later workouts'
+ * PR summaries are recomputed). Your routine, other workouts and leaderboard submissions stay.
+ * Recordings linked to it need a decision: "keep" (they stay, on the exercise in general) or "delete".
+ */
+export async function deleteSession(sessionId: string, recordings: "keep" | "delete" | null): Promise<ActionResult<{ sets: number }>> {
+  if (!UUID.test(sessionId)) return { ok: false, error: "That workout wasn't found." };
+  const res = await call<{ sets: number; keys: string[] }>("delete_training_session", { p_session_id: sessionId, p_recordings: recordings });
+  if (!res.ok) return res;
+  // Deleted recordings' files go now; the daily cleanup retries from the queue if this fails.
+  if (res.data.keys.length && recordingsEnabled()) await deleteObjects(res.data.keys).catch(() => []);
+  revalidatePath("/", "layout");
+  return { ok: true, data: { sets: res.data.sets } };
+}
+
 export async function discardSession(sessionId: string): Promise<ActionResult> {
   const res = await call<null>("discard_training_session", { p_session_id: sessionId });
   if (res.ok) revalidatePath("/training");
@@ -261,6 +297,8 @@ export async function getPrevious(exerciseIds: string[], today: string): Promise
 
 export async function dismissTip(key: string): Promise<ActionResult> {
   const res = await call<null>("dismiss_training_tip", { p_key: key.slice(0, 120) });
+  // Cached and prefetched copies of Training still contain the tip: drop them.
+  if (res.ok) revalidatePath("/training");
   return res.ok ? { ok: true, data: undefined } : res;
 }
 

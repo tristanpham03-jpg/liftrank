@@ -90,6 +90,8 @@ const MESSAGES: Record<string, string> = {
   unilateral_not_supported: "This exercise is logged with both sides together.",
   unilateral_not_on_boards: "One-side sets stay in your training log; they can't go on a leaderboard yet.",
   session_not_active: "This session has already ended or was discarded.",
+  session_not_completed: "Only a finished workout can be deleted. End or discard it first.",
+  recordings_choice_required: "Choose what to do with this workout's recordings.",
   session_already_ended: "This session was already saved.",
   draft_conflict: "This session changed on another device. Reload to continue.",
   invalid_rir: "RIR is a whole number from 0 to 10.",

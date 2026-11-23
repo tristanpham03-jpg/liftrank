@@ -118,6 +118,7 @@ function SessionEditor({ session, routine, catalog, unit, recentIds, favoriteIds
     void listRecordings({ sessionId: session.id }).then((res) => live && res.ok && setSessionRecs(res.data.items));
     const off = uploads.subscribe((e) => {
       if (e.type === "removed") setSessionRecs((all) => all.filter((r) => r.id !== e.id));
+      else if (e.type === "updated") setSessionRecs((all) => all.map((r) => (r.id === e.recording.id ? e.recording : r)));
       else if (e.upload.recording?.session_id === session.id) setSessionRecs((all) => [e.upload.recording!, ...all.filter((r) => r.id !== e.upload.recording!.id)]);
     });
     return () => {
@@ -432,7 +433,8 @@ function SessionEditor({ session, routine, catalog, unit, recentIds, favoriteIds
         <div className="min-w-[10rem] flex-1">
           <h1 className="line-clamp-2 text-[24px] font-bold uppercase leading-tight tracking-[-0.02em]">{session.dayName}</h1>
           <p className="text-[13px] text-fg-2">
-            Active session · started <span className="whitespace-nowrap">{startedAt}</span> ·{" "}
+            <span aria-hidden className="mr-1.5 inline-block h-1.5 w-1.5 -translate-y-px rounded-full bg-success align-middle" />
+            <span className="text-success">Active session</span> · started <span className="whitespace-nowrap">{startedAt}</span> ·{" "}
             <span data-testid="sync-status" className={cn(sync === "conflict" && "text-warning")}>
               {sync === "saved" ? "Saved" : sync === "saving" ? "Saving…" : sync === "device" ? "Saved on this device" : "Updated from another device; this one's numbers kept"}
             </span>
@@ -682,7 +684,9 @@ function SessionBlock({
     });
 
   return (
-    <section className="@container glass-flat overflow-hidden rounded-[18px]" aria-labelledby={`ex-${block.key}`} data-exercise={exercise.slug}>
+    <section className="@container glass-flat relative overflow-hidden rounded-[18px]" aria-labelledby={`ex-${block.key}`} data-exercise={exercise.slug}>
+      {/* A thin ice rail marks each exercise block: structure, not decoration. */}
+      <span aria-hidden className="pointer-events-none absolute inset-y-3 left-0 w-[2px] rounded-r-full bg-ice/40" />
       {/* The name is how you know which exercise this is: full name on up to two lines, never cut to "Behin…".
           If the controls don't fit beside it (very narrow or zoomed), they move to their own line. */}
       <div className="flex flex-wrap items-start gap-x-2 px-3.5 pt-2.5 pb-1">
@@ -790,7 +794,7 @@ function SessionBlock({
                 <span key={tag || "both"} className="tabular">
                   {i ? " · " : ""}
                   {tag ? `${tag} ` : ""}
-                  <span className="whitespace-nowrap font-semibold text-fg">
+                  <span className="whitespace-nowrap font-semibold text-lavender">
                     {formatSet(b!, exercise.ranking_method, unit, { withUnit: true, convention: exercise.weight_convention })}
                   </span>
                 </span>
@@ -909,7 +913,7 @@ function SessionBlock({
 // ───── One set row: previous · weight · reps · RIR ─────
 
 const input =
-  "h-11 w-full min-w-0 rounded-[10px] border border-white/10 bg-white/[0.05] px-1 text-center text-[17px] font-semibold tabular outline-none placeholder:font-normal placeholder:text-fg-3/70 focus:border-white/40 focus:bg-white/[0.08] aria-[invalid=true]:border-danger/70";
+  "h-11 w-full min-w-0 rounded-[10px] border border-white/10 bg-white/[0.05] px-1 text-center text-[17px] font-semibold tabular outline-none placeholder:font-normal placeholder:text-lavender/55 focus:border-white/40 focus:bg-white/[0.08] aria-[invalid=true]:border-danger/70";
 
 function SessionRow({
   exercise,

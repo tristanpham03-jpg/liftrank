@@ -530,6 +530,25 @@ describe("Training Buddy tips", () => {
     expect(tips[2].text).toBe("You've completed training sessions on 3 different days this week.");
     expect(trainingTips({ ...base, sets, sessions, dismissed: new Set(tips.map((t) => t.key)) })).toEqual([]);
   });
+
+  it("a dismissed tip stays dismissed until there's genuinely new information", async () => {
+    const { trainingTips } = await import("./training-tips");
+    const day = (d: string, i: number, prs: string[] = []) => ({ id: `s${i}`, local_date: d, prs });
+    const three = [day("2026-11-10", 0), day("2026-11-11", 1), day("2026-11-12", 2, ["rdl"])];
+    const shown = trainingTips({ ...base, sessions: three });
+    const dismissed = new Set(shown.map((t) => t.key));
+    // Another training day this week: the consistency tip doesn't come back with a new count.
+    const four = [...three, day("2026-11-13", 3)];
+    expect(trainingTips({ ...base, sessions: four, dismissed })).toEqual([]);
+    // Two PR sessions on the same day: dismissing the latest one's tip doesn't surface the earlier one.
+    const sameDay = [day("2026-11-12", 9, ["rdl"]), ...three];
+    const latest = trainingTips({ ...base, sessions: sameDay }).find((t) => t.kind === "pr")!;
+    expect(latest.key).toBe("pr:s9");
+    expect(trainingTips({ ...base, sessions: sameDay, dismissed: new Set([latest.key, ...dismissed]) }).filter((t) => t.kind === "pr")).toEqual([]);
+    // A newer workout with a new personal best is new information.
+    const newer = [day("2026-11-13", 4, ["rdl"]), ...sameDay];
+    expect(trainingTips({ ...base, sessions: newer, dismissed: new Set([latest.key, ...dismissed]) }).map((t) => t.key)).toEqual(["pr:s4"]);
+  });
 });
 
 describe("routine persistence and alternative slots", () => {
@@ -747,3 +766,27 @@ describe("route guard (real 404s on full page loads)", () => {
   });
 });
 
+
+describe("My Exercises muscle groups", () => {
+  it("files every catalog exercise under exactly one group, from its first primary muscle", async () => {
+    const { groupOf, trains, GROUPS } = await import("./exercise-groups");
+    const { EXERCISE_MUSCLES } = await import("./exercise-muscles");
+    const ids = new Set(GROUPS.map((g) => g.id));
+    for (const slug of Object.keys(EXERCISE_MUSCLES)) {
+      const g = groupOf({ slug });
+      expect(ids.has(g), slug).toBe(true);
+      expect(GROUPS.filter((x) => trains({ slug }, x.id) === "home"), slug).toHaveLength(1);
+    }
+    expect(groupOf({ slug: "barbell-bench-press" })).toBe("chest");
+    expect(groupOf({ slug: "romanian-deadlift" })).toBe("hamstrings");
+    expect(groupOf({ slug: "deadlift" })).toBe("glutes");
+    expect(groupOf({ slug: "dip" })).toBe("chest");
+    // Secondary muscles are a filter, not a second home.
+    expect(trains({ slug: "barbell-bench-press" }, "triceps")).toBe("secondary");
+    expect(trains({ slug: "dip" }, "triceps")).toBe("primary");
+    expect(trains({ slug: "barbell-bench-press" }, "quads")).toBeNull();
+    // Unknown slugs fall back to the database's muscles.
+    expect(groupOf({ slug: "custom-thing", muscle_group: "Hamstrings" })).toBe("hamstrings");
+    expect(groupOf({ slug: "mystery" })).toBe("other");
+  });
+});

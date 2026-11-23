@@ -10,6 +10,8 @@ export type VideoProbe = { container: "mp4" | "webm"; durationS: number; width: 
 export type ProbeError = "invalid_video_type" | "unknown_duration";
 
 const HEAD = 64 * 1024;
+/** How much of the file the probe reads first; fetch this much up front and it needs no extra request for it. */
+export const PROBE_HEAD_BYTES = HEAD;
 const MAX_MOOV = 16 * 1024 * 1024;
 const WEBM_HEAD = 1024 * 1024;
 const TOP_LEVEL = new Set(["ftyp", "wide", "free", "skip", "mdat", "moov", "pnot", "uuid", "meta", "styp", "sidx", "moof", "mfra", "pdin", "junk"]);

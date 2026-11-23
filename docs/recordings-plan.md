@@ -84,6 +84,31 @@ Playback: server action → RLS says it's yours → 10-minute presigned GET → 
 - The Training logger loads one small list (this session's recordings) once, after it renders. Day switching, the exercise picker and startup are unchanged.
 - Settings → Video storage: one usage RPC plus 12 rows of metadata.
 
+## Upload performance (measured 2026-11-22)
+`tests/e2e/upload-perf.spec.ts` (opt-in, `E2E_UPLOAD_PERF=1`) times each stage from the browser's real requests. The files mimic iPhone recordings: QuickTime, with the movie header at the end.
+
+| File | Client prep | Reserve | PUT to storage | Verify (server) | Total |
+|---|---|---|---|---|---|
+| 10 MB (real R2) | ~0 s | 0.13 s | 7.2 s | 1.5 s | 9.4 s |
+| 30 MB (real R2) | ~0 s | 0.22 s | 20.1 s | 1.3 s | 22.0 s |
+| 60 MB (real R2) | ~0 s | 0.25 s | 46.2 s | 2.0 s | 48.8 s |
+| 90 MB (real R2) | ~0 s | 0.24 s | 55.6 s | 1.7 s | 57.9 s |
+| 10–90 MB (local stand-in) | ~0 s | 0.13–0.22 s | 0.04–0.14 s | 0.4–0.7 s | 0.8–1.3 s |
+
+- **The bottleneck is upload bandwidth × file size.** This Mac uploaded to R2 at 11–14 Mbit/s, and the transfer is 77–96% of the wait. With the network removed (stand-in), the app's own work is about 1–1.3 s at any size.
+- **Measurement limits:**
+  - These runs were from a desktop on home Wi-Fi; phones on cellular are often slower and more variable.
+  - Server verification here ran from this Mac to R2, so on Vercel it should be similar or faster.
+  - Client prep was measured in Chromium with synthetic files. Reading metadata of a real HEVC file on an iPhone wasn't measured (no device here).
+- **Changes made:**
+  - Verification gets the stored size and the file's first bytes in one ranged GET (R2 returns the total in `Content-Range`) instead of a HEAD plus a read. That's one fewer round trip, and it's as trustworthy, since both come from R2.
+  - The in-browser duration check waits at most 1.5 s, down from 4 s, before the upload starts. It's early feedback only; the server always reads the real duration.
+- **What would actually speed it up (owner decisions):**
+  1. **Smaller files at the source.** iPhone *Settings → Camera → Record Video → 1080p at 30 fps* is about 60 MB per minute in HEVC; 4K/60 is several times that. A one-line hint in the Add recording sheet when a file is over about 60 MB is free.
+  2. **Optional on-device compression** (WebCodecs + an MP4 muxer) to about 720p before upload: 3–6× smaller. Trade-offs: CPU and battery during a workout, uneven support on older iPhones, and a re-encode before the upload can start. Opt-in only.
+  3. **Server-side transcoding** (Cloudflare Stream or Media Transformations, or a worker running ffmpeg) doesn't make the upload itself faster; it only shrinks storage. Not recommended for speed, and it would be a paid service.
+  4. **Parallel or multipart uploads** don't help a single phone limited by its own uplink. Skip.
+
 ## Testing
 - `tests/sql/2000_personal_recordings.test.sql` (rolled back on the hosted DB): validation, random keys, quota with reservations, 4-in-flight limit, actual-size accounting, oversize finalize rejected, lapsed reservations, Pro quota by plan change, ownership (B can't see/rename/cancel/delete A's), association changes, End linking, leftovers on discard/End, set deletion keeps the recording, cleanup queue timing, account deletion queues every file, grants, `search_path`, RLS as another user.
 - `src/lib/recordings/*.test.ts`: video probing (MP4/MOV moov-first and moov-last, WebM, fakes, truncated, real duration) and R2 signing against `scripts/r2-standin.mjs` (exact size/type, tampering, unsigned access, expiry, deletes).

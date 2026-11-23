@@ -107,6 +107,24 @@ export async function headObject(key: string): Promise<{ size: number; type: str
   return { size: Number(res.headers.get("content-length") ?? -1), type: res.headers.get("content-type") ?? "" };
 }
 
+/**
+ * The first `n` bytes of an object and its total size, in one request (a ranged GET's Content-Range
+ * carries the size, so no separate HEAD is needed). null when the object doesn't exist.
+ */
+export async function readStart(key: string, n: number): Promise<{ size: number; bytes: Uint8Array } | null> {
+  const c = cfg();
+  const res = await client(c).fetch(objectUrl(c, key), { method: "GET", headers: { range: `bytes=0-${n - 1}` } });
+  if (res.status === 404) return null;
+  if (res.status === 416) return { size: 0, bytes: new Uint8Array() }; // an empty object has no byte 0
+  if (!res.ok) throw new Error(`r2 range ${res.status}`);
+  const bytes = new Uint8Array(await res.arrayBuffer());
+  const total = /\/(\d+)\s*$/.exec(res.headers.get("content-range") ?? "");
+  // 206 carries the total; a 200 (whole object) is its own size.
+  const size = total ? Number(total[1]) : res.status === 200 ? bytes.length : NaN;
+  if (!Number.isFinite(size)) throw new Error("r2 range without size");
+  return { size, bytes };
+}
+
 /** Bytes [start, end) of an object. */
 export async function readRange(key: string, start: number, endExclusive: number): Promise<Uint8Array> {
   const c = cfg();

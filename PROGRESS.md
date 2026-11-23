@@ -2,6 +2,40 @@
 
 _Last updated: 2026-10-15 · Done: Phases 1–7 + friend verification · **Deployed (unlisted) at https://liftrank-roan.vercel.app** · Finishing launch setup (see "Deployment status")_
 
+## 2026-11-23 Training quality update (branch `training-quality`; NOT pushed; migration `…2300` NOT applied)
+
+**Bugs fixed (root causes):**
+- **Duplicate splits:**
+  - **Cause:** picking a template always called `import_training_split`, which always inserted a new split and days. Only the easy-to-miss "Your earlier splits" list reused one, and a fast double tap or a retry imported twice. Production data had two A/P splits for one account; they're left as they are, holding history.
+  - **Fix (migration 0023):** idempotent imports keyed by a client request id (unique per user).
+  - **Fix (chooser):** saved splits are listed first with "Switch"; picking a template you already have offers "Switch to your saved …" before "Start a fresh copy"; a synchronous double-tap guard. "Add day" gets the same guard.
+  - **Before 0023:** the action falls back to the old call, so the code ships safely before or after the migration.
+- **Camera mark after deleting a recording:** the exercise page's per-set marks were server-rendered once. Deleting or moving a recording updated only the list, and the 2-minute page cache kept stale copies. Fix: history rows follow upload events (removed, linked, moved, via a new `updated` event), and delete/move revalidate cached pages.
+- **Dismissed Training Buddy tip returning:**
+  - **Cause:** dismissing didn't invalidate the cached and prefetched Training page, so returning by tab showed the old copy. Separately, the weekly-consistency tip's key included the day count, so every extra training day made it "new".
+  - **Fix:** dismissing revalidates; dismissals are remembered client-side for cached copies; the consistency tip is once per week; PR tips come back only for a newer workout with new PRs.
+- **Long split names on narrow screens:** three links shared one row with the title at 320 px. Now the title and name use the full width (the name wraps to 2 lines) and the links take their own row. Exercise names in the day preview wrap instead of being cut.
+- **Delete a completed workout** (`delete_training_session`, migration 0023, plus a control on the workout page):
+  - **Ownership:** owner only, and completed workouts only.
+  - **Recordings:** need an explicit keep or delete choice (refused without one).
+  - **What stays and goes:** leaderboard entries stay (the FK is cleared, numbers kept); the routine and other workouts stay. Later workouts' stored PR summaries are recomputed; history, best and graphs are derived and update themselves.
+
+**UI:**
+- **My Exercises:** search, a muscle filter (secondary muscles marked), Favorites, Recent, then collapsible muscle sections (one home per exercise, from its first primary muscle; `lib/exercise-groups.ts`). Open sections are remembered in the tab.
+- **Accents:** ice for structure (exercise-block rail, the Next day); lavender for past performance (Best, "last …", ghost values in inputs); green for live and improving (the active-session dot, Progress wins).
+
+**Upload performance:** profiled per stage (`tests/e2e/upload-perf.spec.ts`; numbers in `docs/recordings-plan.md`). The wait is upload bandwidth × file size (11–14 Mbit/s here; 90 MB ≈ 56 s of transfer); the app's own work is about 1–2 s. Verification now gets the size and the first bytes in one R2 request, and the in-browser duration check waits at most 1.5 s.
+
+**Proposals for review (nothing replaced):** `docs/training-quality-review.md`, covering templates (Full Body merged), the exercise-function audit and Similar Exercises corrections, and the split-import plan.
+
+**Tests:**
+- Unit 85/85; lint; typecheck.
+- SQL `tests/sql/2300_*`, rolled back on the hosted DB: all pass; nothing applied.
+- Full hosted suite with recordings: 20/20 after the fixes, plus reruns of N and U; 0 stalls.
+- iPhone 8/8; Flow T in WebKit; real-R2 smoke test.
+- Flow U3 (delete a workout) waits for 0023.
+- Test files left in the bucket by the profiling run were removed; the bucket is empty.
+
 ## 2026-11-22 Back navigation, iPhone startup, Free storage 250 MB (migration `…2200` applied with the owner's approval; deployed)
 
 - **0022 applied:** dry run (only 0022 pending) → fingerprints of all 44 tables, function grants, recordings, storage accounts, the R2 cleanup queue and the Pro plan → push → only `storage_plans.free` changed (524288000 → 262144000). Concurrency rerun on the real Free plan (`--free`): 4 × 100 MB at once → 2; then 3 × 30 MB → 1 (230/250 MB). Flow S passes against 250 MB.

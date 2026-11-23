@@ -117,15 +117,25 @@ test("Flow N: session-only vs saved-to-routine, alternative slots, My Exercises"
   // 5. My Exercises: logged ones listed; Log now starts a quick session, routine untouched.
   const routineNow = await routineOf("Upper");
   await page.goto("/training/exercises");
-  await expect(page.getByRole("list", { name: "My exercises" }).getByRole("link", { name: "Kelso Shrug", exact: true })).toBeVisible();
+  await expect(page.getByRole("list", { name: "Recent" }).getByRole("link", { name: "Kelso Shrug", exact: true })).toBeVisible();
+  // Muscle sections: each exercise once, collapsed until opened; the filter adds secondary muscles.
+  const back = page.getByRole("region", { name: "Back" });
+  await expect(back.getByRole("button", { expanded: false })).toBeVisible();
+  await back.getByRole("button").click();
+  await expect(back.getByRole("link", { name: "Kelso Shrug", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Kelso Shrug", exact: true })).toHaveCount(2); // Recent + Back, never twice in sections
+  await page.getByRole("navigation", { name: "Filter by muscle" }).getByRole("button", { name: "Triceps" }).click();
+  await expect(page.getByRole("list", { name: "Triceps exercises" })).toContainText("secondary");
+  await page.getByRole("navigation", { name: "Filter by muscle" }).getByRole("button", { name: "All" }).click();
   await page.getByLabel("Search my exercises").fill("decline");
-  await expect(page.getByRole("list", { name: "My exercises" }).getByRole("listitem")).toHaveCount(1);
+  await expect(page.getByRole("list", { name: "Search results" }).getByRole("listitem")).toHaveCount(1);
   await page.getByLabel("Search my exercises").fill("");
-  await page.getByRole("button", { name: "Log now: Kelso Shrug" }).click();
+  await page.getByRole("button", { name: "Log now: Kelso Shrug" }).first().click();
   await expect(page.getByTestId("active-session")).toContainText("Workout");
   await expect(block(page, "Kelso Shrug")).toBeVisible();
   await page.goto("/training/exercises");
-  await page.getByRole("button", { name: "Add to session: Barbell Bench Press" }).click();
+  await page.getByLabel("Search my exercises").fill("Barbell Bench Press");
+  await page.getByRole("list", { name: "Search results" }).getByRole("button", { name: "Add to session: Barbell Bench Press" }).click();
   await expect(block(page, "Barbell Bench Press")).toBeVisible();
   await expect(page).toHaveURL(/\/training$/);
   await saved(page);

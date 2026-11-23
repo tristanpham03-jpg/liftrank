@@ -187,7 +187,7 @@ function ImprovementRow({ w, exercise, unit }: { w: Improvement; exercise: Exerc
             {w.side ? <span className="font-normal text-fg-3"> · {w.side === "left" ? "Left" : "Right"}</span> : null}
           </span>
           <span className="block text-[13px] text-fg-2">
-            {what}: <span className="whitespace-nowrap font-semibold text-fg">{fmt(w.now)}{rir}</span>{" "}
+            <span className="text-success">{what}</span>: <span className="whitespace-nowrap font-semibold text-fg">{fmt(w.now)}{rir}</span>{" "}
             <span className="whitespace-nowrap text-fg-3">
               (was {fmt(w.before)}
               {w.before.rir != null ? ` @ RIR ${w.before.rir}` : ""}, {shortDay(w.before.local_date)})

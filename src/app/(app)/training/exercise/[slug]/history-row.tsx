@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { Video } from "lucide-react";
 import { deleteRecording } from "@/app/(app)/recordings/actions";
 import { Badge } from "@/components/ui/misc";
 import { useConfirm } from "@/components/ui/confirm";
+import { useUploads } from "@/components/recordings/upload-manager";
 import { Button } from "@/components/ui/button";
 import { localNoon, todayLocal } from "@/lib/dates";
 import { formatEstimatedMax, formatNumber } from "@/lib/scoring";
@@ -23,7 +24,7 @@ export function HistoryRow({
   unit,
   isBest,
   boardLiftId,
-  recordingIds = [],
+  recordingIds: initialRecordingIds = [],
 }: {
   set: TrainingSet;
   exercise: Exercise;
@@ -35,6 +36,29 @@ export function HistoryRow({
 }) {
   const router = useRouter();
   const [dialog, ask] = useConfirm();
+  // This set's recordings, kept in step with deletes, moves and new uploads anywhere on the page
+  // (the server list is only a starting point; the page isn't re-rendered for each change).
+  const { subscribe } = useUploads();
+  const [recordingIds, setRecordingIds] = useState<string[]>(initialRecordingIds);
+  // A fresh server list (after a refresh) replaces the local one.
+  const initialKey = initialRecordingIds.join(",");
+  const [seenKey, setSeenKey] = useState(initialKey);
+  if (seenKey !== initialKey) {
+    setSeenKey(initialKey);
+    setRecordingIds(initialRecordingIds);
+  }
+  useEffect(
+    () =>
+      subscribe((e) => {
+        if (e.type === "removed") setRecordingIds((ids) => ids.filter((id) => id !== e.id));
+        else {
+          const r = e.type === "updated" ? e.recording : e.upload.recording;
+          if (!r) return;
+          setRecordingIds((ids) => (r.training_set_id === set.id ? (ids.includes(r.id) ? ids : [...ids, r.id]) : ids.filter((id) => id !== r.id)));
+        }
+      }),
+    [subscribe, set.id],
+  );
   const bodyweight = exercise.ranking_method === "max_reps";
   const w = setWeight(set, unit);
   const [editing, setEditing] = useState(false);

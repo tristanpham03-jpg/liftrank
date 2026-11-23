@@ -33,7 +33,8 @@ export type Upload = {
   retryable: boolean;
   recording: Recording | null;
 };
-type Event = { type: "done"; upload: Upload } | { type: "removed"; id: string };
+// "updated": renamed or moved to another set (or to the exercise in general).
+type Event = { type: "done"; upload: Upload } | { type: "removed"; id: string } | { type: "updated"; recording: Recording };
 
 type Ctx = {
   enabled: boolean;
@@ -66,7 +67,8 @@ function deviceDuration(file: File): Promise<number | null> {
       v.removeAttribute("src");
       resolve(d);
     };
-    const t = setTimeout(() => done(null), 4000);
+    // Early feedback only (the server reads the real duration from the stored file): never hold the upload long.
+    const t = setTimeout(() => done(null), 1500);
     v.preload = "metadata";
     v.muted = true;
     v.onloadedmetadata = () => done(Number.isFinite(v.duration) && v.duration > 0 ? v.duration : null);
