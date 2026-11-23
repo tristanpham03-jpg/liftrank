@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 import pg from "pg";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
-const name = process.argv[2] ?? "liftrank_e2e";
+const name = process.argv[2] ?? "sblift_e2e";
 if (!/^[a-z0-9_]+$/.test(name)) throw new Error("bad db name");
 const adminUrl = process.env.STANDIN_ADMIN_URL;
 if (!adminUrl) throw new Error("STANDIN_ADMIN_URL is required");

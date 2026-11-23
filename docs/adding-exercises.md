@@ -1,6 +1,6 @@
 # Adding exercises
 
-LiftRank's catalog grows with the SBL community. Adding an exercise is a small, repeatable change; no admin dashboard is needed.
+SBLift's catalog grows with the SBL community. Adding an exercise is a small, repeatable change; no admin dashboard is needed.
 
 ## 1. Check it's new
 Search the catalog and aliases first (`supabase/migrations/*catalog*`, `*more_exercises*`, `*training_sessions*`, or the app's exercise search). If it's a variation of an existing movement, prefer an alias.

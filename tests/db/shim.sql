@@ -1,4 +1,4 @@
--- Minimal stand-in for the parts of Supabase the LiftRank schema relies on,
+-- Minimal stand-in for the parts of Supabase the SBLift schema relies on,
 -- so migrations and database tests run on plain Postgres (no Docker).
 -- Mirrors: auth.users, auth.uid(), the anon/authenticated/service_role roles,
 -- the extensions schema, and Supabase's default grants.

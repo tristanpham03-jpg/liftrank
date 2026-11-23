@@ -1,5 +1,5 @@
 """
-Generates LiftRank's exercise illustrations (original artwork, owned by the
+Generates SBLift's exercise illustrations (original artwork, owned by the
 project) as small SVGs in public/exercises/<slug>.svg.
 
   python3 scripts/exercise-art.py

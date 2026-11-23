@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // LiftRank is almost entirely per-user, session-dependent UI, so we use the
+  // SBLift is almost entirely per-user, session-dependent UI, so we use the
   // classic dynamic rendering model instead of Cache Components. See PLAN.md.
   cacheComponents: false,
   // Client cache: visited and prefetched pages reappear instantly for up to

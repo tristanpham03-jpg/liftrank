@@ -107,7 +107,7 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
           <div className="mx-auto max-w-[1080px] px-4 py-24 text-center">
             <p className="pearl-text font-bold tracking-[-0.04em] leading-[0.95] text-[clamp(2.5rem,7vw,4.25rem)]">Where do you rank?</p>
             <p className="mx-auto mt-5 max-w-[46ch] text-fg-2">
-              SBLift is made for the SBL community: log your sessions, follow your own progress, and compete on LiftRank boards when you want to.
+              SBLift is made for the SBL community: log your sessions, follow your own progress, and compete on SBLift boards when you want to.
             </p>
             <Button asChild size="xl" className="mt-9">
               <Link href="/signup">Start competing</Link>

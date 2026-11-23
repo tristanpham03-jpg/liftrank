@@ -179,7 +179,7 @@ export default async function ProfilePage({
                 {isMe ? (
                   <ShareImageButton
                     src={`/cards/champion?board=${encodeURIComponent(t.board_key)}`}
-                    fileName={`liftrank-${t.exercise.slug}-champion.png`}
+                    fileName={`sblift-${t.exercise.slug}-champion.png`}
                     title={`${t.exercise.name} champion`}
                     event="champion_card_shared"
                     label={`Share ${t.exercise.name} title`}

@@ -8,7 +8,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 : "${STANDIN_ADMIN_URL:?Set STANDIN_ADMIN_URL to a Postgres admin connection string}"
-DB=liftrank_e2e
+DB=sblift_e2e
 DB_URL="${STANDIN_ADMIN_URL%/*}/$DB"
 PORT=54321
 

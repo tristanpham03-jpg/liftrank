@@ -1,5 +1,5 @@
 /**
- * TEST-ONLY stand-in for the slice of the Supabase HTTP API LiftRank uses,
+ * TEST-ONLY stand-in for the slice of the Supabase HTTP API SBLift uses,
  * for running Playwright where Docker / the real Supabase stack isn't available.
  *
  *   /auth/v1  email+password signup (auto-confirmed), password + refresh-token

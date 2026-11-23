@@ -11,7 +11,7 @@ logged() { "$@" 2>&1 | tee -a "$LOG"; return "${PIPESTATUS[0]}"; }
 echo "▶ Installing the test browser (first time only)"
 logged npx playwright install chromium || { echo "STATUS: FAILED playwright install" >> "$LOG"; exit 1; }
 
-echo "▶ Building LiftRank for testing"
+echo "▶ Building SBLift for testing"
 NEXT_DIST_DIR=.next-e2e NEXT_PUBLIC_SITE_URL=http://127.0.0.1:3210 logged npx next build || { echo "STATUS: FAILED build" >> "$LOG"; exit 1; }
 
 # My Recordings (Flow S): E2E_RECORDINGS=1 points the app at the local R2 stand-in (scripts/r2-standin.mjs),

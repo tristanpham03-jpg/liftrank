@@ -1,4 +1,4 @@
-# LiftRank roadmap
+# SBLift roadmap
 
 ## Done (Phases 1–3)
 

@@ -8,7 +8,7 @@ const BG = "#0F131D";
 
 export const metadata: Metadata = {
   title: { default: "SBLift", template: "%s · SBLift" },
-  description: "Built by lifters. Driven by science. Track your training, see your progress, and compete with friends on LiftRank boards.",
+  description: "Built by lifters. Driven by science. Track your training, see your progress, and compete with friends on SBLift boards.",
   applicationName: "SBLift",
   appleWebApp: {
     capable: true,

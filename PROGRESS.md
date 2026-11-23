@@ -247,7 +247,7 @@ Profiled first with `tests/e2e/perf-nav.spec.ts`.
 
 - **Rebrand:**
   - "SBLift" in titles, metadata, the PWA manifest, the wordmark, auth, onboarding, invites, share cards and error copy. Tagline: "Built by lifters. Driven by science."
-  - "LiftRank" stays as the name of the leaderboard system ("LiftRank boards").
+  - "LiftRank" stayed as the name of the leaderboard system ("LiftRank boards") until 2026-11-22, when the owner renamed it to "SBLift boards".
   - Unchanged: DB names, env vars, routes, the Vercel project/domain, storage keys (`lr.*`), and the icon.
   - Landing gains a short, factual SBL community line.
 - **Routine persistence bug:**

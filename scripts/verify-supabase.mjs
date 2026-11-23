@@ -1,5 +1,5 @@
 /**
- * Live check of a LiftRank Supabase project: auth, lift submission, friends,
+ * Live check of a SBLift Supabase project: auth, lift submission, friends,
  * groups + invites, privacy, leaderboards, champions, notifications, and
  * Phase 4: gyms, moderation, gym/nearby boards, machines.
  *
@@ -85,7 +85,7 @@ const board = (u, exercise, kind = "friends", group = null) =>
     p_exercise_id: exercise, p_kind: kind, p_group_id: group, p_period: "all", p_limit: 50, p_offset: 0,
   });
 
-console.log(`\nLiftRank live check against ${new URL(url).host}\n`);
+console.log(`\nSBLift live check against ${new URL(url).host}\n`);
 let a, b, c, bench, deadlift, group;
 
 try {

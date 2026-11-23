@@ -36,7 +36,7 @@ export const glassPanel = {
   backgroundColor: "rgba(30,36,53,0.55)",
 } as const;
 
-/** "liftrank.app/u/maya", or the site host alone. */
+/** "sblift.app/u/maya", or the site host alone. */
 export function publicLink(username?: string | null) {
   const host = SITE_URL.replace(/^https?:\/\//, "");
   return username ? `${host}/u/${username}` : host;

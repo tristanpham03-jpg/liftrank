@@ -1,4 +1,4 @@
-# LiftRank AI assistant — plan (not implemented)
+# SBLift AI assistant — plan (not implemented)
 
 A premium assistant that answers questions about your own training ("What should I improve in my split?", "What's plateaued?", "Am I training some muscles disproportionately?").
 

@@ -1,4 +1,4 @@
-# LiftRank — Implementation Plan (Phases 1–3)
+# SBLift — Implementation Plan (Phases 1–3)
 
 This file records the build order and every decision the original product brief didn't cover or that deliberately departs from it.
 

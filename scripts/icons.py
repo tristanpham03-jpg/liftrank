@@ -1,4 +1,4 @@
-# Renders the LiftRank app icons (three bars, the middle one lime) into public/icons.
+# Renders the SBLift app icons (three bars, the middle one lime) into public/icons.
 from PIL import Image, ImageDraw
 import os
 os.makedirs("public/icons", exist_ok=True)

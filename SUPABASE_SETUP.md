@@ -1,11 +1,11 @@
-# Connecting LiftRank to a free Supabase project
+# Connecting SBLift to a free Supabase project
 
 About 10 minutes. No Docker needed.
 
 ## 1. Create the project
 
 1. Sign in at [supabase.com](https://supabase.com) and click **New project**.
-2. Name it `liftrank`, pick the region closest to you (e.g. West US), and choose the **Free** plan.
+2. Name it `sblift`, pick the region closest to you (e.g. West US), and choose the **Free** plan.
 3. Set a strong **database password** and save it in your password manager. You need it once, in step 3.
 4. Wait for the project to finish provisioning (a minute or two).
 
@@ -93,17 +93,17 @@ The local folder is already a git repository with a first commit (secrets exclud
 
 **a. Private GitHub repository**
 
-1. On github.com: **New repository** → name `liftrank` → **Private** → don't add a README, license or .gitignore.
+1. On github.com: **New repository** → name `sblift` → **Private** → don't add a README, license or .gitignore.
 2. In this folder:
 
    ```bash
-   git remote add origin https://github.com/<you>/liftrank.git
+   git remote add origin https://github.com/<you>/sblift.git
    git push -u origin main
    ```
 
 **b. Vercel project** (Hobby plan is free; Vercel's terms limit it to non-commercial use)
 
-1. vercel.com → **Add New → Project** → import the `liftrank` repository. Framework: Next.js (detected).
+1. vercel.com → **Add New → Project** → import the `sblift` repository. Framework: Next.js (detected).
 2. Before the first deploy, add **Settings → Environment Variables** (Production and Preview):
 
    | Variable | Value |
@@ -111,7 +111,7 @@ The local folder is already a git repository with a first commit (secrets exclud
    | `NEXT_PUBLIC_SUPABASE_URL` | `https://<ref>.supabase.co` |
    | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | `sb_publishable_…` |
    | `SUPABASE_SECRET_KEY` | `sb_secret_…` (server only; account deletion and the daily cron) |
-   | `NEXT_PUBLIC_SITE_URL` | your production URL, e.g. `https://liftrank.vercel.app` (printed on share cards and used in emails and invites) |
+   | `NEXT_PUBLIC_SITE_URL` | your production URL, e.g. `https://sblift.vercel.app` (printed on share cards and used in emails and invites) |
    | `CRON_SECRET` | a long random string (`openssl rand -hex 32`); Vercel Cron sends it to `/api/cron/daily` |
    | `NEXT_PUBLIC_GOOGLE_AUTH_ENABLED` | `false` unless Google sign-in is set up |
 
@@ -141,7 +141,7 @@ Sign up with a real address (confirm the email), log a lift, invite a second acc
 
 - Free projects pause after about a week without activity. Open the dashboard and click **Restore** to wake one.
 - Database size, auth users, and bandwidth limits are generous for an MVP. Check **Settings → Usage**.
-- Proof videos (Phase 5) use the private Storage bucket `lift-proofs`, created by migration `…0800`. Free plan: 1 GB storage, 50 MB per file, 5 GB egress a month. LiftRank's limits live in `public.proof_settings` (25 MB / 30 s per video, a 750 MB storage budget, a 3 GB monthly playback budget, daily caps). Change them in the SQL editor, e.g. `update public.proof_settings set max_seconds = 45;`. The bucket's size cap follows `max_bytes` automatically.
+- Proof videos (Phase 5) use the private Storage bucket `lift-proofs`, created by migration `…0800`. Free plan: 1 GB storage, 50 MB per file, 5 GB egress a month. SBLift's limits live in `public.proof_settings` (25 MB / 30 s per video, a 750 MB storage budget, a 3 GB monthly playback budget, daily caps). Change them in the SQL editor, e.g. `update public.proof_settings set max_seconds = 45;`. The bucket's size cap follows `max_bytes` automatically.
 - Moderators handle reports, gyms and machine models at `/moderation`; friends and groupmates verify proof videos. Make someone a moderator with `update public.profiles set is_moderator = true where username = '<name>';`.
 - Profile pictures use the public-read bucket `avatars` (`…1100`): own-folder writes only, images only, 512 KB cap (the app uploads ~20 KB WebP files), at most 3 files per person.
 - On Vercel, set `CRON_SECRET` (any long random string) so the daily job in `vercel.json` can run. Locally, `npm run cleanup:proofs -- --delete` sweeps proof videos.

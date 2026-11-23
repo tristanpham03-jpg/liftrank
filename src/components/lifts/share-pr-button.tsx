@@ -21,7 +21,7 @@ export function SharePrButton({
   return (
     <ShareImageButton
       src={`/lifts/${liftId}/share-image`}
-      fileName={`liftrank-${exerciseName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.png`}
+      fileName={`sblift-${exerciseName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.png`}
       title={`${exerciseName} PR`}
       event="pr_shared"
       label={label}

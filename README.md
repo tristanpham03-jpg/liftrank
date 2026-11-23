@@ -1,4 +1,4 @@
-# LiftRank
+# SBLift
 
 **Every lift is a leaderboard.** Log your best lifts in seconds and see where you rank against your friends and private groups.
 

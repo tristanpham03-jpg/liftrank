@@ -86,4 +86,4 @@ if ask "Run the Playwright browser tests now? (downloads Chromium the first time
 fi
 
 echo "STATUS: ALL STEPS PASSED" >> "$LOG"
-printf "\n\033[1;32m✓ LiftRank is connected.\033[0m Start it with:  npm run dev   then open http://localhost:3000\n"
+printf "\n\033[1;32m✓ SBLift is connected.\033[0m Start it with:  npm run dev   then open http://localhost:3000\n"
