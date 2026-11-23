@@ -44,6 +44,7 @@ Every exercise gets 3 sets if it's first in the day, else 2 (`defaultSetCount`).
 - **Kelso Shrug instead of Rear-Delt Fly** when the day already has a wide-grip row.
 - **Triceps are a combination:** a cable triceps extension plus a JM press, with overhead extension or dips as swaps. Pushdowns aren't a default: with the arm at your side the long head is short, so the lateral and medial heads do most of the work, and letting the upper arm drift (rotate in) shifts it further.
 - **Hinge:** the stiff-leg deadlift (SLDL) is the default instead of the RDL.
+- **Biceps days:** a Recline Curl (not a preacher curl), plus a Reverse Cable Curl for the brachioradialis. Where a Hammer Curl was listed, the Reverse Cable Curl takes its slot (both mainly train the brachioradialis) and the Hammer Curl becomes its swap.
 - **No weights are suggested.** These are editable starting points, not "optimal" programs.
 
 ### Proposed templates (every exercise is in the catalog today; checked against the database)
@@ -61,7 +62,8 @@ Exercises are listed in order. Brackets are swap options in the same slot (choos
   8. Kelso Shrug
   9. Cable Triceps Extension
   10. Smith Machine JM Press [Overhead Triceps Extension · Dip]
-  11. Preacher Curl [Machine Preacher Curl]
+  11. Recline Curl
+  12. Reverse Cable Curl
 - Lower (2 sets each):
   1. Seated Leg Curl [Lying Leg Curl]
   2. Hack Squat [Leg Press · Back Squat]
@@ -85,8 +87,8 @@ Exercises are listed in order. Brackets are swap options in the same slot (choos
   2. Chest-Supported Wide-Grip Row [T-Bar Row]
   3. Chest-Supported Close-Grip Row [Close-Grip Lat Pulldown · Cable Close-Grip Lat Row]
   4. Kelso Shrug
-  5. Preacher Curl
-  6. Hammer Curl
+  5. Recline Curl
+  6. Reverse Cable Curl [Hammer Curl]
 - Legs (2 sets each):
   1. Seated Leg Curl
   2. Hack Squat [Leg Press · Back Squat]
@@ -107,8 +109,9 @@ Exercises are listed in order. Brackets are swap options in the same slot (choos
   6. Hack Squat [Leg Press]
   7. Leg Extension
   8. Hip Adduction
-  9. Preacher Curl
-  10. Cable Crunch
+  9. Recline Curl
+  10. Reverse Cable Curl
+  11. Cable Crunch
 - Posterior (2 sets each):
   1. Lat Pulldown, wide grip [Pull-Up]
   2. Chest-Supported Wide-Grip Row [T-Bar Row]
@@ -134,10 +137,11 @@ Exercises are listed in order. Brackets are swap options in the same slot (choos
 11. Seated Leg Curl
 12. Cable Triceps Extension
 13. Smith Machine JM Press
-14. Preacher Curl
-15. Hip Adduction
-16. Calf Raise (straight-knee)
-17. Cable Crunch
+14. Recline Curl
+15. Reverse Cable Curl
+16. Hip Adduction
+17. Calf Raise (straight-knee)
+18. Cable Crunch
 - Replaces both "Full Body" and "Full Body Every Other Day" in the chooser. Existing users' saved FBEOD and Full Body splits keep working unchanged; none is renamed or removed.
 
 **Arnold** (3 days; unchanged frequency)
@@ -154,8 +158,8 @@ Exercises are listed in order. Brackets are swap options in the same slot (choos
   2. Cable Lateral Raise
   3. Cable Triceps Extension
   4. Smith Machine JM Press [Overhead Triceps Extension · Dip]
-  5. Preacher Curl
-  6. Hammer Curl
+  5. Recline Curl
+  6. Reverse Cable Curl [Hammer Curl]
 - Legs: as PPL Legs.
 
 ### Applying them (after approval)
@@ -196,7 +200,7 @@ Public text should state A plainly, word B as "studies suggest", and keep C out 
 | 10 | RDL ↔ Stiff-Leg Deadlift: close, "Similar setup" | Vague. The SLDL keeps the knees straighter (more hamstring stretch) and is the owner's default hinge. | A | Close; "Hip hinge for the hamstrings and glutes; straighter knees in the SLDL." |
 | 11 | Bench Press ↔ Cable Fly: related, "Same muscle emphasis, different movement pattern" | The fly is horizontal adduction without elbow extension (no triceps); "same muscle emphasis" overstates it | A | "Chest without the triceps: the arms sweep in (horizontal adduction)." |
 | 12 | Rear-Delt Fly ↔ Face Pull: related, generic | The face pull adds external rotation and scapular retraction. Per the owner, when a wide-grip row is in the day, a Kelso Shrug replaces the rear-delt fly (the row already covers the rear delts). | A | "Both pull the arms back; the face pull adds rotation and works more upper back." Add Kelso Shrug ↔ Wide-Grip Row as **related**: "Upper back without the arms; follows a wide-grip row." |
-| 13 | Hammer Curl ↔ Reverse Cable Curl: related | Neutral and pronated grips both shift work toward the brachioradialis; the brachialis flexes the elbow regardless of grip | A | "Grip-turned curls: more forearm (brachioradialis), less biceps." |
+| 13 | Hammer Curl ↔ Reverse Cable Curl: related | Neutral and pronated grips both shift work toward the brachioradialis; the brachialis flexes the elbow regardless of grip. Per the owner, the Reverse Cable Curl is the default brachioradialis exercise on biceps days. | A | **Close** (swap options): "Grip-turned curls: mostly forearm (brachioradialis)." Add Recline Curl ↔ Reverse Cable Curl as **related**: "Different jobs: the recline curl for the biceps, the reverse curl for the brachioradialis. Train both." |
 | 14 | Lat Pulldown ↔ Pull-Up: related | Same vertical pull; differences are stability and loading | A | **Close**: "Same vertical pull, your bodyweight instead of a stack." |
 | 15 | Calf Raise: one entry | Straight-knee (standing, leg-press) work trains the gastrocnemius; bent-knee (seated) mostly the soleus | A; B (standing grew the gastrocnemius far more; seated barely) | Treat "Calf Raise" as straight-knee and add "Seated Calf Raise" (*new*); related: "Bent knee: mostly soleus." |
 | 16 | Leg Extension ↔ squats | Correctly **not** paired as close. Knee extension only vs knee and hip extension. | A | Keep; optionally related: "Quads only, no hips." |
