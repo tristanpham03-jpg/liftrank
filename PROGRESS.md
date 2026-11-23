@@ -2,7 +2,18 @@
 
 _Last updated: 2026-10-15 · Done: Phases 1–7 + friend verification · **Deployed (unlisted) at https://liftrank-roan.vercel.app** · Finishing launch setup (see "Deployment status")_
 
-## 2026-11-23 Approved default templates and Similar Exercises corrections (branch `training-quality`; NOT pushed)
+## 2026-11-23 Approved default templates and Similar Exercises corrections (DEPLOYED, `4004231`)
+
+- **Deployed:** `training-quality` fast-forwarded into main (bug fixes, My Exercises groups, accents, upload verify change, templates, Similar Exercises).
+- **Production checks** (owner's session, read-only, nothing imported or started):
+  - Change split lists saved splits first, and the templates without FBEOD; U/L offers 2× / 3× / Rotate.
+  - Lat Pulldown's Similar Exercises show Pull-Up as close, and the close-grip pulldown and lat row as related ("Train both").
+  - My Exercises shows muscle chips and collapsible sections; the Training header wraps, with past performance in lavender.
+  - No console errors.
+- **Signed out and data:**
+  - Sign-in redirects and real 404s are unchanged; the iPhone web-app tag is present.
+  - Owner data unchanged: 3 splits, 15 sessions, 388 sets.
+
 
 - **Templates** (`src/lib/training.ts`), following the owner's rules (`docs/training-quality-review.md`):
   - **Rules applied:** every back day has a wide-grip (frontal) lat pulldown, a wide-grip or T-bar row, and a close-grip row or pulldown, with Kelso instead of rear-delt flys. Triceps are a cable extension plus a JM press. Biceps are a recline curl plus a reverse cable curl. The hinge is the stiff-leg deadlift.
