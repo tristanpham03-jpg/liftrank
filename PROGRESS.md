@@ -2,7 +2,15 @@
 
 _Last updated: 2026-10-15 · Done: Phases 1–7 + friend verification · **Deployed (unlisted) at https://liftrank-roan.vercel.app** · Finishing launch setup (see "Deployment status")_
 
-## 2026-11-23 Training quality update (branch `training-quality`; NOT pushed; migration `…2300` NOT applied)
+## 2026-11-23 Training quality update (branch `training-quality`; NOT pushed; migration `…2300` APPLIED with the owner's approval)
+
+- **0023 applied:**
+  - **Process:** dry run (only 0023 pending), then fingerprints of all 48 tables and the untouched functions' grants (`training_splits` on its original columns), then push. Every fingerprint is identical afterwards (6 splits, 10 days, 15 sessions, 393 sets, 6 lifts unchanged).
+  - **Checks:** the old 4-argument import is gone; delete is for signed-in users only; the internal PR helper isn't callable by users.
+  - **`scripts/check-import-concurrency.mjs`:** 4 simultaneous identical imports → 1 split, its days once; the deployed app's 4-argument call still works.
+  - **Browser tests:** Flow U3 (delete a workout, keep/delete recordings, camera mark) passes; Flows M, P, T and S pass.
+- **On-device compression:** investigated, not implemented (`docs/recordings-plan.md`).
+
 
 **Bugs fixed (root causes):**
 - **Duplicate splits:**

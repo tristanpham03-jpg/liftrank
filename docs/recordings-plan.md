@@ -109,6 +109,45 @@ Playback: server action → RLS says it's yours → 10-minute presigned GET → 
   3. **Server-side transcoding** (Cloudflare Stream or Media Transformations, or a worker running ffmpeg) doesn't make the upload itself faster; it only shrinks storage. Not recommended for speed, and it would be a paid service.
   4. **Parallel or multipart uploads** don't help a single phone limited by its own uplink. Skip.
 
+## On-device compression: investigation (2026-11-23, not implemented)
+**Idea:** before uploading, re-encode the clip on the phone to a smaller, widely playable file, for example 720p (or 1080p) H.264 at a modest bitrate, and upload only that.
+
+**How it would work**
+- The browser's own video encoder (WebCodecs) does the work, driven by a small MP4 library (Mediabunny: zero-dependency, MP4 in and out, uses the hardware encoders).
+- Everything happens in a background thread inside the page, streaming the file so it's never all in memory.
+- The library is loaded only when someone compresses, so there's no cost to normal page loads.
+- The audio track is copied unchanged (AAC passthrough), not re-encoded.
+- The result is an ordinary MP4. Server verification (real size, container, duration) is unchanged, and the original never leaves the phone.
+
+**Compatibility**
+- **iOS Safari:** the video encoder is partial on 16.4–18.x and full from iOS 26 (caniuse). Re-encoding audio needs iOS 26, hence the copy.
+- **HEVC:** hardware HEVC encoding through the browser encoder isn't documented for iOS, so the target is H.264. That has a bonus: H.264 plays in every browser, fixing today's "HEVC won't play in some desktop browsers" gap.
+- **Fallback:** an unsupported device, or any failure mid-way, uploads the original as today. Compression is never required.
+- **Orientation:** iPhone files store rotation as metadata, which the compressor must carry over or apply (a common bug to test for).
+
+**Quality**
+- 720p H.264 at about 2.5–3 Mbit/s (≈19–23 MB per minute) is plenty for checking form: bar path, depth, joint angles. 1080p at about 5 Mbit/s (≈38 MB per minute) keeps more detail.
+- **Generational loss:** a re-encode of an already-compressed phone clip loses some fine detail and can blur fast motion slightly. It's visible side by side, rarely for form review.
+- **No savings without downscaling:** converting 1080p HEVC to 1080p H.264 at a similar quality makes the file *bigger*, since HEVC is more efficient. The savings come from resolution and bitrate, not the codec.
+
+**Speed**
+| Source clip (90 s) | Size now | After 720p H.264 | Upload at 12 Mbit/s: now → after |
+|---|---|---|---|
+| 1080p30 HEVC (iPhone default) | ≈ 90 MB | ≈ 30 MB | 60 s → 20 s |
+| 4K30 HEVC | ≈ 250–300 MB (over the 100 MB limit today) | ≈ 30 MB | can't upload → 20 s |
+| 720p already, or a short clip | small | little change | not worth it |
+
+- **The encoding itself takes time.** Hardware encoding on recent iPhones is expected to run faster than real time, but there are no published iPhone benchmarks for this path. Assume roughly 15–45 s for a 90 s clip until measured.
+- **So it only pays off when the upload is slow or the file is big.** On fast Wi-Fi, a 90 MB file uploads in under 10 s and compressing first would be slower.
+- **Cost:** heavy CPU and GPU use warms the phone and drains battery mid-workout. Like uploads, it stops if the app is backgrounded (iOS suspends pages), so it adds foreground time.
+
+**Recommendation (if approved)**
+- **When:** an opt-in "Make video smaller before upload" switch in Settings → Video storage, plus automatic use only for files that would otherwise be refused (over 100 MB, e.g. 4K).
+- **Output:** 720p by default; 1080p optional.
+- **Visibility:** the progress tray shows "Compressing…" then "Uploading…", with Cancel for either.
+- **Before shipping:** measure on 2–3 real iPhones (encode time, battery, size, playback), verify rotation, and test failure fallback. Ship behind the switch first.
+- **Safeguards unchanged:** quotas, private storage, signed URLs and server-side verification stay exactly as they are; the server still checks the stored file it receives.
+
 ## Testing
 - `tests/sql/2000_personal_recordings.test.sql` (rolled back on the hosted DB): validation, random keys, quota with reservations, 4-in-flight limit, actual-size accounting, oversize finalize rejected, lapsed reservations, Pro quota by plan change, ownership (B can't see/rename/cancel/delete A's), association changes, End linking, leftovers on discard/End, set deletion keeps the recording, cleanup queue timing, account deletion queues every file, grants, `search_path`, RLS as another user.
 - `src/lib/recordings/*.test.ts`: video probing (MP4/MOV moov-first and moov-last, WebM, fakes, truncated, real duration) and R2 signing against `scripts/r2-standin.mjs` (exact size/type, tampering, unsigned access, expiry, deletes).

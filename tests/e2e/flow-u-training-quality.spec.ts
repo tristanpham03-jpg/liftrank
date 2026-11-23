@@ -136,7 +136,10 @@ test("Flow U3: deleting a completed workout: recordings kept or deleted by choic
   await pickTemplate(page, /^Upper \/ Lower/);
   await page.getByRole("button", { name: "Use U/L" }).click();
   const workout = async (weight: string) => {
-    await page.getByRole("button", { name: /^Start / }).first().click();
+    // Always the Upper day (after End, the rotation moves on to Lower, which has no bench).
+    await page.goto("/training");
+    await page.getByRole("navigation", { name: "Training days" }).getByRole("link", { name: /^Upper/ }).click();
+    await page.getByRole("button", { name: "Start Upper" }).first().click();
     const bench = page.locator("main section").filter({ has: page.getByRole("link", { name: "Barbell Bench Press", exact: true }) });
     await bench.getByLabel("Set 1 weight (lb)").fill(weight);
     await bench.getByLabel("Set 1 reps").fill("5");

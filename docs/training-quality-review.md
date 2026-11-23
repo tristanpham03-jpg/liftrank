@@ -37,27 +37,27 @@ Every exercise gets 3 sets if it's first in the day, else 2 (`defaultSetCount`).
 - **Sets:** default 2 working sets (3 on the first lift), matching the current `defaultSetCount` and the low-volume, high-effort style above.
 - **Scope:** no weights are suggested. SBLift never invents numbers.
 
-### Proposed templates (exercise slugs exist in the catalog unless marked *new*)
+### Proposed templates (every exercise is in the catalog today; checked against the database)
 Alternatives in brackets go in the same slot (choose one per session).
 
 **Upper / Lower** (2 days; 2× or rotate)
 - Upper: Incline Smith Press 3 [Incline DB Press] · Chest-Supported Row 2 [Machine Row] · Machine Shoulder Press 2 [DB Shoulder Press] · Lat Pulldown (wide) 2 [Pull-Up] · Pec Deck 2 [Cable Fly] · Cable Lateral Raise 2 [Machine Lateral Raise] · Rear-Delt Fly 1 · Overhead Triceps Extension 2 · Preacher Curl 2
-- Lower: Seated Leg Curl 3 [Lying Leg Curl] · Hack Squat 2 [Leg Press / Back Squat] · Romanian Deadlift 2 [Smith RDL] · Leg Extension 2 · Hip Adduction 1 (*new*) · Standing Calf Raise 3 · Cable Crunch 2
+- Lower: Seated Leg Curl 3 [Lying Leg Curl] · Hack Squat 2 [Leg Press / Back Squat] · Romanian Deadlift 2 [Smith RDL] · Leg Extension 2 · Hip Adduction 1 · Calf Raise (straight-knee) 3 · Cable Crunch 2
 
 **Push / Pull / Legs** (3 days; 1× or 2×)
 - Push: Incline Smith Press 3 · Machine Chest Press 2 [DB Bench] · Pec Deck 1 · Machine Shoulder Press 2 · Cable Lateral Raise 3 · Overhead Triceps Extension 2 · Triceps Pushdown 1
 - Pull: Lat Pulldown (wide) 3 [Pull-Up] · Chest-Supported Row 2 · Close-Grip Lat Row 2 [Close-Grip Pulldown] · Rear-Delt Fly 2 [Face Pull] · Preacher Curl 2 · Hammer Curl 1
-- Legs: Seated Leg Curl 3 · Hack Squat 2 [Back Squat / Leg Press] · Romanian Deadlift 2 · Leg Extension 2 · Hip Adduction 1 (*new*) · Standing Calf Raise 3
+- Legs: Seated Leg Curl 3 · Hack Squat 2 [Back Squat / Leg Press] · Romanian Deadlift 2 · Leg Extension 2 · Hip Adduction 1 · Calf Raise (straight-knee) 3
 
 **Anterior / Posterior** (2 days; 2× or rotate)
 - Placement note: conventionally, chest, front and side delts, quads, biceps and abs go on Anterior; back, rear delts, hamstrings, glutes, triceps and calves on Posterior. Splits differ (some put side delts or triceps on the other day), so the template follows the common convention and says so.
 - Anterior: Incline Smith Press 3 · Machine Chest Press 2 · Machine Shoulder Press 2 · Cable Lateral Raise 2 · Hack Squat 2 [Leg Press] · Leg Extension 2 · Preacher Curl 2 · Cable Crunch 2
-- Posterior: Lat Pulldown (wide) 3 · Chest-Supported Row 2 · Rear-Delt Fly 2 · Overhead Triceps Extension 2 · Romanian Deadlift 2 · Seated Leg Curl 2 · Standing Calf Raise 3
+- Posterior: Lat Pulldown (wide) 3 · Chest-Supported Row 2 · Rear-Delt Fly 2 · Overhead Triceps Extension 2 · Romanian Deadlift 2 · Seated Leg Curl 2 · Calf Raise (straight-knee) 3
 
 **Full Body** (merged; 2 alternating days A/B)
 - Frequency: 2× or 3× a week, or every other day. The app has no fixed weekdays, so "every other day" is guidance shown with the rotation, not a different routine.
 - A: Hack Squat 2 [Back Squat] · Incline Smith Press 2 · Chest-Supported Row 2 · Romanian Deadlift 2 · Cable Lateral Raise 2 · Overhead Triceps Extension 1 · Preacher Curl 1
-- B: Leg Press 2 · Seated Leg Curl 2 · Machine Chest Press 2 · Lat Pulldown 2 · Machine Shoulder Press 1 · Rear-Delt Fly 1 · Standing Calf Raise 2
+- B: Leg Press 2 · Seated Leg Curl 2 · Machine Chest Press 2 · Lat Pulldown 2 · Machine Shoulder Press 1 · Rear-Delt Fly 1 · Calf Raise (straight-knee) 2
 - **Merge mechanics:**
   - Full Body Every Other Day leaves the chooser. Existing users' FBEOD splits keep working unchanged (the `fbeod` template id stays valid), and nobody's saved split is renamed or removed.
   - No database migration is needed for the merge itself.
@@ -67,7 +67,7 @@ Alternatives in brackets go in the same slot (choose one per session).
 ### Applying them (after approval)
 - Only the template data changes, plus per-slot set counts and alternatives (both already supported).
 - Existing saved splits are never modified; the new defaults apply to new imports only.
-- Adding hip adduction or a seated calf raise needs catalog rows (a migration). It's listed under Part 6.
+- Every exercise above is already in the catalog. Only a Seated Calf Raise (Part 6, #15) would be new: a catalog row, so a migration.
 
 ---
 
