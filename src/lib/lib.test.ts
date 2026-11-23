@@ -846,3 +846,24 @@ describe("My Exercises muscle groups", () => {
     expect(groupOf({ slug: "mystery" })).toBe("other");
   });
 });
+
+describe("safe redirect after sign-in", () => {
+  it("keeps same-site paths and refuses everything that could leave the site", async () => {
+    const { safeNext } = await import("./safe-next");
+    expect(safeNext("/training")).toBe("/training");
+    expect(safeNext("/groups/abc?joined=1#x")).toBe("/groups/abc?joined=1#x");
+    expect(safeNext("/reset-password", "/x")).toBe("/reset-password");
+    for (const bad of [null, "", "training", "https://evil.com", "//evil.com", "/\\evil.com", "/\t/evil.com", "/\n/evil.com", "/\r/evil.com",
+      " /evil", "/ /evil.com", "\\/evil.com", "/%09/evil.com".replace("%09", "\t"), "javascript:alert(1)", "/" + "a".repeat(600)]) {
+      expect(safeNext(bad as string | null, "/fallback"), JSON.stringify(bad)).toBe("/fallback");
+    }
+  });
+});
+
+describe("password rules", () => {
+  it("refuses short, very common and single-character passwords", async () => {
+    const { passwordSchema } = await import("./validation");
+    for (const bad of ["1234567", "password", "Password", "12345678", "qwertyuiop", "aaaaaaaaaa", "sblift123"]) expect(passwordSchema.safeParse(bad).success, bad).toBe(false);
+    for (const good of ["correct-horse-42", "Lift3rs!Rank", "my bench is 225"]) expect(passwordSchema.safeParse(good).success, good).toBe(true);
+  });
+});

@@ -30,7 +30,7 @@ export default async function SessionPage({ params }: { params: Promise<{ id: st
   const setIds = sets.map((s) => s.id);
   const [{ data: recRows }, { data: liftRows }] = await Promise.all([
     supabase.from("personal_recordings").select("id, session_id, training_set_id").eq("user_id", profile.id)
-      .or(`session_id.eq.${id}${setIds.length ? `,training_set_id.in.(${setIds.join(",")})` : ""}`),
+      .or(`session_id.eq.${session.id}${setIds.length ? `,training_set_id.in.(${setIds.join(",")})` : ""}`), // ids from the database, never the URL
     setIds.length ? supabase.from("lifts").select("id").eq("user_id", profile.id).is("deleted_at", null).in("training_set_id", setIds) : Promise.resolve({ data: [] }),
   ]);
   const byId = new Map(catalog.map((e) => [e.id, e]));

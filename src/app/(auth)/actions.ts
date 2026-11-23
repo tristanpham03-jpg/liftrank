@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { SITE_URL, GOOGLE_AUTH_ENABLED } from "@/lib/env";
 import { consumePendingInvite, pendingFriendInvitePath, safeNext } from "@/lib/invites";
 import { createClient } from "@/lib/supabase/server";
+import { throttleCheck, throttleRecord, waitMessage } from "@/lib/auth-throttle";
 import { emailSchema, fieldErrors, passwordSchema, signInSchema, signUpSchema } from "@/lib/validation";
 
 export type AuthState = { error?: string; message?: string; fieldErrors?: Record<string, string>; email?: string };
@@ -33,6 +34,9 @@ export async function signUp(_: AuthState, formData: FormData): Promise<AuthStat
   const parsed = signUpSchema.safeParse({ email: formData.get("email"), password: formData.get("password") });
   const email = String(formData.get("email") ?? "");
   if (!parsed.success) return { fieldErrors: fieldErrors(parsed.error), email };
+  const gate = await throttleCheck("signup");
+  if (!gate.allowed) return { error: waitMessage(gate.retryAfterS), email };
+  await throttleRecord("signup", null, true);
 
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signUp({
@@ -58,8 +62,13 @@ export async function signIn(_: AuthState, formData: FormData): Promise<AuthStat
   const parsed = signInSchema.safeParse({ email, password: formData.get("password") });
   if (!parsed.success) return { fieldErrors: fieldErrors(parsed.error), email };
 
+  const gate = await throttleCheck("signin", parsed.data.email);
+  if (!gate.allowed) return { error: waitMessage(gate.retryAfterS), email };
+
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword(parsed.data);
+  // Wrong passwords count toward the limit; a success clears this email's failures.
+  await throttleRecord("signin", parsed.data.email, !error);
   if (error) {
     const message = authMessage(error.message);
     if (message === GENERIC) logAuthError("sign-in", error);

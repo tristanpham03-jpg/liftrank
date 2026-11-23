@@ -2,6 +2,19 @@
 
 _Last updated: 2026-10-15 · Done: Phases 1–7 + friend verification · **Deployed (unlisted) at https://liftrank-roan.vercel.app** · Finishing launch setup (see "Deployment status")_
 
+## 2026-11-23 Pre-launch security audit (branch `security-audit`; NOT deployed; migration `…2400` NOT applied)
+
+- **Report:** `docs/security-audit-2026-11-23.md`.
+- **Severity:** 0 Critical/High, 3 Medium, 6 Low, 2 Info. No cross-user data access anywhere (probe 131/131, owner footprint byte-identical).
+- **Fixed in code:**
+  - open redirect after sign-in (`safeNext`, confirmed on the deployed code, Flow V1);
+  - common-password blocklist;
+  - constant-time cron secret check;
+  - session filter uses the database id.
+- **Waiting for migration 0024:** login and sign-up throttling (`auth_attempts`, service-role functions; app fails open) and analytics via a validated, capped, rate-limited `log_event` (direct inserts revoked). Rolled-back SQL test passes.
+- **Also on this branch:** templates use one sternal-chest slot per day (Pec Deck default; flat presses and fly as swaps), per the owner.
+- **Tests:** unit 88/88; hosted suite 25 passed (Flow V1/V2 included; V3 waits for 0024); iPhone 8/8; 0 stalls; bucket empty.
+
 ## 2026-11-23 Approved default templates and Similar Exercises corrections (DEPLOYED, `4004231`)
 
 - **Deployed:** `training-quality` fast-forwarded into main (bug fixes, My Exercises groups, accents, upload verify change, templates, Similar Exercises).

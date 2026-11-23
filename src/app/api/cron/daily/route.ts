@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { deleteObjects, recordingsEnabled } from "@/lib/recordings/r2";
 
@@ -14,7 +15,7 @@ import { deleteObjects, recordingsEnabled } from "@/lib/recordings/r2";
  */
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET;
-  if (!secret || request.headers.get("authorization") !== `Bearer ${secret}`) {
+  if (!secret || !sameSecret(request.headers.get("authorization") ?? "", `Bearer ${secret}`)) {
     return new Response("Not found", { status: 404 });
   }
   const admin = createAdminClient();
@@ -55,4 +56,10 @@ export async function GET(request: Request) {
     }
   }
   return Response.json({ ok: true, monthly_champions: months.data ?? 0, proofs_removed: removed, avatars_removed: stale.length, recordings_removed: recordingsRemoved });
+}
+
+/** Constant-time comparison, so response timing can't reveal how much of the secret was right. */
+function sameSecret(given: string, expected: string): boolean {
+  const a = Buffer.from(given), b = Buffer.from(expected);
+  return a.length === b.length && timingSafeEqual(a, b);
 }

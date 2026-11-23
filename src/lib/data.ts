@@ -85,6 +85,10 @@ async function loadCatalog(): Promise<Exercise[]> {
 
 /** Record a product event. Never throws: analytics must not break a user action. */
 export async function track(supabase: ServerSupabase, userId: string, name: string, props: Record<string, unknown> = {}) {
-  const { error } = await supabase.from("analytics_events").insert({ user_id: userId, name, props });
+  // Through log_event (migration 0024: validated, size-capped, rate-limited). Before 0024, the direct insert.
+  let { error } = await supabase.rpc("log_event", { p_name: name, p_props: props });
+  if (error && (error.code === "PGRST202" || /could not find the function/i.test(error.message))) {
+    ({ error } = await supabase.from("analytics_events").insert({ user_id: userId, name, props }));
+  }
   if (error) console.warn(`[analytics] ${name} not recorded`, error.message);
 }

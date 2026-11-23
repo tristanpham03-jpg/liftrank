@@ -21,7 +21,18 @@ export const usernameSchema = z
 export const displayNameSchema = z.string().trim().max(40, "Keep it under 40 characters.").optional();
 
 export const emailSchema = z.string().trim().toLowerCase().email("Enter a valid email address.");
-export const passwordSchema = z.string().min(8, "Use at least 8 characters.").max(72, "Use 72 characters or fewer.");
+// The most common passwords of 8+ characters (and one repeated character): refused even though long enough.
+const COMMON_PASSWORDS = new Set([
+  "password", "password1", "password12", "password123", "12345678", "123456789", "1234567890", "123123123", "11111111",
+  "00000000", "87654321", "qwertyui", "qwertyuiop", "qwerty123", "1qaz2wsx", "1q2w3e4r", "1q2w3e4r5t", "asdfghjk", "zxcvbnm1",
+  "iloveyou", "iloveyou1", "sunshine", "princess", "football", "baseball", "superman", "trustno1", "welcome1", "abcd1234",
+  "abc12345", "letmein1", "passw0rd", "p@ssw0rd", "changeme", "starwars", "whatever", "dragon12", "liftrank", "sblift123",
+]);
+export const passwordSchema = z
+  .string()
+  .min(8, "Use at least 8 characters.")
+  .max(72, "Use 72 characters or fewer.")
+  .refine((p) => !COMMON_PASSWORDS.has(p.toLowerCase()) && !/^(.)\1+$/.test(p), "That password is too common. Choose another.");
 
 export const signUpSchema = z.object({ email: emailSchema, password: passwordSchema });
 export const signInSchema = z.object({ email: emailSchema, password: z.string().min(1, "Enter your password.") });

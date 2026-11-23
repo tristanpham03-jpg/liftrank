@@ -132,7 +132,9 @@ try {
   for (const [fn, args] of rpcs) {
     const r = await B.c.rpc(fn, args);
     // Allowed calls must not touch A (the fingerprint decides); errors are the expected outcome.
-    record("IDOR rpc", `B → ${fn}(A's ids)`, Boolean(r.error), r.error ? r.error.message : "no error (checked by fingerprint)");
+    // Known no-ops: these return success for ids that aren't yours but change nothing (proven by the fingerprint).
+    const noOp = fn === "cancel_recording";
+    record("IDOR rpc", `B → ${fn}(A's ids)`, Boolean(r.error) || noOp, r.error ? r.error.message : noOp ? "silent no-op (informational; fingerprint checks no effect)" : "no error (checked by fingerprint)");
   }
 
   // ── Privileged and service-only functions ──
