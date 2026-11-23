@@ -30,46 +30,142 @@ Every exercise gets 3 sets if it's first in the day, else 2 (`defaultSetCount`).
   - **Order:** the order of the second upper day is rearranged to prioritise shoulders.
 - Inspiration taken (general, not copied): low sets per exercise with more exercises; stable machines; adductors and calves included; two different orders across the week so a different muscle gets the fresh slot.
 
-### Principles for the proposals
-- **Not "optimal", and adjustable:** these are reasonable, editable starting points. Every set count and exercise can be changed, and alternatives are offered as swaps in the same slot (the routine already supports alternative slots).
-- **Volume by frequency:** with each muscle trained about twice a week, roughly 4–8 hard sets per muscle per session lands in the commonly used 8–16 weekly range for trained lifters. That's a broad, contested range, not a target the app enforces.
-- **Order:** compound or most-demanding lifts first, then isolation; the muscle you want to prioritise early.
-- **Sets:** default 2 working sets (3 on the first lift), matching the current `defaultSetCount` and the low-volume, high-effort style above.
-- **Scope:** no weights are suggested. SBLift never invents numbers.
+### Owner's programming rules (2026-11-23), applied to every proposal
+- **Sets:** 2 working sets for every exercise in every split. Full Body: 1 set each.
+- **Full Body is one day** that covers every muscle group, 1 set each. There are no A/B days; frequency is how often you repeat that day.
+- **Frequency options:** Upper / Lower and Anterior / Posterior offer 2×, 3× or rotate (∞).
+- **Rows are two exercises, both trained in the same session:**
+  - a close-grip (tucked-elbow) row;
+  - a wide-grip row or T-bar row.
+- **Every back day (Upper, Pull, Posterior, Chest/Back, Full Body) includes three pulls:**
+  - a close-grip row or close-grip pulldown (shoulder extension);
+  - a wide-grip row or T-bar row;
+  - a wide-grip lat pulldown in the frontal plane (shoulder adduction).
+- **Kelso Shrug instead of Rear-Delt Fly** when the day already has a wide-grip row.
+- **Triceps are a combination:** a cable triceps extension plus a JM press, with overhead extension or dips as swaps. Pushdowns aren't a default: with the arm at your side the long head is short, so the lateral and medial heads do most of the work, and letting the upper arm drift (rotate in) shifts it further.
+- **Hinge:** the stiff-leg deadlift (SLDL) is the default instead of the RDL.
+- **No weights are suggested.** These are editable starting points, not "optimal" programs.
 
 ### Proposed templates (every exercise is in the catalog today; checked against the database)
-Alternatives in brackets go in the same slot (choose one per session).
+Exercises are listed in order. Brackets are swap options in the same slot (choose one per session).
 
-**Upper / Lower** (2 days; 2× or rotate)
-- Upper: Incline Smith Press 3 [Incline DB Press] · Chest-Supported Row 2 [Machine Row] · Machine Shoulder Press 2 [DB Shoulder Press] · Lat Pulldown (wide) 2 [Pull-Up] · Pec Deck 2 [Cable Fly] · Cable Lateral Raise 2 [Machine Lateral Raise] · Rear-Delt Fly 1 · Overhead Triceps Extension 2 · Preacher Curl 2
-- Lower: Seated Leg Curl 3 [Lying Leg Curl] · Hack Squat 2 [Leg Press / Back Squat] · Romanian Deadlift 2 [Smith RDL] · Leg Extension 2 · Hip Adduction 1 · Calf Raise (straight-knee) 3 · Cable Crunch 2
+**Upper / Lower** (2 days; frequency 2×, 3× or rotate)
+- Upper (2 sets each):
+  1. Incline Smith Press [Incline DB Press]
+  2. Lat Pulldown, wide grip [Pull-Up]
+  3. Chest-Supported Wide-Grip Row [T-Bar Row]
+  4. Chest-Supported Close-Grip Row [Close-Grip Lat Pulldown · Cable Close-Grip Lat Row]
+  5. Machine Shoulder Press [DB Shoulder Press]
+  6. Pec Deck [Cable Fly]
+  7. Cable Lateral Raise [Machine Lateral Raise]
+  8. Kelso Shrug
+  9. Cable Triceps Extension
+  10. Smith Machine JM Press [Overhead Triceps Extension · Dip]
+  11. Preacher Curl [Machine Preacher Curl]
+- Lower (2 sets each):
+  1. Seated Leg Curl [Lying Leg Curl]
+  2. Hack Squat [Leg Press · Back Squat]
+  3. Stiff-Leg Deadlift
+  4. Leg Extension
+  5. Hip Adduction
+  6. Calf Raise (straight-knee)
+  7. Cable Crunch [Machine Ab Crunch]
 
-**Push / Pull / Legs** (3 days; 1× or 2×)
-- Push: Incline Smith Press 3 · Machine Chest Press 2 [DB Bench] · Pec Deck 1 · Machine Shoulder Press 2 · Cable Lateral Raise 3 · Overhead Triceps Extension 2 · Triceps Pushdown 1
-- Pull: Lat Pulldown (wide) 3 [Pull-Up] · Chest-Supported Row 2 · Close-Grip Lat Row 2 [Close-Grip Pulldown] · Rear-Delt Fly 2 [Face Pull] · Preacher Curl 2 · Hammer Curl 1
-- Legs: Seated Leg Curl 3 · Hack Squat 2 [Back Squat / Leg Press] · Romanian Deadlift 2 · Leg Extension 2 · Hip Adduction 1 · Calf Raise (straight-knee) 3
+**Push / Pull / Legs** (3 days; 1×, 2× or rotate, unchanged)
+- Push (2 sets each):
+  1. Incline Smith Press [Incline DB Press]
+  2. Machine Chest Press [DB Bench Press]
+  3. Machine Shoulder Press
+  4. Pec Deck [Cable Fly]
+  5. Cable Lateral Raise
+  6. Cable Triceps Extension
+  7. Smith Machine JM Press [Overhead Triceps Extension · Dip]
+- Pull (2 sets each):
+  1. Lat Pulldown, wide grip [Pull-Up]
+  2. Chest-Supported Wide-Grip Row [T-Bar Row]
+  3. Chest-Supported Close-Grip Row [Close-Grip Lat Pulldown · Cable Close-Grip Lat Row]
+  4. Kelso Shrug
+  5. Preacher Curl
+  6. Hammer Curl
+- Legs (2 sets each):
+  1. Seated Leg Curl
+  2. Hack Squat [Leg Press · Back Squat]
+  3. Stiff-Leg Deadlift
+  4. Leg Extension
+  5. Hip Adduction
+  6. Calf Raise (straight-knee)
+  7. Cable Crunch
 
-**Anterior / Posterior** (2 days; 2× or rotate)
-- Placement note: conventionally, chest, front and side delts, quads, biceps and abs go on Anterior; back, rear delts, hamstrings, glutes, triceps and calves on Posterior. Splits differ (some put side delts or triceps on the other day), so the template follows the common convention and says so.
-- Anterior: Incline Smith Press 3 · Machine Chest Press 2 · Machine Shoulder Press 2 · Cable Lateral Raise 2 · Hack Squat 2 [Leg Press] · Leg Extension 2 · Preacher Curl 2 · Cable Crunch 2
-- Posterior: Lat Pulldown (wide) 3 · Chest-Supported Row 2 · Rear-Delt Fly 2 · Overhead Triceps Extension 2 · Romanian Deadlift 2 · Seated Leg Curl 2 · Calf Raise (straight-knee) 3
+**Anterior / Posterior** (2 days; frequency 2×, 3× or rotate)
+- Placement follows the common convention: chest, front and side delts, quads, adductors, biceps and abs on Anterior; back, upper back, hamstrings, triceps and calves on Posterior.
+- Anterior (2 sets each):
+  1. Incline Smith Press [Incline DB Press]
+  2. Machine Chest Press
+  3. Machine Shoulder Press
+  4. Pec Deck
+  5. Cable Lateral Raise
+  6. Hack Squat [Leg Press]
+  7. Leg Extension
+  8. Hip Adduction
+  9. Preacher Curl
+  10. Cable Crunch
+- Posterior (2 sets each):
+  1. Lat Pulldown, wide grip [Pull-Up]
+  2. Chest-Supported Wide-Grip Row [T-Bar Row]
+  3. Chest-Supported Close-Grip Row [Close-Grip Lat Pulldown · Cable Close-Grip Lat Row]
+  4. Kelso Shrug
+  5. Stiff-Leg Deadlift
+  6. Seated Leg Curl
+  7. Cable Triceps Extension
+  8. Smith Machine JM Press [Overhead Triceps Extension · Dip]
+  9. Calf Raise (straight-knee)
 
-**Full Body** (merged; 2 alternating days A/B)
-- Frequency: 2× or 3× a week, or every other day. The app has no fixed weekdays, so "every other day" is guidance shown with the rotation, not a different routine.
-- A: Hack Squat 2 [Back Squat] · Incline Smith Press 2 · Chest-Supported Row 2 · Romanian Deadlift 2 · Cable Lateral Raise 2 · Overhead Triceps Extension 1 · Preacher Curl 1
-- B: Leg Press 2 · Seated Leg Curl 2 · Machine Chest Press 2 · Lat Pulldown 2 · Machine Shoulder Press 1 · Rear-Delt Fly 1 · Calf Raise (straight-knee) 2
-- **Merge mechanics:**
-  - Full Body Every Other Day leaves the chooser. Existing users' FBEOD splits keep working unchanged (the `fbeod` template id stays valid), and nobody's saved split is renamed or removed.
-  - No database migration is needed for the merge itself.
+**Full Body** (one day; every muscle group, 1 set each; repeat 2×, 3× or every other day)
+1. Hack Squat
+2. Incline Smith Press
+3. Lat Pulldown, wide grip
+4. Chest-Supported Wide-Grip Row
+5. Chest-Supported Close-Grip Row
+6. Stiff-Leg Deadlift
+7. Machine Shoulder Press
+8. Cable Lateral Raise
+9. Kelso Shrug
+10. Leg Extension
+11. Seated Leg Curl
+12. Cable Triceps Extension
+13. Smith Machine JM Press
+14. Preacher Curl
+15. Hip Adduction
+16. Calf Raise (straight-knee)
+17. Cable Crunch
+- Replaces both "Full Body" and "Full Body Every Other Day" in the chooser. Existing users' saved FBEOD and Full Body splits keep working unchanged; none is renamed or removed.
 
-**Arnold** (3 days): Chest/Back (Incline Smith 3 · Lat Pulldown 2 · Machine Chest Press 2 · Chest-Supported Row 2 · Pec Deck 1 · Close-Grip Lat Row 1) · Shoulders/Arms (Machine Shoulder Press 2 · Cable Lateral Raise 3 · Rear-Delt Fly 2 · Overhead Triceps Extension 2 · Preacher Curl 2 · Pushdown 1 · Hammer Curl 1) · Legs (as PPL Legs).
+**Arnold** (3 days; unchanged frequency)
+- Chest / Back (2 sets each):
+  1. Incline Smith Press
+  2. Machine Chest Press
+  3. Lat Pulldown, wide grip
+  4. Chest-Supported Wide-Grip Row [T-Bar Row]
+  5. Chest-Supported Close-Grip Row [Close-Grip Lat Pulldown]
+  6. Pec Deck
+  7. Kelso Shrug
+- Shoulders / Arms (2 sets each):
+  1. Machine Shoulder Press
+  2. Cable Lateral Raise
+  3. Cable Triceps Extension
+  4. Smith Machine JM Press [Overhead Triceps Extension · Dip]
+  5. Preacher Curl
+  6. Hammer Curl
+- Legs: as PPL Legs.
 
 ### Applying them (after approval)
-- Only the template data changes, plus per-slot set counts and alternatives (both already supported).
-- Existing saved splits are never modified; the new defaults apply to new imports only.
-- Every exercise above is already in the catalog. Only a Seated Calf Raise (Part 6, #15) would be new: a catalog row, so a migration.
-
----
+- **Code changes:**
+  - template data;
+  - `defaultSetCount`: 2 for every exercise, 1 for Full Body;
+  - per-slot alternatives (already supported);
+  - rotation options (U/L and A/P: 2×, 3×, rotate).
+- **Saved splits:** existing saved splits are never modified. New defaults apply to new imports only.
+- **Catalog:** every exercise above is already in the catalog. Optional: show "Lat Pulldown" as "Wide-Grip Lat Pulldown" so it can't be confused with the close-grip one (same exercise and history; a display-name change only, which would be a migration).
 
 ## Part 6: exercise function and similarity audit
 
@@ -88,18 +184,18 @@ Public text should state A plainly, word B as "studies suggest", and keep C out 
 
 | # | Current | Problem | Evidence | Proposed |
 |---|---|---|---|---|
-| 1 | Lat Pulldown ↔ Close-Grip Lat Pulldown: close, "Same movement, different grip" | Wide grip moves the arm mostly out to the side (shoulder **adduction**, frontal plane); a close/neutral grip moves it in front of the body (shoulder **extension**, sagittal plane). The lats do both; the path and the upper-back contribution differ. | A | Keep **close** (same vertical pull, same main target) and rewrite: "Vertical pull; the close grip pulls the arms down in front (extension) rather than out to the side (adduction)." |
-| 2 | Pull-Up ↔ Chin-Up: close, "different grip" | Supinated, shoulder-width chin-ups are more sagittal and load the biceps more | A | Close; "Vertical pull; the underhand chin-up brings the elbows down in front and uses more biceps." |
-| 3 | Chest-Supported Row ↔ Wide-Grip variant: close, "different grip" | Flared elbows (horizontal abduction) shift emphasis toward the upper back and rear delts; tucked elbows (extension) toward the lats | A | **Related**: "Row with elbows flared out: more upper back and rear delts, less lats." |
-| 4 | Chest-Supported Row ↔ Close-Grip variant: close, "different grip" | Tucked elbows = shoulder extension, lat-biased | A | Close; "Same row with elbows tucked: more lats." |
+| 1 | Lat Pulldown ↔ Close-Grip Lat Pulldown: close, "Same movement, different grip" | Wide grip moves the arm down from the side (shoulder **adduction**, frontal plane); close or neutral grip moves it down in front (shoulder **extension**, sagittal plane). Per the owner, these are two different exercises, both trained on back days. | A | **Related** (not a swap): "Close grip pulls the arms down in front (extension); the wide-grip pulldown pulls them down from the side (adduction). Train both." |
+| 2 | Pull-Up ↔ Chin-Up: close, "different grip" | The wide pronated pull-up is mostly frontal plane; the underhand chin-up is sagittal and uses more biceps | A | **Related**: "Underhand: the elbows come down in front with more biceps; the pull-up brings them down from the side." |
+| 3 | Chest-Supported Row ↔ Wide-Grip variant: close, "different grip" | Flared elbows (horizontal abduction) put the work on the upper back and rear delts; a separate exercise from the tucked-elbow row, and both are trained the same day | A | **Related**: "Elbows flared: upper back and rear delts. Pair it with a close-grip row; don't swap one for the other." Wide-Grip Row ↔ T-Bar Row becomes a **close** pair. |
+| 4 | Chest-Supported Row ↔ Close-Grip variant: close, "different grip" | Tucked elbows = shoulder extension, lat-biased. A separate exercise from the wide-grip row. | A | **Close** pairs: Close-Grip Row ↔ Close-Grip Lat Pulldown ↔ Cable Close-Grip Lat Row ("Same pull with the elbows tucked: lats"). The generic "Chest-Supported Row" stays for existing history but isn't used in the defaults. |
 | 5 | Incline Smith Press ↔ Smith Bench Press: close, "different angle" | Incline adds shoulder flexion, shifting work toward the clavicular (upper) pec and front delts | A (mechanics); C for the activation shift; long-term growth evidence thin | **Related**: "Incline press: more shoulder flexion, aimed at the upper chest and front delts." |
-| 6 | Triceps Pushdown ↔ Cable Triceps Extension: "pushdown moves the upper arm, the extension keeps the elbow fixed" | Factually wrong: in a pushdown the upper arm stays still and the elbow extends | A | Rewrite; and if "Cable Triceps Extension" is overhead: "Overhead: the long head works at a longer length." |
+| 6 | Triceps Pushdown ↔ Cable Triceps Extension: "pushdown moves the upper arm, the extension keeps the elbow fixed" | Wrong as written. In a pushdown the arm is at the side, so the long head is short and the lateral and medial heads do most of the work. Letting the upper arm drift (rotate in) shifts it further. | A (long-head length); B/C (head emphasis) | Rewrite: "Arm at your side: mostly the lateral and medial heads. Keep the upper arm still. Pair with an overhead extension, dip or JM press for the long head." Triceps Extension ↔ JM Press become **related** (complementary, not swaps). |
 | 7 | Overhead Triceps Extension ↔ Skull Crusher: related, "different movement pattern" | Both are elbow extension; the shoulder angle differs (overhead ≈ full flexion; skull crusher ≈ 90°) | A; B for overhead → more long-head growth (one study, Maeo et al.; an earlier study found no difference) | "Both straighten the elbow; overhead puts the long head on more stretch." |
 | 8 | Seated Leg Curl ↔ Lying Leg Curl: close, "Similar setup" | Seated = hips flexed, so the hamstrings work at longer lengths | A; B (one 12-week study: ≈14% vs 9% volume) | Close; "Same knee bend; seated trains the hamstrings at a longer length (studies suggest more growth)." |
 | 9 | Hack Squat ↔ Leg Press: related, "different movement pattern" | Both are knee- and hip-extension squat patterns on a sled | A | **Close**: "Squat pattern on a machine; the leg press gives more control over foot placement and depth." |
-| 10 | RDL ↔ Stiff-Leg Deadlift: close, "Similar setup" | Vague. The SLDL keeps the knees straighter (more hamstring stretch at the knee); the RDL keeps a soft knee and starts from the top | A | Close; "Hip hinge for the hamstrings and glutes; straighter knees in the SLDL." |
+| 10 | RDL ↔ Stiff-Leg Deadlift: close, "Similar setup" | Vague. The SLDL keeps the knees straighter (more hamstring stretch) and is the owner's default hinge. | A | Close; "Hip hinge for the hamstrings and glutes; straighter knees in the SLDL." |
 | 11 | Bench Press ↔ Cable Fly: related, "Same muscle emphasis, different movement pattern" | The fly is horizontal adduction without elbow extension (no triceps); "same muscle emphasis" overstates it | A | "Chest without the triceps: the arms sweep in (horizontal adduction)." |
-| 12 | Rear-Delt Fly ↔ Face Pull: related, generic | The face pull adds external rotation and scapular retraction | A | "Both pull the arms back; the face pull adds rotation and works more upper back." |
+| 12 | Rear-Delt Fly ↔ Face Pull: related, generic | The face pull adds external rotation and scapular retraction. Per the owner, when a wide-grip row is in the day, a Kelso Shrug replaces the rear-delt fly (the row already covers the rear delts). | A | "Both pull the arms back; the face pull adds rotation and works more upper back." Add Kelso Shrug ↔ Wide-Grip Row as **related**: "Upper back without the arms; follows a wide-grip row." |
 | 13 | Hammer Curl ↔ Reverse Cable Curl: related | Neutral and pronated grips both shift work toward the brachioradialis; the brachialis flexes the elbow regardless of grip | A | "Grip-turned curls: more forearm (brachioradialis), less biceps." |
 | 14 | Lat Pulldown ↔ Pull-Up: related | Same vertical pull; differences are stability and loading | A | **Close**: "Same vertical pull, your bodyweight instead of a stack." |
 | 15 | Calf Raise: one entry | Straight-knee (standing, leg-press) work trains the gastrocnemius; bent-knee (seated) mostly the soleus | A; B (standing grew the gastrocnemius far more; seated barely) | Treat "Calf Raise" as straight-knee and add "Seated Calf Raise" (*new*); related: "Bent knee: mostly soleus." |
