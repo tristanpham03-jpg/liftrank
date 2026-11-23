@@ -45,6 +45,12 @@ _Last updated: 2026-10-15 · Done: Phases 1–7 + friend verification · **Deplo
   - A root `app/loading.tsx`: the wordmark and a small sweep bar, streamed immediately on a fresh load, with no timers or minimum duration. Tab navigation never shows it (asserted in Flow Q); cached pages render immediately; session drafts are unaffected.
 - Manifest and theme colors were already dark.
 
+**Deploy verification (2026-11-22):**
+- Hosted 17/17 on clean data, iPhone 6/6, 0 stalls.
+- Earlier failed runs had two causes: the Mac went into clamshell sleep mid-run, and a Flow Q test step tapped tabs while a field was focused.
+- In production: inline dark `<html>`/`<body>`, 12 launch images (`/splash/*` → PNG), dark manifest, the image assets still hosted but unused.
+- `/dev/*` is now a real 404 in production, returned by the proxy. Streaming the root loading screen had turned page-level `notFound()` responses into 200s with the 404 page. That still applies to other not-found pages (for example a private lift): they show the 404 page with `noindex` and status 200.
+
 **Phase 3 decisions** recorded in `docs/recordings-plan.md` (R2, 500 MB, 90 s, 100 MB, private, block at limit, proof videos separate). Not implemented.
 
 **Phase 3 prep:** the exercise page order is performance → Similar exercises → Technique reference → (My Recordings) → History. Plan in `docs/recordings-plan.md`.

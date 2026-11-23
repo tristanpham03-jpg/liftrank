@@ -14,6 +14,10 @@ function matches(pathname: string, prefixes: string[]) {
 
 /** Refreshes the Supabase session cookie on every request and guards app routes. */
 export async function proxy(request: NextRequest) {
+  // Dev-only pages (e.g. /dev/break-ui) don't exist in production: a real 404, decided before any page streams.
+  if (request.nextUrl.pathname.startsWith("/dev") && process.env.NODE_ENV === "production" && process.env.LR_DEV_ROUTES !== "1") {
+    return new NextResponse("Not found", { status: 404 });
+  }
   const config = supabaseConfig();
   if (!config) return NextResponse.next({ request });
 
