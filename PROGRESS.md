@@ -2,7 +2,13 @@
 
 _Last updated: 2026-10-15 · Done: Phases 1–7 + friend verification · **Deployed (unlisted) at https://liftrank-roan.vercel.app** · Finishing launch setup (see "Deployment status")_
 
-## 2026-11-23 Pre-launch security audit (branch `security-audit`; NOT deployed; migration `…2400` NOT applied)
+## 2026-11-23 Pre-launch security audit (migration `…2400` APPLIED with the owner's approval; deployed)
+
+- **0024 applied:**
+  - **Process:** dry run (only 0024 pending), then a fingerprint of 48 tables and function grants, then push. All identical afterwards; `auth_attempts` is new and empty.
+  - **Checks:** direct analytics inserts revoked; `log_event` for signed-in users; throttle functions service-role only; every definer function still has `search_path=""`.
+- **Verification after applying:** unit 88/88; hosted suite 26 passed + Flow V 3/3 (V3: the 11th wrong password is refused, and so is the correct one until the window passes); probe 131/131; 0 stalls. Test rows in `auth_attempts` cleared.
+
 
 - **Report:** `docs/security-audit-2026-11-23.md`.
 - **Severity:** 0 Critical/High, 3 Medium, 6 Low, 2 Info. No cross-user data access anywhere (probe 131/131, owner footprint byte-identical).

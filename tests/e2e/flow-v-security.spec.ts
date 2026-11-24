@@ -60,7 +60,7 @@ test("Flow V3: repeated wrong passwords are throttled (per email, per client IP)
   const ip = `203.0.113.${Math.floor(Math.random() * 250) + 1}`;
   const ctx = await browser.newContext({ extraHTTPHeaders: { "x-forwarded-for": ip } });
   const page = await ctx.newPage();
-  const name = username("secv");
+  const name = username("secvt");
   await signUp(page, name);
   await ctx.clearCookies();
   for (let i = 1; i <= 11; i++) {
